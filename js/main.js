@@ -1081,7 +1081,7 @@ Generated via IWSM Risk Discipline Engine (Jaipur)`;
   }
 
   // --------------------------------------------------------------------------
-  // 11. Lead Capture Form Submission & Feedback Modal (Supabase + WhatsApp)
+  // 11. Lead Capture Form Submission (Direct Email to iwsm.official.global@gmail.com)
   // --------------------------------------------------------------------------
   const forms = document.querySelectorAll('form.lead-form');
   const confirmModal = document.querySelector('.lead-confirm-modal');
@@ -1101,8 +1101,8 @@ Generated via IWSM Risk Discipline Engine (Jaipur)`;
 
       const name = nameInput ? nameInput.value.trim() : 'Learner';
       const phone = phoneInput ? phoneInput.value.trim() : '';
-      const email = emailInput ? emailInput.value.trim() : 'N/A';
-      const course = courseSelect ? courseSelect.value : 'Gamma Plan';
+      const email = emailInput ? emailInput.value.trim() : 'Not Provided';
+      const course = courseSelect ? courseSelect.value : 'Gamma Plan — 100 Days Complete Mastery (Flagship)';
 
       if (!phone || phone.length < 8) {
         alert('Please enter a valid mobile number so our mentor can contact you.');
@@ -1110,6 +1110,53 @@ Generated via IWSM Risk Discipline Engine (Jaipur)`;
         return;
       }
 
+      // Button loading state
+      const originalBtnHTML = submitBtn ? submitBtn.innerHTML : '';
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `<span>Sending Enquiry...</span>`;
+      }
+
+      const timestampIST = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+
+      // 1. Send Email to iwsm.official.global@gmail.com via FormSubmit AJAX
+      try {
+        await fetch('https://formsubmit.co/ajax/iwsm.official.global@gmail.com', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({
+            'Student Name': name,
+            'Mobile Phone': `+91 ${phone}`,
+            'Email Address': email,
+            'Course Selected': course,
+            'Submitted At (IST)': timestampIST,
+            '_subject': `🚨 New Admission Enquiry: ${name} (+91 ${phone})`,
+            '_template': 'table',
+            '_captcha': 'false'
+          })
+        });
+        console.log('✅ [IWSM] Enquiry email dispatched to iwsm.official.global@gmail.com');
+      } catch (err) {
+        console.warn('⚠️ [IWSM] Email dispatch notice:', err);
+      }
+
+      // 2. Also submit to Netlify Forms (if hosted on Netlify)
+      try {
+        const formData = new FormData(form);
+        formData.set('form-name', 'iwsm-admissions');
+        await fetch('/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams(formData).toString()
+        });
+      } catch (err) {
+        // Silent fallback
+      }
+
+      // 3. Backup to Supabase / LocalStorage
       const leadEntry = {
         name,
         phone,
@@ -1117,23 +1164,8 @@ Generated via IWSM Risk Discipline Engine (Jaipur)`;
         course,
         timestamp: new Date().toISOString()
       };
-
-      // Button loading state
-      const originalBtnHTML = submitBtn ? submitBtn.innerHTML : '';
-      if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = `<span>Saving Details...</span>`;
-      }
-
-      // 1. Submit to Supabase Database
       if (window.IWSM_BACKEND && window.IWSM_BACKEND.submitLeadToSupabase) {
-        await window.IWSM_BACKEND.submitLeadToSupabase(leadEntry);
-      }
-
-      // 2. Dispatch Automated WhatsApp Notifications
-      let waData = null;
-      if (window.IWSM_BACKEND && window.IWSM_BACKEND.dispatchWhatsAppAlerts) {
-        waData = await window.IWSM_BACKEND.dispatchWhatsAppAlerts(leadEntry);
+        window.IWSM_BACKEND.submitLeadToSupabase(leadEntry).catch(() => {});
       }
 
       // Restore submit button
@@ -1142,25 +1174,25 @@ Generated via IWSM Risk Discipline Engine (Jaipur)`;
         submitBtn.innerHTML = originalBtnHTML;
       }
 
-      // 3. Populate Confirmation Modal with WhatsApp Quick Contact Actions
+      // 4. Show Confirmation Modal with admission counselor details
       if (confirmDetailsWrap) {
         confirmDetailsWrap.innerHTML = `
           <strong>Thank you, ${name}!</strong><br>
-          Your counselling request for <strong>${course}</strong> has been logged in our system.<br>
-          Our senior mentors have been notified and will call you on <strong>+91 ${phone}</strong>.
+          Your enquiry for <strong>${course}</strong> has been sent to our admissions team at <strong>iwsm.official.global@gmail.com</strong>.<br>
+          Our senior market counselor will call you on <strong>+91 ${phone}</strong> shortly.
         `;
       }
 
       if (confirmWhatsAppActions) {
         confirmWhatsAppActions.innerHTML = `
           <div style="font-size:0.85rem; color:var(--gold-light); margin-bottom:8px; font-weight:600; text-align:center;">
-            Want an instant response? Chat with Admissions on WhatsApp:
+            Want an instant reply? Chat with Admissions on WhatsApp:
           </div>
           <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
-            <a href="https://wa.me/918107911127?text=${encodeURIComponent(`Hi IWSM, I just submitted the enquiry form on your website for ${course}. My name is ${name}.`)}" target="_blank" rel="noopener" class="btn btn-outline-gold" style="padding:8px 14px; font-size:0.82rem; display:inline-flex; align-items:center; gap:6px;">
+            <a href="https://wa.me/918107911127?text=${encodeURIComponent(`Hi IWSM, I just submitted an enquiry for ${course} on your website. My name is ${name}.`)}" target="_blank" rel="noopener" class="btn btn-outline-gold" style="padding:8px 14px; font-size:0.82rem; display:inline-flex; align-items:center; gap:6px;">
               <span>💬 8107911127</span>
             </a>
-            <a href="https://wa.me/918690211127?text=${encodeURIComponent(`Hi IWSM, I just submitted the enquiry form on your website for ${course}. My name is ${name}.`)}" target="_blank" rel="noopener" class="btn btn-outline-gold" style="padding:8px 14px; font-size:0.82rem; display:inline-flex; align-items:center; gap:6px;">
+            <a href="https://wa.me/918690211127?text=${encodeURIComponent(`Hi IWSM, I just submitted an enquiry for ${course} on your website. My name is ${name}.`)}" target="_blank" rel="noopener" class="btn btn-outline-gold" style="padding:8px 14px; font-size:0.82rem; display:inline-flex; align-items:center; gap:6px;">
               <span>💬 8690211127</span>
             </a>
           </div>
