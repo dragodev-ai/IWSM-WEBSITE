@@ -1174,12 +1174,12 @@ Generated via IWSM Risk Discipline Engine (Jaipur)`;
         submitBtn.innerHTML = originalBtnHTML;
       }
 
-      // 4. Show Confirmation Modal with admission counselor details
+      // 4. Show Confirmation Modal with admission counselor details (Ending with 'soon')
       if (confirmDetailsWrap) {
         confirmDetailsWrap.innerHTML = `
           <strong>Thank you, ${name}!</strong><br>
-          Your enquiry for <strong>${course}</strong> has been sent to our admissions team at <strong>iwsm.official.global@gmail.com</strong>.<br>
-          Our senior market counselor will call you on <strong>+91 ${phone}</strong> shortly.
+          We have reserved your free counselling session for <strong>${course}</strong>.<br>
+          Our senior market counselor will call you on <strong>+91 ${phone}</strong> soon.
         `;
       }
 
@@ -1200,7 +1200,47 @@ Generated via IWSM Risk Discipline Engine (Jaipur)`;
         confirmWhatsAppActions.style.display = 'block';
       }
 
-      if (confirmModal) confirmModal.classList.add('active');
+      // PhonePe signature success chime
+      try {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) {
+          const ctx = new AudioContextClass();
+          if (ctx.state === 'suspended') ctx.resume();
+          const now = ctx.currentTime;
+
+          // Note 1: E5 (659Hz)
+          const osc1 = ctx.createOscillator();
+          const gain1 = ctx.createGain();
+          osc1.type = 'sine';
+          osc1.frequency.setValueAtTime(659.25, now + 0.1);
+          gain1.gain.setValueAtTime(0.12, now + 0.1);
+          gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+          osc1.connect(gain1);
+          gain1.connect(ctx.destination);
+          osc1.start(now + 0.1);
+          osc1.stop(now + 0.4);
+
+          // Note 2: A5 (880Hz) - Bright harmonic chime
+          const osc2 = ctx.createOscillator();
+          const gain2 = ctx.createGain();
+          osc2.type = 'sine';
+          osc2.frequency.setValueAtTime(880, now + 0.25);
+          gain2.gain.setValueAtTime(0.15, now + 0.25);
+          gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.85);
+          osc2.connect(gain2);
+          gain2.connect(ctx.destination);
+          osc2.start(now + 0.25);
+          osc2.stop(now + 0.85);
+        }
+      } catch (err) {
+        // Optional audio chime
+      }
+
+      if (confirmModal) {
+        confirmModal.classList.remove('active');
+        void confirmModal.offsetWidth; // Force CSS reflow to re-trigger PhonePe animation
+        confirmModal.classList.add('active');
+      }
       form.reset();
     });
   });

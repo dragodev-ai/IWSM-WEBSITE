@@ -2833,25 +2833,194 @@ ul, ol {
 }
 
 .confirmation-modal-card {
-  max-width: 500px;
+  max-width: 490px;
   width: 100%;
-  padding: 40px 32px;
+  padding: 44px 34px 36px 34px;
   text-align: center;
   position: relative;
+  overflow: hidden;
+  border-radius: 24px;
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  transform: scale(0.92);
+  opacity: 0;
+  transition: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.25);
 }
 
-.modal-icon-success {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  background: rgba(16, 185, 129, 0.15);
-  border: 2px solid var(--bull-green);
-  color: var(--bull-green);
+.modal-overlay.active .confirmation-modal-card {
+  transform: scale(1);
+  opacity: 1;
+}
+
+/* ==========================================================================
+   PhonePe / GPay Signature Payment Success Animation
+   ========================================================================== */
+.phonepe-success-wrapper {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  margin: 0 auto 24px auto;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.8rem;
-  margin: 0 auto 20px auto;
+}
+
+/* Iconic PhonePe Emerald Green Bouncing Circle */
+.phonepe-circle {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 
+    0 0 0 7px rgba(16, 185, 129, 0.18),
+    0 0 35px rgba(16, 185, 129, 0.55),
+    inset 0 2px 4px rgba(255, 255, 255, 0.3);
+  transform: scale(0);
+  z-index: 2;
+  position: relative;
+}
+
+.modal-overlay.active .phonepe-circle {
+  animation: phonepePopIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.35) 0.08s forwards;
+}
+
+@keyframes phonepePopIn {
+  0% {
+    transform: scale(0) rotate(-20deg);
+    opacity: 0;
+  }
+  65% {
+    transform: scale(1.18) rotate(4deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+/* SVG Animated Drawing Checkmark */
+.phonepe-checkmark {
+  width: 42px;
+  height: 42px;
+  display: block;
+}
+
+.phonepe-check-path {
+  stroke: #ffffff;
+  stroke-width: 4.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 60;
+  stroke-dashoffset: 60;
+}
+
+.modal-overlay.active .phonepe-check-path {
+  animation: phonepeDrawCheck 0.42s cubic-bezier(0.65, 0, 0.45, 1) 0.45s forwards;
+}
+
+@keyframes phonepeDrawCheck {
+  0% {
+    stroke-dashoffset: 60;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Concentric Expanding Ripple Waves */
+.phonepe-ripple {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 2px solid rgba(16, 185, 129, 0.65);
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0;
+}
+
+.modal-overlay.active .phonepe-ripple-1 {
+  animation: phonepeWave 2.2s cubic-bezier(0.22, 1, 0.36, 1) 0.3s infinite;
+}
+
+.modal-overlay.active .phonepe-ripple-2 {
+  animation: phonepeWave 2.2s cubic-bezier(0.22, 1, 0.36, 1) 0.85s infinite;
+}
+
+@keyframes phonepeWave {
+  0% {
+    width: 76px;
+    height: 76px;
+    opacity: 0.85;
+    border-color: rgba(16, 185, 129, 0.7);
+  }
+  50% {
+    opacity: 0.4;
+  }
+  100% {
+    width: 155px;
+    height: 155px;
+    opacity: 0;
+    border-color: rgba(16, 185, 129, 0);
+  }
+}
+
+/* Celebratory Sparkle Particles */
+.phonepe-sparkle {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 3;
+  opacity: 0;
+}
+
+.modal-overlay.active .p-sparkle-1 { background: #f5e4ab; top: 12px; left: 16px; animation: pSparkle1 0.75s ease-out 0.4s forwards; }
+.modal-overlay.active .p-sparkle-2 { background: #34d399; top: 12px; right: 16px; animation: pSparkle2 0.75s ease-out 0.44s forwards; }
+.modal-overlay.active .p-sparkle-3 { background: #e8c66b; bottom: 12px; left: 16px; animation: pSparkle3 0.75s ease-out 0.42s forwards; }
+.modal-overlay.active .p-sparkle-4 { background: #10b981; bottom: 12px; right: 16px; animation: pSparkle4 0.75s ease-out 0.46s forwards; }
+.modal-overlay.active .p-sparkle-5 { background: #ffffff; top: 0px; left: 50%; animation: pSparkle5 0.75s ease-out 0.41s forwards; }
+.modal-overlay.active .p-sparkle-6 { background: #fbbf24; bottom: 0px; left: 50%; animation: pSparkle6 0.75s ease-out 0.45s forwards; }
+
+@keyframes pSparkle1 { 0% { transform: scale(0) translate(0, 0); opacity: 0; } 50% { opacity: 1; } 100% { transform: scale(1.4) translate(-16px, -16px); opacity: 0; } }
+@keyframes pSparkle2 { 0% { transform: scale(0) translate(0, 0); opacity: 0; } 50% { opacity: 1; } 100% { transform: scale(1.4) translate(16px, -16px); opacity: 0; } }
+@keyframes pSparkle3 { 0% { transform: scale(0) translate(0, 0); opacity: 0; } 50% { opacity: 1; } 100% { transform: scale(1.4) translate(-16px, 16px); opacity: 0; } }
+@keyframes pSparkle4 { 0% { transform: scale(0) translate(0, 0); opacity: 0; } 50% { opacity: 1; } 100% { transform: scale(1.4) translate(16px, 16px); opacity: 0; } }
+@keyframes pSparkle5 { 0% { transform: scale(0) translate(0, 0); opacity: 0; } 50% { opacity: 1; } 100% { transform: scale(1.4) translate(0, -18px); opacity: 0; } }
+@keyframes pSparkle6 { 0% { transform: scale(0) translate(0, 0); opacity: 0; } 50% { opacity: 1; } 100% { transform: scale(1.4) translate(0, 18px); opacity: 0; } }
+
+/* Staggered Modal Text Fade-ins */
+.phonepe-title {
+  font-family: var(--font-display);
+  font-size: 1.65rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 12px;
+  animation: phonepeFadeUp 0.45s ease 0.35s both;
+}
+
+.phonepe-desc {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  margin-bottom: 20px;
+  animation: phonepeFadeUp 0.45s ease 0.45s both;
+}
+
+@keyframes phonepeFadeUp {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 /* --------------------------------------------------------------------------
    21b. Photo & Graphics Gallery Showcase (25 Official Graphics)
