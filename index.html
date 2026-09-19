@@ -1824,14 +1824,17 @@
     <div class="confirmation-modal-card glass-panel-deep">
       <div class="modal-icon-success">✓</div>
       <h3 style="font-family:var(--font-display); font-size:1.6rem; color:#fff; margin-bottom:12px;">Counselling Session Reserved!</h3>
-      <p id="confirm-details-text" style="color:var(--text-muted); font-size:0.95rem; line-height:1.6; margin-bottom:24px;">
+      <p id="confirm-details-text" style="color:var(--text-muted); font-size:0.95rem; line-height:1.6; margin-bottom:20px;">
         Thank you! Your details have been submitted. An IWSM Senior Market Counselor will reach out shortly to guide you through course selection and batch timings.
       </p>
+      <div id="confirm-whatsapp-actions" style="margin-bottom: 16px;"></div>
       <button class="btn btn-gold confirm-modal-close" style="width:100%;">Great, Thank You!</button>
     </div>
   </div>
 
   <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-client.js"></script>
   <script src="js/spline-handler.js"></script>
   <script src="js/scene3d.js"></script>
   <script src="js/squeeze-gallery.js"></script>

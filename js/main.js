@@ -1081,21 +1081,23 @@ Generated via IWSM Risk Discipline Engine (Jaipur)`;
   }
 
   // --------------------------------------------------------------------------
-  // 11. Lead Capture Form Submission & Feedback Modal
+  // 11. Lead Capture Form Submission & Feedback Modal (Supabase + WhatsApp)
   // --------------------------------------------------------------------------
   const forms = document.querySelectorAll('form.lead-form');
   const confirmModal = document.querySelector('.lead-confirm-modal');
   const confirmModalClose = document.querySelector('.confirm-modal-close');
   const confirmDetailsWrap = document.querySelector('#confirm-details-text');
+  const confirmWhatsAppActions = document.querySelector('#confirm-whatsapp-actions');
 
   forms.forEach((form) => {
-    form.addEventListener('submit', (e) => {
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
 
       const nameInput = form.querySelector('input[name="fullname"]') || form.querySelector('input[placeholder*="Name"]');
       const phoneInput = form.querySelector('input[name="phone"]') || form.querySelector('input[type="tel"]');
       const emailInput = form.querySelector('input[name="email"]') || form.querySelector('input[type="email"]');
       const courseSelect = form.querySelector('select');
+      const submitBtn = form.querySelector('button[type="submit"]');
 
       const name = nameInput ? nameInput.value.trim() : 'Learner';
       const phone = phoneInput ? phoneInput.value.trim() : '';
@@ -1108,7 +1110,6 @@ Generated via IWSM Risk Discipline Engine (Jaipur)`;
         return;
       }
 
-      // Store in local storage mock
       const leadEntry = {
         name,
         phone,
@@ -1116,17 +1117,55 @@ Generated via IWSM Risk Discipline Engine (Jaipur)`;
         course,
         timestamp: new Date().toISOString()
       };
-      const existingLeads = JSON.parse(localStorage.getItem('iwsm_leads') || '[]');
-      existingLeads.push(leadEntry);
-      localStorage.setItem('iwsm_leads', JSON.stringify(existingLeads));
 
-      // Display Confirmation Modal
+      // Button loading state
+      const originalBtnHTML = submitBtn ? submitBtn.innerHTML : '';
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `<span>Saving Details...</span>`;
+      }
+
+      // 1. Submit to Supabase Database
+      if (window.IWSM_BACKEND && window.IWSM_BACKEND.submitLeadToSupabase) {
+        await window.IWSM_BACKEND.submitLeadToSupabase(leadEntry);
+      }
+
+      // 2. Dispatch Automated WhatsApp Notifications
+      let waData = null;
+      if (window.IWSM_BACKEND && window.IWSM_BACKEND.dispatchWhatsAppAlerts) {
+        waData = await window.IWSM_BACKEND.dispatchWhatsAppAlerts(leadEntry);
+      }
+
+      // Restore submit button
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalBtnHTML;
+      }
+
+      // 3. Populate Confirmation Modal with WhatsApp Quick Contact Actions
       if (confirmDetailsWrap) {
         confirmDetailsWrap.innerHTML = `
           <strong>Thank you, ${name}!</strong><br>
-          We have reserved your free counselling session for <strong>${course}</strong>.<br>
-          Our senior market counselor will call you on <strong>${phone}</strong> within 15 minutes.
+          Your counselling request for <strong>${course}</strong> has been logged in our system.<br>
+          Our senior mentors have been notified and will call you on <strong>+91 ${phone}</strong>.
         `;
+      }
+
+      if (confirmWhatsAppActions) {
+        confirmWhatsAppActions.innerHTML = `
+          <div style="font-size:0.85rem; color:var(--gold-light); margin-bottom:8px; font-weight:600; text-align:center;">
+            Want an instant response? Chat with Admissions on WhatsApp:
+          </div>
+          <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+            <a href="https://wa.me/918107911127?text=${encodeURIComponent(`Hi IWSM, I just submitted the enquiry form on your website for ${course}. My name is ${name}.`)}" target="_blank" rel="noopener" class="btn btn-outline-gold" style="padding:8px 14px; font-size:0.82rem; display:inline-flex; align-items:center; gap:6px;">
+              <span>💬 8107911127</span>
+            </a>
+            <a href="https://wa.me/918690211127?text=${encodeURIComponent(`Hi IWSM, I just submitted the enquiry form on your website for ${course}. My name is ${name}.`)}" target="_blank" rel="noopener" class="btn btn-outline-gold" style="padding:8px 14px; font-size:0.82rem; display:inline-flex; align-items:center; gap:6px;">
+              <span>💬 8690211127</span>
+            </a>
+          </div>
+        `;
+        confirmWhatsAppActions.style.display = 'block';
       }
 
       if (confirmModal) confirmModal.classList.add('active');

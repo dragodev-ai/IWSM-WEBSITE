@@ -2,6 +2,7 @@
 [build]
   # Static site published directly from root
   publish = "."
+  functions = "netlify/functions"
 
 [[redirects]]
   from = "/reviews"
