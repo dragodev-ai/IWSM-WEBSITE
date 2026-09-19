@@ -1,0 +1,596 @@
+{
+  "source_file": "IWSM_Final_V14.html",
+  "file_size_bytes": 9660615,
+  "html_lines": 1055,
+  "metadata": {
+    "title": "IWSM Stock Market Trading Courses Jaipur | Institute of World Stock Market",
+    "description": "Explore IWSM stock market trading courses in Jaipur with structured learning in technical analysis, futures & options, SMC, ICT, risk management, AI and advanced market concepts.",
+    "lang": "en",
+    "charset": "utf-8"
+  },
+  "navigation": [
+    {
+      "text": "Curriculum",
+      "href": "#curriculum"
+    },
+    {
+      "text": "Courses",
+      "href": "#plans"
+    },
+    {
+      "text": "Trading Carnival",
+      "href": "#carnival"
+    },
+    {
+      "text": "Faculty",
+      "href": "#faculty"
+    },
+    {
+      "text": "Reviews",
+      "href": "#reviews"
+    },
+    {
+      "text": "Get Course Details",
+      "href": "#enquire"
+    }
+  ],
+  "hero": {
+    "eyebrow": "Institute of World Stock Market",
+    "headline": "Learn. Practice. Grow. With Real Market Guidance.",
+    "lead": "Build practical stock-market knowledge through structured learning, expert mentorship and market-focused concepts designed for serious learners.",
+    "points": [
+      "Live Market Learning",
+      "Expert Mentorship",
+      "Structured Curriculum",
+      "Practical Strategies"
+    ],
+    "actions": [
+      {
+        "text": "Book Free Counselling",
+        "href": "#enquire"
+      },
+      {
+        "text": "Call 8107911127",
+        "href": "tel:8107911127"
+      }
+    ],
+    "form_title": "Get Course Details",
+    "form_description": "Share your details and the IWSM team can help you understand the right learning plan.",
+    "form_cta": "Get Free Counselling",
+    "privacy_note": "Practical learning • Mentorship • Structured curriculum • Jaipur"
+  },
+  "market_ribbon": [
+    "↗ BUY",
+    "↘ SELL",
+    "↗ CALL",
+    "↘ PUT",
+    "▥ BULLISH",
+    "▥ BEARISH",
+    "⚡ BREAKOUT",
+    "⚠ MARKET CRASH"
+  ],
+  "curriculum_tags": [
+    {
+      "label": "Basics of Stock Market",
+      "target": "stock-market-foundations"
+    },
+    {
+      "label": "Advanced Technical Analysis",
+      "target": "technical-analysis"
+    },
+    {
+      "label": "Institutional Adjustments",
+      "target": "futures-options"
+    },
+    {
+      "label": "ICT Concept",
+      "target": "smc-ict"
+    },
+    {
+      "label": "SMC Concept",
+      "target": "smc-ict"
+    },
+    {
+      "label": "Sector Analysis",
+      "target": "supply-demand-sector"
+    },
+    {
+      "label": "ATS Concept",
+      "target": "ats-algo-ai"
+    },
+    {
+      "label": "AI-Driven Market Analysis",
+      "target": "ats-algo-ai"
+    },
+    {
+      "label": "Algorithmic Automation Concepts",
+      "target": "ats-algo-ai"
+    },
+    {
+      "label": "Equity Derivatives",
+      "target": "futures-options"
+    },
+    {
+      "label": "Mutual Funds",
+      "target": "investment-nism"
+    },
+    {
+      "label": "Investor Awareness",
+      "target": "investment-nism"
+    }
+  ],
+  "learning_path": [
+    {
+      "id": "stock-market-foundations",
+      "title": "Stock Market Foundations",
+      "description": "Understand stock market basics, trading terminology and a structured roadmap for building core market knowledge."
+    },
+    {
+      "id": "technical-analysis",
+      "title": "Technical Analysis",
+      "description": "Learn chart reading, market structure, price behaviour and advanced technical analysis concepts used across trading styles."
+    },
+    {
+      "id": "futures-options",
+      "title": "Futures & Options",
+      "description": "Study futures and options concepts with a special focus on institutional adjustments and derivatives-based decision making."
+    },
+    {
+      "id": "smc-ict",
+      "title": "SMC & ICT Concepts",
+      "description": "Explore Smart Money Concept, ICT methodology, liquidity and market-structure ideas as part of the advanced curriculum."
+    },
+    {
+      "id": null,
+      "title": "Risk & Money Management",
+      "description": "Develop risk-control habits, money-management frameworks and trading-journal discipline for more structured decision making."
+    },
+    {
+      "id": "supply-demand-sector",
+      "title": "Supply, Demand & Sector Analysis",
+      "description": "Study supply-demand frameworks, sector analysis and market structure to understand how different segments behave."
+    },
+    {
+      "id": "ats-algo-ai",
+      "title": "ATS, Algo & AI Concepts",
+      "description": "Get introduced to ATS concepts, AI-driven market analysis and algorithmic automation topics included in advanced plans."
+    },
+    {
+      "id": "investment-nism",
+      "title": "Investment & NISM-Oriented Topics",
+      "description": "Cover multibagger investment concepts, equity derivatives, mutual funds and selected NISM-oriented learning modules."
+    }
+  ],
+  "gamma_program": {
+    "section_eyebrow": "IWSM'S MOST EXCLUSIVE PROGRAM",
+    "headline": "Gamma — The Complete Market Mastery Program",
+    "description": "A 100-day advanced learning program combining IWSM's core curriculum, advanced market concepts and exclusive mentorship support.",
+    "badge": "FLAGSHIP • 100 DAYS",
+    "plan_name": "Gamma Plan",
+    "summary": "One comprehensive learning journey from market foundations to advanced concepts.",
+    "exclusive_badge": "★ MOST EXCLUSIVE",
+    "curriculum_topics": [
+      "Basics of Stock Market",
+      "Technical Analysis",
+      "Futures & Options",
+      "Institutional Adjustments",
+      "SMC & ICT Concepts",
+      "Trading Psychology",
+      "Risk & Money Management",
+      "Supply & Demand",
+      "Advanced Technicals",
+      "Sector Analysis",
+      "ATS Concepts",
+      "AI-Driven Market Analysis",
+      "Hyper Algorithmic Automation",
+      "Multibagger Investments",
+      "Equity Derivatives & Mutual Funds",
+      "Investor Awareness"
+    ],
+    "exclusives": [
+      {
+        "title": "Unlimited Live Market Classes",
+        "description": "Continued learning through live-market sessions."
+      },
+      {
+        "title": "1-on-1 Mentorship",
+        "description": "Individual mentoring support."
+      },
+      {
+        "title": "VIP Group Access",
+        "description": "Access to IWSM's dedicated learning community."
+      },
+      {
+        "title": "Test-Series Access",
+        "description": "Structured assessment support."
+      },
+      {
+        "title": "Trading Journal Software",
+        "description": "Tools for structured trade review."
+      },
+      {
+        "title": "Risk-Management Software",
+        "description": "Tools focused on risk-management discipline."
+      }
+    ],
+    "cta": {
+      "text": "Enquire About Gamma",
+      "href": "#enquire"
+    }
+  },
+  "trading_carnival": {
+    "eyebrow": "Beyond the Classroom",
+    "headline": "IWSM Trading Carnival",
+    "description": "A practical learning experience combining trading activities, expert-led sessions, strategy challenges and community interaction.",
+    "features": [
+      "Live Trading Competition",
+      "Expert-Led Sessions",
+      "Strategy Battles",
+      "Community & Networking"
+    ],
+    "cta": {
+      "text": "Ask About Upcoming Events",
+      "href": "#enquire"
+    },
+    "image_alts": [
+      "IWSM classroom and practical learning environment",
+      "IWSM learners and mentors at a community event",
+      "IWSM course completion and learner achievement"
+    ],
+    "decorative_copy": [
+      "MORE THAN JUST A COURSE",
+      "LEARN • COMPETE • CONNECT",
+      "Trade • Learn • Grow",
+      "🏆"
+    ]
+  },
+  "faculty": [
+    {
+      "name": "CFA Manish Mathur",
+      "role": "Psychology & Risk Management",
+      "qualifications": "SEBI Registered Research Analyst • CFA Lv 1–2 • NISM Certified • ACT Qualified • B.Com, M.Com",
+      "experience": "11+ Years",
+      "image_alt": "CFA Manish Mathur - IWSM faculty"
+    },
+    {
+      "name": "Ashutosh Sharma",
+      "role": "Options Adjustments Specialist",
+      "qualifications": "NISM E&D (VIII), MFD (V-A/B), SMF (XII), CD (XVI), DO (VI), SORM (VII), IRDAI • MBA Finance, NMIMS Mumbai",
+      "experience": "7+ Years",
+      "image_alt": "Ashutosh Sharma - IWSM faculty"
+    },
+    {
+      "name": "Pooja Sharma",
+      "role": "Multibagger Specialist",
+      "qualifications": "Chartered Accountant • Company Secretary • CAT Qualified • MBA, M.Com, B.Com",
+      "experience": "10+ Years",
+      "image_alt": "Pooja Sharma - IWSM faculty"
+    },
+    {
+      "name": "Devkanya Vyas",
+      "role": "Liquidity Mapping Expert",
+      "qualifications": "RA • Investment Adviser Lv I • NISM E&D (VIII), MFD (V-A/B), SMF (XII), CD (XVI), DO (VI), SORM (VII), IRDAI • MBA Finance",
+      "experience": "3+ Years",
+      "image_alt": "Devkanya Vyas - IWSM faculty"
+    },
+    {
+      "name": "Nirmal Sharma",
+      "role": "Supply & Demand Specialist",
+      "qualifications": "M.Sc in Micro Bio",
+      "experience": "10+ Years",
+      "image_alt": "Nirmal Sharma - IWSM faculty"
+    },
+    {
+      "name": "Ravindra Singh",
+      "role": "Forex & Crypto Expert",
+      "qualifications": "Research Analyst • NISM Certified • Equity Derivatives • B.Tech",
+      "experience": "3+ Years",
+      "image_alt": "Ravindra Singh - IWSM faculty"
+    },
+    {
+      "name": "Anirudhar Sharma",
+      "role": "Investment Adviser & Wealth Manager",
+      "qualifications": "NISM Investment Adviser (XA/XB) • PMS (XXI-A/B) • AIF (XIX A-E) • RA (XV) • MFD (V-A) • CFA Level II • FRM Part I • CMT Level I",
+      "experience": null,
+      "image_alt": "Anirudhar Sharma - IWSM faculty"
+    }
+  ],
+  "success_stories": [
+    {
+      "name": "Rishabh Mittal Jaipur",
+      "location": "Jaipur",
+      "paragraphs": [
+        "Har mahine 30–40 hazar sirf losses ke byaj mein dena... Rishabh ji ke liye trading ek nightmare ban chuki thi. Galat decisions aur overconfidence ne unhe andar se tod diya tha.",
+        "Phir unhone IWSM join kiya aur pehli baar discipline ko follow kiya. Sirf strategy nahi, patience aur risk management seekha.",
+        "Option Buying chhodkar jab unhone proper setup follow kiya, toh 7 mahino ke struggle ke baad April mein pehla ₹56,000 profit book kiya.",
+        "“Chhota profit sahi, par ab sukoon aur consistency dono mil rahe hain.” – Rishabh Mittal"
+      ],
+      "journey": "▦ Journey 6 Months",
+      "return": "▥ Return +Ve",
+      "footer": "From Heavy Losses to Consistent Profits"
+    },
+    {
+      "name": "Anirudh Sharma Jaipur",
+      "location": "Jaipur",
+      "paragraphs": [
+        "Anirudh Sharma ji, jo Jaipur ke hi rahne wale hain, pehle poore dedication ke sath NEET ki preparation kar rahe the. Medical line unka pehla target tha, par unka asli potential financial world mein tha.",
+        "Apne sapno ko ek nayi aur sahi direction dene ke liye unhone ek bada decision liya, apna field change kiya aur IWSM join kiya.",
+        "Yahan unhone market ko bilkul basic se sikha aur portfolio ke sath NISM Research Analyst, Investment Advisor aur PMS jaise high-level certification courses clear kiye.",
+        "Sahi mentorship ka nateeja aaj sabke samne hai—ek waqt medical books padhne wale Anirudh ji, aaj ₹85 Crores ka massive fund successfully manage kar rahe hain aur market mein ek elite position par khade hain. – Anirudh Sharma"
+      ],
+      "journey": "▦ Journey 8 Months",
+      "return": "▥ Return +Ve",
+      "footer": "Now managing a multi-crore financial empire."
+    },
+    {
+      "name": "Deepak Parihar Jodhpur",
+      "location": "Jodhpur",
+      "paragraphs": [
+        "Deepak ji, jo mul roop se Jodhpur ke rahne wale hain, shuruwat mein ek bahut hi shy aur introverted ladke the.",
+        "Trading ki duniya ka shor unke nature se bilkul alag tha, isliye unhone ek bahut hi chhoti si capital ke sath apni journey shuru ki.",
+        "Sahi discipline aur guidance ke sath, sirf 3 mahine ke andar unhone apna portfolio strong kiya aur market ki gahraiyon ko samjha.",
+        "Unki life ka sabse bada turning point tab aaya jab ve aur unke friends ki analysis aur patience ne unhe ek hi din mein ₹16 Lakh ka massive profit book karwaya! – Deepak Parihar"
+      ],
+      "journey": "▦ Journey 3 Months",
+      "return": "▥ Return +Ve",
+      "footer": "From a Shy Beginner to an Independent Trader."
+    },
+    {
+      "name": "Bharti Ji Jaipur",
+      "location": "Jaipur",
+      "paragraphs": [
+        "Bharti Mam ek homemaker hain. Subah bachchon ko school bhejna aur ghar ke kaam manage karne ke chalte, unke paas morning market ke liye waqt nikalna lagbhag namumkin tha.",
+        "Lekin unhone haar nahi mani. IWSM se judkar unhone trading ko samjha aur apne tight schedule ke hisaab se khud ki ek special strategy tayaar ki.",
+        "Ab wo din bhar ke kaamo se free hokar, evening mein sirf 5 se 7 baje tak apna setup on karti hain aur specifically MCX market mein 'Natural Gas (NG)' trade karti hain.",
+        "Apne behtareen time management aur discipline ke sath, aaj wo rozana sirf 2 ghante baithkar ek bahut achhi aur profitable income generate kar rahi hain. – Bharti Ji"
+      ],
+      "journey": "▦ Journey 6 Months",
+      "return": "▥ Return +Ve",
+      "footer": "Financial Independent"
+    }
+  ],
+  "stats": [
+    "100+ Student Reviews",
+    "3 Structured Course Plans",
+    "7 Faculty Profiles",
+    "1:1 Mentorship Options"
+  ],
+  "contact": {
+    "heading": "Visit. Connect. Start Learning.",
+    "description": "Find IWSM in Jaipur, follow us on social media, or speak with our team about course details.",
+    "organization": "Institute of World Stock Market",
+    "address": "4th Floor, IWSM Tower, Plot No. 1A, Under Triveni Pulia, Jaipur, Rajasthan 302018",
+    "phone_links": [
+      {
+        "text": "Call Us",
+        "href": "tel:"
+      },
+      {
+        "text": "☎ 8107911127",
+        "href": "tel:"
+      },
+      {
+        "text": "☎",
+        "href": "tel:+918107911127"
+      },
+      {
+        "text": "8107911127",
+        "href": "tel:+918107911127"
+      }
+    ],
+    "social_links": [
+      {
+        "text": "f Facebook",
+        "href": "https://www.facebook.com/p/IWSMOfficial-61583704766708/"
+      },
+      {
+        "text": "◎ Instagram",
+        "href": "https://www.instagram.com/iwsm.official/"
+      },
+      {
+        "text": "◉ Snapchat",
+        "href": "https://www.snapchat.com/add/iwsm.official?share_id=GY9c-zIwD1M&locale=en-US"
+      },
+      {
+        "text": "▶ YouTube",
+        "href": "https://www.youtube.com/@iwsm.official"
+      }
+    ],
+    "map_embed": "https://www.google.com/maps?q=Institute%20of%20World%20Stock%20Market%2C%20IWSM%20Tower%2C%20Plot%20No%201A%2C%20Under%20Triveni%20Pulia%2C%20Jaipur%2C%20Rajasthan%20302018&output=embed"
+  },
+  "form": {
+    "submit_behavior": "event.preventDefault();alert('Prototype only — connect this form to your CRM/lead system.');",
+    "fields": [
+      {
+        "tag": "input",
+        "type": null,
+        "placeholder": "Your Name",
+        "required": true,
+        "options": []
+      },
+      {
+        "tag": "input",
+        "type": "tel",
+        "placeholder": "Mobile Number",
+        "required": true,
+        "options": []
+      },
+      {
+        "tag": "input",
+        "type": "email",
+        "placeholder": "Email Address",
+        "required": false,
+        "options": []
+      },
+      {
+        "tag": "select",
+        "type": null,
+        "placeholder": null,
+        "required": false,
+        "options": [
+          "Select course / interest",
+          "Gamma Plan"
+        ]
+      }
+    ],
+    "cta": "Get Free Counselling"
+  },
+  "assets": [
+    {
+      "index": 1,
+      "alt": "IWSM - Institute of World Stock Market",
+      "source_type": "embedded_base64",
+      "src": null,
+      "filename": "01_iwsm-institute-of-world-stock-market.png",
+      "width": 2048,
+      "height": 1257
+    },
+    {
+      "index": 2,
+      "alt": "IWSM classroom and practical learning environment",
+      "source_type": "embedded_base64",
+      "src": null,
+      "filename": "02_iwsm-classroom-and-practical-learning-environment.jpg",
+      "width": 2048,
+      "height": 1536
+    },
+    {
+      "index": 3,
+      "alt": "IWSM learners and mentors at a community event",
+      "source_type": "embedded_base64",
+      "src": null,
+      "filename": "03_iwsm-learners-and-mentors-at-a-community-event.jpg",
+      "width": 2048,
+      "height": 1536
+    },
+    {
+      "index": 4,
+      "alt": "IWSM course completion and learner achievement",
+      "source_type": "embedded_base64",
+      "src": null,
+      "filename": "04_iwsm-course-completion-and-learner-achievement.jpg",
+      "width": 2048,
+      "height": 1536
+    },
+    {
+      "index": 5,
+      "alt": "CFA Manish Mathur - IWSM faculty",
+      "source_type": "embedded_base64",
+      "src": null,
+      "filename": "05_cfa-manish-mathur-iwsm-faculty.png",
+      "width": 590,
+      "height": 795
+    },
+    {
+      "index": 6,
+      "alt": "Ashutosh Sharma - IWSM faculty",
+      "source_type": "embedded_base64",
+      "src": null,
+      "filename": "06_ashutosh-sharma-iwsm-faculty.png",
+      "width": 583,
+      "height": 813
+    },
+    {
+      "index": 7,
+      "alt": "Pooja Sharma - IWSM faculty",
+      "source_type": "embedded_base64",
+      "src": null,
+      "filename": "07_pooja-sharma-iwsm-faculty.png",
+      "width": 569,
+      "height": 466
+    },
+    {
+      "index": 8,
+      "alt": "Devkanya Vyas - IWSM faculty",
+      "source_type": "embedded_base64",
+      "src": null,
+      "filename": "08_devkanya-vyas-iwsm-faculty.png",
+      "width": 569,
+      "height": 468
+    },
+    {
+      "index": 9,
+      "alt": "Nirmal Sharma - IWSM faculty",
+      "source_type": "embedded_base64",
+      "src": null,
+      "filename": "09_nirmal-sharma-iwsm-faculty.png",
+      "width": 568,
+      "height": 764
+    },
+    {
+      "index": 10,
+      "alt": "Ravindra Singh - IWSM faculty",
+      "source_type": "embedded_base64",
+      "src": null,
+      "filename": "10_ravindra-singh-iwsm-faculty.png",
+      "width": 568,
+      "height": 638
+    },
+    {
+      "index": 11,
+      "alt": "Anirudhar Sharma - IWSM faculty",
+      "source_type": "embedded_base64",
+      "src": null,
+      "filename": "11_anirudhar-sharma-iwsm-faculty.png",
+      "width": 501,
+      "height": 515
+    }
+  ],
+  "design_system": {
+    "css_variables": {
+      "--navy": "#081a35",
+      "--navy2": "#102b55",
+      "--navy3": "#0d2447",
+      "--gold": "#d9b45c",
+      "--gold2": "#f1d88c",
+      "--cream": "#fff9e9",
+      "--muted": "#b9c5d7",
+      "--line": "rgba(217,180,92,.35)",
+      "--premium-gold": "#e8c66b",
+      "--premium-navy": "#06162c"
+    },
+    "fonts_used": [
+      "Georgia, \"Times New Roman\", serif !important",
+      "Georgia,serif",
+      "Inter,Arial,sans-serif",
+      "cursive"
+    ],
+    "key_animations": [
+      "ambientCandle",
+      "bullBreath",
+      "curriculumTargetPulse",
+      "fadeUp",
+      "floatSoft",
+      "glowPulse",
+      "iwsmStockTicker",
+      "shimmer",
+      "tickerMove"
+    ],
+    "responsive_breakpoints_px": [
+      480,
+      520,
+      560,
+      600,
+      620,
+      700,
+      760,
+      800,
+      820,
+      860,
+      900,
+      980,
+      1000,
+      1050
+    ],
+    "major_visual_cues": [
+      "dark navy/blue background",
+      "gold premium accents",
+      "stock-market ticker/ribbon",
+      "candlestick field",
+      "bull watermark",
+      "chart/market decorative graphics",
+      "polaroid-style Trading Carnival photos"
+    ],
+    "reduced_motion": "prefers-reduced-motion rules included"
+  }
+}

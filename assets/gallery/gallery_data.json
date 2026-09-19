@@ -1,0 +1,227 @@
+[
+  {
+    "id": 1,
+    "original_file": "05.png",
+    "web_file": "gallery_05.jpg",
+    "title": "Live Trading Floor Sessions",
+    "category": "mentors",
+    "description": "Inside the live market execution lab at IWSM Tower Jaipur.",
+    "size_kb": 307
+  },
+  {
+    "id": 2,
+    "original_file": "06.png",
+    "web_file": "gallery_06.jpg",
+    "title": "Technical Indicators & Setups",
+    "category": "concepts",
+    "description": "Advanced price action and volume distribution models.",
+    "size_kb": 247
+  },
+  {
+    "id": 3,
+    "original_file": "1 (2).png",
+    "web_file": "gallery_1_2.jpg",
+    "title": "Institutional Options Flow",
+    "category": "concepts",
+    "description": "Option chain analysis and institutional hedge adjustments.",
+    "size_kb": 249
+  },
+  {
+    "id": 4,
+    "original_file": "1.png",
+    "web_file": "gallery_1.jpg",
+    "title": "Foundations of Modern Trading",
+    "category": "concepts",
+    "description": "Key building blocks for equity and derivatives analysis.",
+    "size_kb": 250
+  },
+  {
+    "id": 5,
+    "original_file": "10.png",
+    "web_file": "gallery_10.jpg",
+    "title": "Candlestick Patterns in Depth",
+    "category": "concepts",
+    "description": "High-probability candlestick triggers in live market conditions.",
+    "size_kb": 216
+  },
+  {
+    "id": 6,
+    "original_file": "11.png",
+    "web_file": "gallery_11.jpg",
+    "title": "Options Greeks & Volatility",
+    "category": "concepts",
+    "description": "Delta, Gamma, Theta, and Vega management in volatile sessions.",
+    "size_kb": 166
+  },
+  {
+    "id": 7,
+    "original_file": "12.png",
+    "web_file": "gallery_12.jpg",
+    "title": "Trader Performance Analytics",
+    "category": "concepts",
+    "description": "Metrics and journaling to track consistent profitability.",
+    "size_kb": 318
+  },
+  {
+    "id": 8,
+    "original_file": "13.png",
+    "web_file": "gallery_13.jpg",
+    "title": "IWSM Jaipur Community Spirit",
+    "category": "mentors",
+    "description": "Networking, peer strategy battles, and mutual trader growth.",
+    "size_kb": 201
+  },
+  {
+    "id": 9,
+    "original_file": "2.png",
+    "web_file": "gallery_2.jpg",
+    "title": "Smart Money Concepts (SMC)",
+    "category": "concepts",
+    "description": "Liquidity pools, order blocks, and mitigation frameworks.",
+    "size_kb": 155
+  },
+  {
+    "id": 10,
+    "original_file": "3.png",
+    "web_file": "gallery_3.jpg",
+    "title": "Inner Circle Trader (ICT) Strategies",
+    "category": "concepts",
+    "description": "Fair value gaps and session liquidity sweeps.",
+    "size_kb": 292
+  },
+  {
+    "id": 11,
+    "original_file": "4 (2).png",
+    "web_file": "gallery_4_2.jpg",
+    "title": "Risk & Money Management Rules",
+    "category": "concepts",
+    "description": "Capital preservation formulas and maximum drawdown protection.",
+    "size_kb": 290
+  },
+  {
+    "id": 12,
+    "original_file": "4.png",
+    "web_file": "gallery_4.jpg",
+    "title": "Trading Psychology & Discipline",
+    "category": "concepts",
+    "description": "Mental toughness and trading journal habit formation.",
+    "size_kb": 204
+  },
+  {
+    "id": 13,
+    "original_file": "5.png",
+    "web_file": "gallery_5.jpg",
+    "title": "Futures & Hedging Framework",
+    "category": "concepts",
+    "description": "Portfolio protection and institutional derivatives positioning.",
+    "size_kb": 205
+  },
+  {
+    "id": 14,
+    "original_file": "6.png",
+    "web_file": "gallery_6.jpg",
+    "title": "Trading Carnival Grand Arena",
+    "category": "mentors",
+    "description": "High-resolution celebration of annual IWSM trading competitions.",
+    "size_kb": 201
+  },
+  {
+    "id": 15,
+    "original_file": "7.png",
+    "web_file": "gallery_7.jpg",
+    "title": "Multibagger Investment Strategies",
+    "category": "concepts",
+    "description": "Long-term wealth creation through fundamental and sector filters.",
+    "size_kb": 207
+  },
+  {
+    "id": 16,
+    "original_file": "8.png",
+    "web_file": "gallery_8.jpg",
+    "title": "Automated & Algorithmic Trading",
+    "category": "concepts",
+    "description": "ATS rules, backtesting rigor, and automated execution logic.",
+    "size_kb": 212
+  },
+  {
+    "id": 17,
+    "original_file": "9.png",
+    "web_file": "gallery_9.jpg",
+    "title": "Sector Rotation & Money Flow",
+    "category": "concepts",
+    "description": "Tracking smart capital shifting across market sectors.",
+    "size_kb": 120
+  },
+  {
+    "id": 18,
+    "original_file": "AD IWSM.png",
+    "web_file": "gallery_ad_iwsm.jpg",
+    "title": "Official IWSM Academy Creative",
+    "category": "ads",
+    "description": "Comprehensive overview of IWSM Jaipur trading campus and programs.",
+    "size_kb": 250
+  },
+  {
+    "id": 19,
+    "original_file": "BEYONG SIGHTS.png",
+    "web_file": "gallery_beyong_sights.jpg",
+    "title": "Beyond Sights: Macro Vision",
+    "category": "concepts",
+    "description": "Expanding trader perspective beyond retail charts to institutional order flow.",
+    "size_kb": 169
+  },
+  {
+    "id": 20,
+    "original_file": "CHANGE ur VIEW.png",
+    "web_file": "gallery_change_ur_view.jpg",
+    "title": "Change Your View: Trader Mindset",
+    "category": "concepts",
+    "description": "Transforming risk psychology from emotional impulses to disciplined strategy.",
+    "size_kb": 441
+  },
+  {
+    "id": 21,
+    "original_file": "IDEAS BOOST.png",
+    "web_file": "gallery_ideas_boost.jpg",
+    "title": "Ideas Boost: Trading Innovation",
+    "category": "concepts",
+    "description": "Developing proprietary trading edges through structured technical frameworks.",
+    "size_kb": 155
+  },
+  {
+    "id": 22,
+    "original_file": "all combined.png",
+    "web_file": "gallery_all_combined.jpg",
+    "title": "Market Curriculum & Roadmap",
+    "category": "concepts",
+    "description": "Complete roadmap from foundational market dynamics to institutional systems.",
+    "size_kb": 212
+  },
+  {
+    "id": 23,
+    "original_file": "mentors.png",
+    "web_file": "gallery_mentors.jpg",
+    "title": "IWSM Faculty Mentors Panel",
+    "category": "mentors",
+    "description": "Meet our SEBI Research Analysts, CFA charterholders, and NISM certified faculty.",
+    "size_kb": 255
+  },
+  {
+    "id": 24,
+    "original_file": "panda.png",
+    "web_file": "gallery_panda.jpg",
+    "title": "Market Cycles & Psychology",
+    "category": "concepts",
+    "description": "Mastering bear markets, bull runs, and accumulation phases.",
+    "size_kb": 306
+  },
+  {
+    "id": 25,
+    "original_file": "the market.png",
+    "web_file": "gallery_the_market.jpg",
+    "title": "The Global Market Matrix",
+    "category": "ads",
+    "description": "Large-format flagship banner celebrating world stock market mastery.",
+    "size_kb": 422
+  }
+]

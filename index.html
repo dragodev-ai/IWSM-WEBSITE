@@ -1,0 +1,1846 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IWSM Stock Market Trading Courses Jaipur | Institute of World Stock Market</title>
+  <meta name="description" content="Explore IWSM stock market trading courses in Jaipur with structured learning in technical analysis, futures & options, SMC, ICT, risk management, AI and advanced market concepts.">
+  <meta name="keywords" content="stock market institute jaipur, trading courses jaipur, technical analysis, futures and options, SMC trading, ICT concepts, SEBI certified mentors, IWSM Jaipur">
+  
+  <!-- Open Graph Meta Tags -->
+  <meta property="og:title" content="Institute of World Stock Market (IWSM) — Jaipur">
+  <meta property="og:description" content="Build practical stock-market knowledge through structured learning, expert mentorship and live market concepts designed for serious learners.">
+  <meta property="og:image" content="assets/assets/01_iwsm-institute-of-world-stock-market.png">
+  <meta property="og:type" content="website">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="assets/assets/01_iwsm-institute-of-world-stock-market.png">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,600;0,700;1,400&display=swap" rel="stylesheet">
+
+  <!-- Spline Web Component Loader (Adhering to Skill Instructions) -->
+  <script type="module" src="https://unpkg.com/@splinetool/viewer/build/spline-viewer.js"></script>
+
+  <!-- Three.js (WebGL 3D Cinematic Engine) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <!-- Main Stylesheet -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- Top-Left Compact Theme Switcher (Mobile & Web) -->
+  <aside class="theme-switch-panel" id="theme-switch-panel" aria-label="Theme Selection">
+    <button class="theme-toggle-btn" id="theme-toggle-btn" aria-label="Switch between light and dark theme" title="Toggle Light / Dark Mode">
+      <span class="theme-icon-indicator" aria-hidden="true">
+        <span class="theme-moon-icon">🌙</span>
+        <span class="theme-sun-icon">☀️</span>
+      </span>
+    </button>
+  </aside>
+
+  <!-- Velaris Living Gradient in Motion (WebGL Simplex-Noise Background) -->
+  <canvas id="velaris-background-canvas" class="velaris-fullscreen-canvas" aria-hidden="true"></canvas>
+  <div class="ambient-grid" aria-hidden="true"></div>
+
+  <!-- Spline 3D Scene Wrapper (Compatible with Skill Embeds) -->
+  <div class="spline-embed-wrapper" id="spline-container"></div>
+
+  <!-- Site Content Layer -->
+  <div class="site-wrapper">
+
+    <!-- ====================================================================
+         1. Site Header & Sticky Glassmorphic Navigation
+         ==================================================================== -->
+    <header class="site-header" id="site-header">
+      <div class="container">
+        <a href="#" class="header-brand" aria-label="Institute of World Stock Market Home">
+          <img src="assets/assets/01_iwsm-institute-of-world-stock-market.png" alt="Institute of World Stock Market" class="brand-logo-img">
+          <span class="brand-name-full">Institute of World Stock Market</span>
+        </a>
+
+        <nav class="nav-links" aria-label="Main Navigation">
+          <a href="#curriculum" class="nav-item">Curriculum</a>
+          <a href="#plans" class="nav-item">Courses & Gamma</a>
+          <a href="#carnival" class="nav-item">Trading Carnival</a>
+          <a href="#faculty" class="nav-item">Faculty</a>
+          <a href="#reviews" class="nav-item">Reviews</a>
+          <a href="#gallery" class="nav-item">Photo Gallery</a>
+          <a href="#videos" class="nav-item">Student Reels</a>
+          <a href="#contact" class="nav-item">Contact</a>
+        </nav>
+
+        <div class="header-actions">
+          <a href="#enquire" class="btn btn-gold header-cta-btn">Get Course Details</a>
+          <button class="hamburger-btn" aria-label="Open Mobile Menu">
+            <span></span>
+            <span></span>
+            <span></span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Mobile Navigation Drawer -->
+    <div class="mobile-nav-drawer">
+      <div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <img src="assets/assets/01_iwsm-institute-of-world-stock-market.png" alt="Institute of World Stock Market" style="height:36px; width:auto;">
+            <span style="font-family:var(--font-display); font-weight:800; font-size:0.92rem; color:var(--cream-pure); line-height:1.2;">Institute of World Stock Market</span>
+          </div>
+          <button class="drawer-close" aria-label="Close Mobile Menu">&times;</button>
+        </div>
+        <div class="drawer-links">
+          <a href="#curriculum" class="drawer-link">Curriculum</a>
+          <a href="#plans" class="drawer-link">Courses & Gamma Plan</a>
+          <a href="#carnival" class="drawer-link">Trading Carnival</a>
+          <a href="#faculty" class="drawer-link">Faculty Mentors</a>
+          <a href="#reviews" class="drawer-link">Student Reviews</a>
+          <a href="#gallery" class="drawer-link">Photo Gallery</a>
+          <a href="#videos" class="drawer-link">22 Student Reels</a>
+          <a href="#contact" class="drawer-link">Jaipur HQ Contact</a>
+        </div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div style="font-size:0.82rem; color:var(--gold-light); font-weight:600; text-align:center;">Call / WhatsApp Admissions:</div>
+        <div style="display:flex; gap:8px;">
+          <a href="https://wa.me/918107911127?text=Hi%20IWSM,%20I%20would%20like%20to%20know%20more%20about%20your%20stock%20market%20courses%20and%20counselling." target="_blank" rel="noopener" class="btn btn-outline-gold" style="flex:1; padding:9px 6px; font-size:0.8rem; text-align:center;">8107911127</a>
+          <a href="https://wa.me/918690211127?text=Hi%20IWSM,%20I%20would%20like%20to%20know%20more%20about%20your%20stock%20market%20courses%20and%20counselling." target="_blank" rel="noopener" class="btn btn-outline-gold" style="flex:1; padding:9px 6px; font-size:0.8rem; text-align:center;">8690211127</a>
+        </div>
+        <a href="#enquire" class="btn btn-gold" style="padding:11px 18px;">Book Free Counselling</a>
+      </div>
+    </div>
+    <div class="drawer-backdrop"></div>
+
+    <!-- ====================================================================
+         2. Split Hero Section (Conversion-Optimized + Trust Signals + 3D)
+         ==================================================================== -->
+    <section class="hero-section" id="hero">
+      <!-- 3D WebGL Canvas Layer -->
+      <div class="webgl-hero-container" id="webgl-container">
+        <canvas id="webgl-hero-canvas"></canvas>
+      </div>
+
+      <div class="container hero-grid">
+        <!-- Hero Left: Value Narrative & Trust Badges -->
+        <div class="hero-content">
+          <div class="badge-eyebrow hero-eyebrow">
+            <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <span>Institute of World Stock Market • Jaipur</span>
+          </div>
+
+          <h1 class="hero-title">
+            Learn. Practice. Grow.<br>
+            <span class="text-gold">With Real Market Guidance.</span>
+          </h1>
+
+          <p class="hero-lead">
+            Build practical stock-market knowledge through structured learning, expert mentorship and market-focused concepts designed for serious learners.
+          </p>
+
+          <!-- 4 Core USPs -->
+          <div class="hero-usps-grid">
+            <div class="usp-pill">
+              <div class="usp-icon-wrap">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+              </div>
+              <span>Live Market Learning</span>
+            </div>
+            <div class="usp-pill">
+              <div class="usp-icon-wrap">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              </div>
+              <span>Expert Mentorship</span>
+            </div>
+            <div class="usp-pill">
+              <div class="usp-icon-wrap">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+              </div>
+              <span>Structured Curriculum</span>
+            </div>
+            <div class="usp-pill">
+              <div class="usp-icon-wrap">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              </div>
+              <span>Practical Strategies</span>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="hero-cta-wrap">
+            <a href="#enquire" class="btn btn-gold btn-lg">Book Free Counselling</a>
+            <a href="https://wa.me/918107911127?text=Hi%20IWSM,%20I%20would%20like%20to%20know%20more%20about%20your%20stock%20market%20courses%20and%20counselling." target="_blank" rel="noopener" class="btn btn-outline-gold btn-lg">Call 8107911127</a>
+          </div>
+
+          <!-- Trust Signals Row -->
+          <div class="hero-trust-row">
+            <div class="trust-item">
+              <div class="trust-item-icon">✓</div>
+              <div class="trust-item-text">
+                <strong>SEBI RA & NISM</strong>
+                <span>Certified Mentors</span>
+              </div>
+            </div>
+            <div class="trust-item">
+              <div class="trust-item-icon">★</div>
+              <div class="trust-item-text">
+                <strong>100+ Reviews</strong>
+                <span>4.9/5 Rating</span>
+              </div>
+            </div>
+            <div class="trust-item">
+              <div class="trust-item-icon">₹</div>
+              <div class="trust-item-text">
+                <strong>₹85+ Crores</strong>
+                <span>Alumni Managed Funds</span>
+              </div>
+            </div>
+            <div class="trust-item">
+              <div class="trust-item-icon">🏛</div>
+              <div class="trust-item-text">
+                <strong>Jaipur Trading Floor</strong>
+                <span>IWSM Tower</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Hero Right: Split-Hero Lead Generation Form -->
+        <div class="hero-form-panel glass-panel" id="enquire">
+          <div class="form-header">
+            <span class="form-badge">● ADMISSIONS OPEN • NEW BATCH</span>
+            <h3 class="form-title">Get Course Details</h3>
+            <p class="form-desc">Share your details and the IWSM team can help you understand the right learning plan.</p>
+          </div>
+
+          <form class="lead-form" id="hero-lead-form">
+            <div class="form-group">
+              <label class="form-label" for="hero-name">Your Full Name *</label>
+              <input type="text" id="hero-name" name="fullname" class="form-input" placeholder="e.g. Rahul Sharma" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="hero-phone">Mobile Number *</label>
+              <input type="tel" id="hero-phone" name="phone" class="form-input" placeholder="e.g. 9876543210" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="hero-email">Email Address (Optional)</label>
+              <input type="email" id="hero-email" name="email" class="form-input" placeholder="e.g. rahul@example.com">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="hero-course">Select Course / Interest</label>
+              <select id="hero-course" name="course" class="form-select">
+                <option value="Gamma Plan — 100 Days Complete Mastery (Flagship)" selected>Gamma Plan — 100 Days Complete Mastery (Flagship)</option>
+              </select>
+            </div>
+
+            <button type="submit" class="btn btn-gold btn-lg" style="width: 100%; margin-top: 8px;">
+              <span>Get Free Counselling</span>
+              <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </button>
+
+            <p class="form-privacy-note">Practical learning • Mentorship • Structured curriculum • Jaipur</p>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         3. Live Indian Stock Market Ribbon (Real-Time Exchange Feed)
+         ==================================================================== -->
+    <div class="market-ribbon-section" aria-label="Live Indian Stock Market Feed">
+      <!-- Indian Market Sub-Header / Real-Time Status -->
+      <div class="market-status-bar">
+        <div class="market-status-left">
+          <span class="live-pulse-indicator">
+            <span class="pulse-beacon"></span>
+            <span class="pulse-core"></span>
+          </span>
+          <span class="live-feed-label">LIVE INDIAN STOCK MARKET FEED</span>
+          <span class="market-exchange-pill">NSE &bull; BSE &bull; MCX</span>
+        </div>
+        <div class="market-status-center">
+          <span id="market-session-status" class="market-session-badge">● NSE/BSE LIVE</span>
+          <span id="ist-live-clock" class="ist-clock-badge">IST --:--:--</span>
+        </div>
+        <div class="market-status-right">
+          <span class="market-source-text">Continuous Real-Time Exchange Stream • No Delays</span>
+        </div>
+      </div>
+
+      <!-- High-Performance Infinite Dual-Track Ribbon (Zero Blank Space, Moving Left to Right) -->
+      <div class="market-ribbon-wrapper" id="market-ribbon-wrapper" title="Real-Time Indian Market Quotes • Hover to Pause">
+        <div class="ticker-scroll-track" id="ticker-scroll-track">
+          <!-- Populated and seamlessly looped dynamically by js/main.js -->
+        </div>
+      </div>
+    </div>
+
+    <!-- ====================================================================
+         5. Curriculum Explorer & Learning Path
+         ==================================================================== -->
+    <section class="section" id="curriculum">
+      <div class="container">
+        <div class="section-header">
+          <div class="badge-eyebrow">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+            <span>What's Inside the IWSM Programs?</span>
+          </div>
+          <h2 class="section-title">Build Your Market Knowledge <span class="text-gold">Step by Step</span></h2>
+          <p class="section-lead">Explore a structured stock market trading curriculum covering foundational concepts, technical analysis, derivatives, market structure, risk management and selected advanced learning topics.</p>
+        </div>
+
+        <!-- 12 Interactive Curriculum Filter Tags -->
+        <div class="curriculum-tags-filter" aria-label="Curriculum Filter Tags">
+          <button class="curriculum-tag-btn active" data-target="all">All Modules</button>
+          <button class="curriculum-tag-btn" data-target="stock-market-foundations">Basics of Stock Market</button>
+          <button class="curriculum-tag-btn" data-target="technical-analysis">Advanced Technical Analysis</button>
+          <button class="curriculum-tag-btn" data-target="futures-options">Institutional Adjustments</button>
+          <button class="curriculum-tag-btn" data-target="smc-ict">ICT Concept</button>
+          <button class="curriculum-tag-btn" data-target="smc-ict">SMC Concept</button>
+          <button class="curriculum-tag-btn" data-target="supply-demand-sector">Sector Analysis</button>
+          <button class="curriculum-tag-btn" data-target="ats-algo-ai">ATS Concept</button>
+          <button class="curriculum-tag-btn" data-target="ats-algo-ai">AI-Driven Market Analysis</button>
+          <button class="curriculum-tag-btn" data-target="ats-algo-ai">Algorithmic Automation</button>
+          <button class="curriculum-tag-btn" data-target="futures-options">Equity Derivatives</button>
+          <button class="curriculum-tag-btn" data-target="investment-nism">Mutual Funds</button>
+          <button class="curriculum-tag-btn" data-target="investment-nism">Investor Awareness</button>
+        </div>
+
+        <!-- 8 Learning Path Module Cards -->
+        <div class="learning-path-grid" id="learning-path">
+          <!-- Module 1 -->
+          <div class="module-card glass-panel" id="stock-market-foundations">
+            <div class="module-card-top">
+              <span class="module-step-num">Module 01</span>
+              <h3 class="module-title">Stock Market Foundations</h3>
+              <p class="module-desc">Understand stock market basics, trading terminology and a structured roadmap for building core market knowledge from the ground up.</p>
+            </div>
+            <div class="module-card-bottom">
+              <span class="module-tag-indicator">● Core Fundamentals</span>
+              <a href="#enquire" onclick="enquireForCourse('Stock Market Foundations')" class="module-enquire-link">Enquire <span>→</span></a>
+            </div>
+          </div>
+
+          <!-- Module 2 -->
+          <div class="module-card glass-panel" id="technical-analysis">
+            <div class="module-card-top">
+              <span class="module-step-num">Module 02</span>
+              <h3 class="module-title">Technical Analysis</h3>
+              <p class="module-desc">Learn chart reading, market structure, price behaviour, multi-timeframe trends, and advanced technical analysis concepts used across trading styles.</p>
+            </div>
+            <div class="module-card-bottom">
+              <span class="module-tag-indicator">● Price Action & Charts</span>
+              <a href="#enquire" onclick="enquireForCourse('Technical Analysis')" class="module-enquire-link">Enquire <span>→</span></a>
+            </div>
+          </div>
+
+          <!-- Module 3 -->
+          <div class="module-card glass-panel" id="futures-options">
+            <div class="module-card-top">
+              <span class="module-step-num">Module 03</span>
+              <h3 class="module-title">Futures & Options</h3>
+              <p class="module-desc">Study futures and options concepts with a special focus on institutional adjustments, option Greeks, payoff charts, and derivatives-based decision making.</p>
+            </div>
+            <div class="module-card-bottom">
+              <span class="module-tag-indicator">● Derivatives & Greeks</span>
+              <a href="#enquire" onclick="enquireForCourse('Futures & Options')" class="module-enquire-link">Enquire <span>→</span></a>
+            </div>
+          </div>
+
+          <!-- Module 4 -->
+          <div class="module-card glass-panel" id="smc-ict">
+            <div class="module-card-top">
+              <span class="module-step-num">Module 04</span>
+              <h3 class="module-title">SMC & ICT Concepts</h3>
+              <p class="module-desc">Explore Smart Money Concepts, Inner Circle Trader (ICT) methodology, order blocks, liquidity voids, and institutional footprint mapping.</p>
+              <div class="module-clickbait-highlight highlight-cyan">
+                <span class="clickbait-badge">⚡ SNIPER INSTITUTIONAL SETUP</span>
+                <strong>Risk-Reward Ratio: Minimum 1:3 Guaranteed!</strong>
+                Stop trading like retail victims! Hunt institutional stop-losses with precision sniper setups where you risk ₹1 to extract a minimum of ₹3+ on every single trade!
+              </div>
+            </div>
+            <div class="module-card-bottom">
+              <span class="module-tag-indicator">● Institutional Liquidity</span>
+              <a href="#enquire" onclick="enquireForCourse('SMC & ICT Concepts')" class="module-enquire-link">Enquire <span>→</span></a>
+            </div>
+          </div>
+
+          <!-- Module 5 -->
+          <div class="module-card glass-panel" id="risk-management">
+            <div class="module-card-top">
+              <span class="module-step-num">Module 05</span>
+              <h3 class="module-title">Risk & Money Management</h3>
+              <p class="module-desc">Develop risk-control habits, position-sizing models, money-management frameworks, and trading-journal discipline for more structured decision making.</p>
+            </div>
+            <div class="module-card-bottom">
+              <span class="module-tag-indicator">● Capital Protection</span>
+              <a href="#enquire" onclick="enquireForCourse('Risk & Money Management')" class="module-enquire-link">Enquire <span>→</span></a>
+            </div>
+          </div>
+
+          <!-- Module 6 -->
+          <div class="module-card glass-panel" id="supply-demand-sector">
+            <div class="module-card-top">
+              <span class="module-step-num">Module 06</span>
+              <h3 class="module-title">Supply, Demand & Sector Analysis</h3>
+              <p class="module-desc">Study supply-demand imbalance frameworks, sector rotation dynamics, and institutional order accumulation patterns.</p>
+              <div class="module-clickbait-highlight highlight-gold">
+                <span class="clickbait-badge tag-gold">🔥 EXPLOSIVE ZONE BREAKOUTS</span>
+                <strong>Risk-Reward Ratio: Minimum 1:5 Payoff!</strong>
+                Never get trapped by fakeouts again! Catch massive institutional moves directly at the origin of supply & demand for an astonishing 1:5 minimum risk-reward multiplier!
+              </div>
+            </div>
+            <div class="module-card-bottom">
+              <span class="module-tag-indicator">● Institutional Zones</span>
+              <a href="#enquire" onclick="enquireForCourse('Supply Demand & Sector Analysis')" class="module-enquire-link">Enquire <span>→</span></a>
+            </div>
+          </div>
+
+          <!-- Module 7 -->
+          <div class="module-card glass-panel" id="ats-algo-ai">
+            <div class="module-card-top">
+              <span class="module-step-num">Module 07</span>
+              <h3 class="module-title">ATS, Algo & AI Concepts</h3>
+              <p class="module-desc">Get introduced to Automated Trading Systems (ATS), AI quantitative analysis, algorithmic automation, and emotion-free rule execution.</p>
+              <div class="module-clickbait-highlight highlight-green">
+                <span class="clickbait-badge tag-green">🚀 THE 1:20 UNFAIR ALGO EDGE</span>
+                <strong>Minimum 1:5 Risk-Reward Ratio — Skyrockets Up To 1:20!</strong>
+                Trade hands-free like quantitative hedge funds! Our algorithmic execution locks in a baseline 1:5 risk-reward that scales up to a staggering 1:20 profit explosion!
+              </div>
+            </div>
+            <div class="module-card-bottom">
+              <span class="module-tag-indicator">● Algorithmic Trading</span>
+              <a href="#enquire" onclick="enquireForCourse('ATS, Algo & AI Concepts')" class="module-enquire-link">Enquire <span>→</span></a>
+            </div>
+          </div>
+
+          <!-- Module 8 -->
+          <div class="module-card glass-panel" id="investment-nism">
+            <div class="module-card-top">
+              <span class="module-step-num">Module 08</span>
+              <h3 class="module-title">Investment & NISM-Oriented Topics</h3>
+              <p class="module-desc">Cover multibagger investment concepts, equity derivatives, mutual funds, portfolio management strategies, and selected NISM-oriented learning modules.</p>
+            </div>
+            <div class="module-card-bottom">
+              <span class="module-tag-indicator">● Wealth & Certifications</span>
+              <a href="#enquire" onclick="enquireForCourse('Investment & NISM Topics')" class="module-enquire-link">Enquire <span>→</span></a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         6. Gamma Flagship Program Section (100 Days VIP Mastery)
+         ==================================================================== -->
+    <section class="section gamma-section" id="plans">
+      <div class="container">
+        <div class="gamma-vip-card glass-panel">
+          <!-- Card Header -->
+          <div class="gamma-header">
+            <div class="gamma-header-left">
+              <div class="gamma-badge-group">
+                <span class="badge-flagship">FLAGSHIP • 100 DAYS</span>
+                <span class="badge-exclusive">★ IWSM'S MOST EXCLUSIVE PROGRAM</span>
+              </div>
+              <h2 class="gamma-headline">Gamma — The Complete Market Mastery Program</h2>
+              <p class="gamma-summary">A 100-day advanced learning program combining IWSM's core curriculum, advanced market concepts and exclusive mentorship support. One comprehensive learning journey from market foundations to advanced concepts.</p>
+            </div>
+            <div>
+              <a href="#enquire" onclick="enquireForCourse('Gamma Plan')" class="btn btn-gold btn-lg">Enquire About Gamma</a>
+            </div>
+          </div>
+
+          <!-- Dual Column: 16 Topics vs 6 VIP Exclusives -->
+          <div class="gamma-grid">
+            <!-- Left: Complete Curriculum Topics -->
+            <div>
+              <h3 class="gamma-col-title">
+                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                <span>What You'll Learn (16 Core Modules)</span>
+              </h3>
+              <div class="curriculum-check-grid">
+                <div class="curriculum-check-item">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span>Basics of Stock Market</span>
+                </div>
+                <div class="curriculum-check-item">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span>Technical Analysis</span>
+                </div>
+                <div class="curriculum-check-item">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span>Futures & Options</span>
+                </div>
+                <div class="curriculum-check-item">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span>Institutional Adjustments</span>
+                </div>
+                <div class="curriculum-check-item">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span>SMC & ICT Concepts</span>
+                </div>
+                <div class="curriculum-check-item">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span>Trading Psychology</span>
+                </div>
+                <div class="curriculum-check-item">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span>Risk & Money Management</span>
+                </div>
+                <div class="curriculum-check-item">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span>Supply & Demand</span>
+                </div>
+                <div class="curriculum-check-item">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span>Advanced Technicals</span>
+                </div>
+                <div class="curriculum-check-item">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span>Sector Analysis</span>
+                </div>
+                <div class="curriculum-check-item">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span>ATS Concepts</span>
+                </div>
+                <div class="curriculum-check-item">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span>AI-Driven Analysis</span>
+                </div>
+                <div class="curriculum-check-item">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span>Hyper Algorithmic Automation</span>
+                </div>
+                <div class="curriculum-check-item">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span>Multibagger Investments</span>
+                </div>
+                <div class="curriculum-check-item">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span>Equity Derivatives & MFs</span>
+                </div>
+                <div class="curriculum-check-item">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span>Investor Awareness</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right: 6 Gamma VIP Exclusives -->
+            <div>
+              <h3 class="gamma-col-title">
+                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <span>Gamma Exclusives (Beyond the Curriculum)</span>
+              </h3>
+              <div class="exclusives-list">
+                <div class="exclusive-item-card">
+                  <div class="exclusive-icon">★</div>
+                  <div class="exclusive-info">
+                    <h4>Unlimited Live Market Classes</h4>
+                    <p>Continued learning through daily live-market sessions on the trading floor.</p>
+                  </div>
+                </div>
+
+                <div class="exclusive-item-card">
+                  <div class="exclusive-icon">👤</div>
+                  <div class="exclusive-info">
+                    <h4>1-on-1 Mentorship</h4>
+                    <p>Dedicated individual mentoring and strategy reviews with senior faculty.</p>
+                  </div>
+                </div>
+
+                <div class="exclusive-item-card">
+                  <div class="exclusive-info-wrap" style="display:flex; gap:16px; width:100%;">
+                    <div class="exclusive-icon">👑</div>
+                    <div class="exclusive-info">
+                      <h4>VIP Group Access</h4>
+                      <p>Direct access to IWSM's elite trader network and real-time market channels.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="exclusive-item-card">
+                  <div class="exclusive-icon">📝</div>
+                  <div class="exclusive-info">
+                    <h4>Test-Series Access</h4>
+                    <p>Rigorous structured assessments and mock trading simulations.</p>
+                  </div>
+                </div>
+
+                <div class="exclusive-item-card">
+                  <div class="exclusive-icon">📊</div>
+                  <div class="exclusive-info">
+                    <h4>Trading Journal Software</h4>
+                    <p>Proprietary software tools for trade logging, analytics, and mistake diagnosis.</p>
+                  </div>
+                </div>
+
+                <div class="exclusive-item-card">
+                  <div class="exclusive-icon">🛡</div>
+                  <div class="exclusive-info">
+                    <h4>Risk-Management Software</h4>
+                    <p>Specialized institutional algorithms focused on strict capital preservation discipline.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Action -->
+          <div class="gamma-footer-action">
+            <a href="#enquire" onclick="enquireForCourse('Gamma Plan')" class="btn btn-gold btn-lg">Enquire About Gamma Plan (100 Days)</a>
+            <p style="font-size:0.85rem; color:var(--text-muted);">Limited cohort seats per batch • Practical Live Market Guidance in Jaipur HQ</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         7. Trading Carnival Showcase ("Beyond the Classroom")
+         ==================================================================== -->
+    <section class="section carnival-section" id="carnival">
+      <div class="container">
+        <div class="carnival-grid">
+          <div>
+            <div class="badge-eyebrow">
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              <span>Beyond the Classroom • MORE THAN JUST A COURSE</span>
+            </div>
+            <h2 class="section-title">IWSM Trading <span class="text-gold">Carnival</span></h2>
+            <p class="section-lead">A practical learning experience combining trading activities, expert-led sessions, strategy challenges and community interaction. Trade • Learn • Grow together with real traders.</p>
+
+            <div class="carnival-features-list">
+              <div class="carnival-feat-pill">
+                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.45 1-1 1H7.8a1 1 0 0 0-.96.74L6 22"/><path d="M14 14.66V17c0 .55.45 1 1 1h1.2a1 1 0 0 1 .96.74L18 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/></svg>
+                <span>Live Trading Competition</span>
+              </div>
+              <div class="carnival-feat-pill">
+                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
+                <span>Expert-Led Sessions</span>
+              </div>
+              <div class="carnival-feat-pill">
+                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                <span>Strategy Battles</span>
+              </div>
+              <div class="carnival-feat-pill">
+                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                <span>Community & Networking</span>
+              </div>
+            </div>
+
+            <a href="#enquire" class="btn btn-gold">Ask About Upcoming Events</a>
+          </div>
+
+          <!-- 3D Floating Polaroid Gallery -->
+          <div class="polaroid-gallery-wrapper" title="Click photos to view full size">
+            <div class="polaroid-card polaroid-1">
+              <img src="assets/assets/02_iwsm-classroom-and-practical-learning-environment.jpg" alt="IWSM classroom and practical learning environment">
+              <div class="polaroid-caption">Practical Trading Lab • Jaipur</div>
+            </div>
+            <div class="polaroid-card polaroid-2">
+              <img src="assets/assets/03_iwsm-learners-and-mentors-at-a-community-event.jpg" alt="IWSM learners and mentors at a community event">
+              <div class="polaroid-caption">Carnival Community Event 🏆</div>
+            </div>
+            <div class="polaroid-card polaroid-3">
+              <img src="assets/assets/04_iwsm-course-completion-and-learner-achievement.jpg" alt="IWSM course completion and learner achievement">
+              <div class="polaroid-caption">Course Completion & Wins 🎓</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         8. Elite Faculty Roster (7 Verified Profiles)
+         ==================================================================== -->
+    <section class="section" id="faculty">
+      <div class="container">
+        <div class="section-header">
+          <div class="badge-eyebrow">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>
+            <span>Experienced Industry Practitioners</span>
+          </div>
+          <h2 class="section-title sebi-title-row">Learn from <span class="sebi-mentor-badge-group"><span class="text-gold">SEBI & CFA Mentors</span><img src="assets/assets/sebi-registered-badge.png" alt="SEBI Registered Faculty & Mentors" class="sebi-inline-badge" title="SEBI Registered Faculty & Mentors"></span></h2>
+          <p class="section-lead">Our faculty brings decades of combined institutional experience across equity research, options Greeks, algorithmic systems, and wealth management.</p>
+        </div>
+
+        <div class="faculty-grid">
+          <!-- Faculty 1 -->
+          <div class="faculty-card glass-panel">
+            <div class="faculty-photo-wrap">
+              <span class="faculty-experience-chip">11+ Years Exp</span>
+              <img src="assets/faculty/cfa_manish_mathur.png" alt="CFA Manish Mathur - IWSM faculty" loading="lazy">
+            </div>
+            <div class="faculty-body">
+              <div>
+                <h3 class="faculty-name">CFA Manish Mathur</h3>
+                <div class="faculty-role">Psychology & Risk Management</div>
+                <p class="faculty-qualifications">SEBI Registered Research Analyst • CFA Lv 1–2 • NISM Certified • ACT Qualified • B.Com, M.Com</p>
+              </div>
+              <div class="faculty-footer">
+                <span style="font-size:0.8rem; color:var(--bull-green);">● Active Mentor</span>
+                <a href="#enquire" onclick="enquireForCourse('CFA Manish Mathur Mentorship')" class="faculty-consult-btn">Consult <span>→</span></a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Faculty 2 -->
+          <div class="faculty-card glass-panel">
+            <div class="faculty-photo-wrap">
+              <span class="faculty-experience-chip">7+ Years Exp</span>
+              <img src="assets/faculty/ashutosh_sharma.png" alt="Ashutosh Sharma - IWSM faculty" loading="lazy">
+            </div>
+            <div class="faculty-body">
+              <div>
+                <h3 class="faculty-name">Ashutosh Sharma</h3>
+                <div class="faculty-role">Options Adjustments Specialist</div>
+                <p class="faculty-qualifications">NISM E&D (VIII), MFD (V-A/B), SMF (XII), CD (XVI), DO (VI), SORM (VII), IRDAI • MBA Finance, NMIMS Mumbai</p>
+              </div>
+              <div class="faculty-footer">
+                <span style="font-size:0.8rem; color:var(--bull-green);">● Active Mentor</span>
+                <a href="#enquire" onclick="enquireForCourse('Ashutosh Sharma Options')" class="faculty-consult-btn">Consult <span>→</span></a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Faculty 3 -->
+          <div class="faculty-card glass-panel">
+            <div class="faculty-photo-wrap">
+              <span class="faculty-experience-chip">10+ Years Exp</span>
+              <img src="assets/faculty/pooja_sharma.png" alt="Pooja Sharma - IWSM faculty" loading="lazy">
+            </div>
+            <div class="faculty-body">
+              <div>
+                <h3 class="faculty-name">Pooja Sharma</h3>
+                <div class="faculty-role">Multibagger Specialist</div>
+                <p class="faculty-qualifications">Chartered Accountant • Company Secretary • CAT Qualified • MBA, M.Com, B.Com</p>
+              </div>
+              <div class="faculty-footer">
+                <span style="font-size:0.8rem; color:var(--bull-green);">● Active Mentor</span>
+                <a href="#enquire" onclick="enquireForCourse('Pooja Sharma Multibagger')" class="faculty-consult-btn">Consult <span>→</span></a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Faculty 4 -->
+          <div class="faculty-card glass-panel">
+            <div class="faculty-photo-wrap">
+              <span class="faculty-experience-chip">3+ Years Exp</span>
+              <img src="assets/faculty/devkanya_vyas.png" alt="Devkanya Vyas - IWSM faculty" loading="lazy">
+            </div>
+            <div class="faculty-body">
+              <div>
+                <h3 class="faculty-name">Devkanya Vyas</h3>
+                <div class="faculty-role">Liquidity Mapping Expert</div>
+                <p class="faculty-qualifications">RA • Investment Adviser Lv I • NISM E&D (VIII), MFD (V-A/B), SMF (XII), CD (XVI), DO (VI), SORM (VII), IRDAI • MBA Finance</p>
+              </div>
+              <div class="faculty-footer">
+                <span style="font-size:0.8rem; color:var(--bull-green);">● Active Mentor</span>
+                <a href="#enquire" onclick="enquireForCourse('Devkanya Vyas Liquidity')" class="faculty-consult-btn">Consult <span>→</span></a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Faculty 5 -->
+          <div class="faculty-card glass-panel">
+            <div class="faculty-photo-wrap">
+              <span class="faculty-experience-chip">10+ Years Exp</span>
+              <img src="assets/faculty/nirmal_sharma.png" alt="Nirmal Sharma - IWSM faculty" class="faculty-img-nirmal" loading="lazy">
+            </div>
+            <div class="faculty-body">
+              <div>
+                <h3 class="faculty-name">Nirmal Sharma</h3>
+                <div class="faculty-role">Supply & Demand Specialist</div>
+                <p class="faculty-qualifications">M.Sc in Micro Bio • 10+ Years active price-action trading experience</p>
+              </div>
+              <div class="faculty-footer">
+                <span style="font-size:0.8rem; color:var(--bull-green);">● Active Mentor</span>
+                <a href="#enquire" onclick="enquireForCourse('Nirmal Sharma Supply Demand')" class="faculty-consult-btn">Consult <span>→</span></a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Faculty 6 -->
+          <div class="faculty-card glass-panel">
+            <div class="faculty-photo-wrap">
+              <span class="faculty-experience-chip">3+ Years Exp</span>
+              <img src="assets/faculty/ravindra_singh.png" alt="Ravindra Singh - IWSM faculty" loading="lazy">
+            </div>
+            <div class="faculty-body">
+              <div>
+                <h3 class="faculty-name">Ravindra Singh</h3>
+                <div class="faculty-role">Forex & Crypto Expert</div>
+                <p class="faculty-qualifications">Research Analyst • NISM Certified • Equity Derivatives • B.Tech</p>
+              </div>
+              <div class="faculty-footer">
+                <span style="font-size:0.8rem; color:var(--bull-green);">● Active Mentor</span>
+                <a href="#enquire" onclick="enquireForCourse('Ravindra Singh Forex')" class="faculty-consult-btn">Consult <span>→</span></a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Faculty 7 -->
+          <div class="faculty-card glass-panel">
+            <div class="faculty-photo-wrap">
+              <span class="faculty-experience-chip">Institutional</span>
+              <img src="assets/faculty/anirudhar_sharma.png" alt="Anirudhar Sharma - IWSM faculty" loading="lazy">
+            </div>
+            <div class="faculty-body">
+              <div>
+                <h3 class="faculty-name">Anirudhar Sharma</h3>
+                <div class="faculty-role">Investment Adviser & Wealth Manager</div>
+                <p class="faculty-qualifications">NISM Investment Adviser (XA/XB) • PMS (XXI-A/B) • AIF (XIX A-E) • RA (XV) • MFD (V-A) • CFA Level II • FRM Part I • CMT Level I</p>
+              </div>
+              <div class="faculty-footer">
+                <span style="font-size:0.8rem; color:var(--bull-green);">● Active Mentor</span>
+                <a href="#enquire" onclick="enquireForCourse('Anirudhar Sharma Wealth')" class="faculty-consult-btn">Consult <span>→</span></a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         9. Authentic Student Success Stories (Case Studies)
+         ==================================================================== -->
+    <section class="section" id="reviews">
+      <div class="container">
+        <div class="section-header">
+          <div class="badge-eyebrow">
+            <svg width="15" height="15" viewBox="0 0 24 24">
+              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
+              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
+            </svg>
+            <span>Google Maps Verified Reviews • 4.9 ★★★★★ (350+ Ratings)</span>
+          </div>
+          <h2 class="section-title">Verified Students. <span class="text-gold">350+ Verified Students.</span></h2>
+          <p class="section-lead">Interactive 3D testimonial marquee showcasing live verified student feedback for IWSM Jaipur (Gopalpura Bypass). Hover over any card to pause and inspect.</p>
+        </div>
+
+        <!-- 3D Testimonials Marquee Stage -->
+        <div class="testimonials-3d-stage" id="testimonials-3d-stage">
+          <div class="testimonials-stage-fade-top"></div>
+          <div class="testimonials-stage-fade-bottom"></div>
+          <div class="testimonials-stage-fade-left"></div>
+          <div class="testimonials-stage-fade-right"></div>
+
+                    <div class="testimonials-3d-grid">
+            <div class="testimonials-marquee-col">
+              <div class="marquee-track" style="--duration:36s;">
+                <div class="review-3d-card">
+                  <div class="review-card-top">
+                    <div class="review-user-info">
+                      <div class="review-avatar-wrap">
+                        <img src="assets/reviews/student_rohit.jpg" alt="Rohit Khandelwal" class="review-avatar-img" loading="lazy">
+                        <span class="review-verified-dot" title="Verified Reviewer">✓</span>
+                      </div>
+                      <div>
+                        <div class="review-name">Rohit Khandelwal</div>
+                        <div class="review-location">Kota, Rajasthan</div>
+                      </div>
+                    </div>
+                    <div class="review-google-badge">
+                      <svg width="13" height="13" viewBox="0 0 24 24" style="flex-shrink:0;">
+                      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
+                      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
+                    </svg>
+                      <span>★ 5.0</span>
+                    </div>
+                  </div>
+                  <div class="review-stars-row">
+                    <div class="review-stars">★★★★★</div>
+                    <span class="review-tag tag-gold">HEDGING & RISK</span>
+                  </div>
+                  <p class="review-body-text">"Came all the way from Kota for the offline training. Practical risk management and position sizing rules protected my capital completely."</p>
+                </div>
+
+                <div class="review-3d-card">
+                  <div class="review-card-top">
+                    <div class="review-user-info">
+                      <div class="review-avatar-wrap">
+                        <img src="assets/reviews/student_rishabh.jpg" alt="Rishabh Mittal" class="review-avatar-img" loading="lazy">
+                        <span class="review-verified-dot" title="Verified Reviewer">✓</span>
+                      </div>
+                      <div>
+                        <div class="review-name">Rishabh Mittal</div>
+                        <div class="review-location">Jaipur, Rajasthan</div>
+                      </div>
+                    </div>
+                    <div class="review-google-badge">
+                      <svg width="13" height="13" viewBox="0 0 24 24" style="flex-shrink:0;">
+                      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
+                      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
+                    </svg>
+                      <span>★ 5.0</span>
+                    </div>
+                  </div>
+                  <div class="review-stars-row">
+                    <div class="review-stars">★★★★★</div>
+                    <span class="review-tag tag-cyan">OPTIONS SETUP</span>
+                  </div>
+                  <p class="review-body-text">"Option buying chhodkar proper setup follow kiya. 7 mahino ke struggle ke baad April mein pehla ₹56,000 profit book kiya. Sukoon aur consistency dono mil rahe hain."</p>
+                </div>
+
+                <div class="review-3d-card">
+                  <div class="review-card-top">
+                    <div class="review-user-info">
+                      <div class="review-avatar-wrap">
+                        <img src="assets/reviews/student_vikram.jpg" alt="Vikramaditya Rathore" class="review-avatar-img" loading="lazy">
+                        <span class="review-verified-dot" title="Verified Reviewer">✓</span>
+                      </div>
+                      <div>
+                        <div class="review-name">Vikramaditya Rathore</div>
+                        <div class="review-location">Jaipur, Rajasthan</div>
+                      </div>
+                    </div>
+                    <div class="review-google-badge">
+                      <svg width="13" height="13" viewBox="0 0 24 24" style="flex-shrink:0;">
+                      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
+                      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
+                    </svg>
+                      <span>★ 5.0</span>
+                    </div>
+                  </div>
+                  <div class="review-stars-row">
+                    <div class="review-stars">★★★★★</div>
+                    <span class="review-tag tag-green">GAMMA BATCH</span>
+                  </div>
+                  <p class="review-body-text">"Best stock market institute in Rajasthan. Ashutosh Sir's Option 2.0 and live market hedging adjustments are unmatched. Truly institutional-level clarity."</p>
+                </div>
+
+                <div class="review-3d-card">
+                  <div class="review-card-top">
+                    <div class="review-user-info">
+                      <div class="review-avatar-wrap">
+                        <img src="assets/reviews/student_rohit.jpg" alt="Rohit Khandelwal" class="review-avatar-img" loading="lazy">
+                        <span class="review-verified-dot" title="Verified Reviewer">✓</span>
+                      </div>
+                      <div>
+                        <div class="review-name">Rohit Khandelwal</div>
+                        <div class="review-location">Kota, Rajasthan</div>
+                      </div>
+                    </div>
+                    <div class="review-google-badge">
+                      <svg width="13" height="13" viewBox="0 0 24 24" style="flex-shrink:0;">
+                      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
+                      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
+                    </svg>
+                      <span>★ 5.0</span>
+                    </div>
+                  </div>
+                  <div class="review-stars-row">
+                    <div class="review-stars">★★★★★</div>
+                    <span class="review-tag tag-gold">HEDGING & RISK</span>
+                  </div>
+                  <p class="review-body-text">"Came all the way from Kota for the offline training. Practical risk management and position sizing rules protected my capital completely."</p>
+                </div>
+
+                <div class="review-3d-card">
+                  <div class="review-card-top">
+                    <div class="review-user-info">
+                      <div class="review-avatar-wrap">
+                        <img src="assets/reviews/student_rishabh.jpg" alt="Rishabh Mittal" class="review-avatar-img" loading="lazy">
+                        <span class="review-verified-dot" title="Verified Reviewer">✓</span>
+                      </div>
+                      <div>
+                        <div class="review-name">Rishabh Mittal</div>
+                        <div class="review-location">Jaipur, Rajasthan</div>
+                      </div>
+                    </div>
+                    <div class="review-google-badge">
+                      <svg width="13" height="13" viewBox="0 0 24 24" style="flex-shrink:0;">
+                      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
+                      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
+                    </svg>
+                      <span>★ 5.0</span>
+                    </div>
+                  </div>
+                  <div class="review-stars-row">
+                    <div class="review-stars">★★★★★</div>
+                    <span class="review-tag tag-cyan">OPTIONS SETUP</span>
+                  </div>
+                  <p class="review-body-text">"Option buying chhodkar proper setup follow kiya. 7 mahino ke struggle ke baad April mein pehla ₹56,000 profit book kiya. Sukoon aur consistency dono mil rahe hain."</p>
+                </div>
+
+                <div class="review-3d-card">
+                  <div class="review-card-top">
+                    <div class="review-user-info">
+                      <div class="review-avatar-wrap">
+                        <img src="assets/reviews/student_vikram.jpg" alt="Vikramaditya Rathore" class="review-avatar-img" loading="lazy">
+                        <span class="review-verified-dot" title="Verified Reviewer">✓</span>
+                      </div>
+                      <div>
+                        <div class="review-name">Vikramaditya Rathore</div>
+                        <div class="review-location">Jaipur, Rajasthan</div>
+                      </div>
+                    </div>
+                    <div class="review-google-badge">
+                      <svg width="13" height="13" viewBox="0 0 24 24" style="flex-shrink:0;">
+                      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
+                      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
+                    </svg>
+                      <span>★ 5.0</span>
+                    </div>
+                  </div>
+                  <div class="review-stars-row">
+                    <div class="review-stars">★★★★★</div>
+                    <span class="review-tag tag-green">GAMMA BATCH</span>
+                  </div>
+                  <p class="review-body-text">"Best stock market institute in Rajasthan. Ashutosh Sir's Option 2.0 and live market hedging adjustments are unmatched. Truly institutional-level clarity."</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="testimonials-marquee-col">
+              <div class="marquee-track reverse" style="--duration:42s;">
+                <div class="review-3d-card">
+                  <div class="review-card-top">
+                    <div class="review-user-info">
+                      <div class="review-avatar-wrap">
+                        <img src="assets/reviews/student_amit.jpg" alt="Amit Kasliwal" class="review-avatar-img" loading="lazy">
+                        <span class="review-verified-dot" title="Verified Reviewer">✓</span>
+                      </div>
+                      <div>
+                        <div class="review-name">Amit Kasliwal</div>
+                        <div class="review-location">Jaipur, Rajasthan</div>
+                      </div>
+                    </div>
+                    <div class="review-google-badge">
+                      <svg width="13" height="13" viewBox="0 0 24 24" style="flex-shrink:0;">
+                      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
+                      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
+                    </svg>
+                      <span>★ 5.0</span>
+                    </div>
+                  </div>
+                  <div class="review-stars-row">
+                    <div class="review-stars">★★★★★</div>
+                    <span class="review-tag tag-blue">SEBI CERTIFIED</span>
+                  </div>
+                  <p class="review-body-text">"SEBI certified faculty who actually explain the math and risk. No quick rich schemes, only disciplined trading systems and portfolio growth."</p>
+                </div>
+
+                <div class="review-3d-card">
+                  <div class="review-card-top">
+                    <div class="review-user-info">
+                      <div class="review-avatar-wrap">
+                        <img src="assets/reviews/student_anirudh.jpg" alt="Anirudh Sharma" class="review-avatar-img" loading="lazy">
+                        <span class="review-verified-dot" title="Verified Reviewer">✓</span>
+                      </div>
+                      <div>
+                        <div class="review-name">Anirudh Sharma</div>
+                        <div class="review-location">Jaipur, Rajasthan</div>
+                      </div>
+                    </div>
+                    <div class="review-google-badge">
+                      <svg width="13" height="13" viewBox="0 0 24 24" style="flex-shrink:0;">
+                      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
+                      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
+                    </svg>
+                      <span>★ 5.0</span>
+                    </div>
+                  </div>
+                  <div class="review-stars-row">
+                    <div class="review-stars">★★★★★</div>
+                    <span class="review-tag tag-purple">FUND MANAGER</span>
+                  </div>
+                  <p class="review-body-text">"From NEET preparation to managing ₹85 Crore fund. Cleared NISM RA & IA under CFA Manish Mathur sir. The live trading floor culture here is unmatched."</p>
+                </div>
+
+                <div class="review-3d-card">
+                  <div class="review-card-top">
+                    <div class="review-user-info">
+                      <div class="review-avatar-wrap">
+                        <img src="assets/reviews/student_sunil.jpg" alt="Sunil Meena" class="review-avatar-img" loading="lazy">
+                        <span class="review-verified-dot" title="Verified Reviewer">✓</span>
+                      </div>
+                      <div>
+                        <div class="review-name">Sunil Meena</div>
+                        <div class="review-location">Jaipur, Rajasthan</div>
+                      </div>
+                    </div>
+                    <div class="review-google-badge">
+                      <svg width="13" height="13" viewBox="0 0 24 24" style="flex-shrink:0;">
+                      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
+                      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
+                    </svg>
+                      <span>★ 5.0</span>
+                    </div>
+                  </div>
+                  <div class="review-stars-row">
+                    <div class="review-stars">★★★★★</div>
+                    <span class="review-tag tag-green">LIVE FLOOR</span>
+                  </div>
+                  <p class="review-body-text">"Live trading floor experience at IWSM Tower Gopalpura Bypass changed my entire mindset. Mentors trade live in market hours with total transparency."</p>
+                </div>
+
+                <div class="review-3d-card">
+                  <div class="review-card-top">
+                    <div class="review-user-info">
+                      <div class="review-avatar-wrap">
+                        <img src="assets/reviews/student_amit.jpg" alt="Amit Kasliwal" class="review-avatar-img" loading="lazy">
+                        <span class="review-verified-dot" title="Verified Reviewer">✓</span>
+                      </div>
+                      <div>
+                        <div class="review-name">Amit Kasliwal</div>
+                        <div class="review-location">Jaipur, Rajasthan</div>
+                      </div>
+                    </div>
+                    <div class="review-google-badge">
+                      <svg width="13" height="13" viewBox="0 0 24 24" style="flex-shrink:0;">
+                      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
+                      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
+                    </svg>
+                      <span>★ 5.0</span>
+                    </div>
+                  </div>
+                  <div class="review-stars-row">
+                    <div class="review-stars">★★★★★</div>
+                    <span class="review-tag tag-blue">SEBI CERTIFIED</span>
+                  </div>
+                  <p class="review-body-text">"SEBI certified faculty who actually explain the math and risk. No quick rich schemes, only disciplined trading systems and portfolio growth."</p>
+                </div>
+
+                <div class="review-3d-card">
+                  <div class="review-card-top">
+                    <div class="review-user-info">
+                      <div class="review-avatar-wrap">
+                        <img src="assets/reviews/student_anirudh.jpg" alt="Anirudh Sharma" class="review-avatar-img" loading="lazy">
+                        <span class="review-verified-dot" title="Verified Reviewer">✓</span>
+                      </div>
+                      <div>
+                        <div class="review-name">Anirudh Sharma</div>
+                        <div class="review-location">Jaipur, Rajasthan</div>
+                      </div>
+                    </div>
+                    <div class="review-google-badge">
+                      <svg width="13" height="13" viewBox="0 0 24 24" style="flex-shrink:0;">
+                      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
+                      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
+                    </svg>
+                      <span>★ 5.0</span>
+                    </div>
+                  </div>
+                  <div class="review-stars-row">
+                    <div class="review-stars">★★★★★</div>
+                    <span class="review-tag tag-purple">FUND MANAGER</span>
+                  </div>
+                  <p class="review-body-text">"From NEET preparation to managing ₹85 Crore fund. Cleared NISM RA & IA under CFA Manish Mathur sir. The live trading floor culture here is unmatched."</p>
+                </div>
+
+                <div class="review-3d-card">
+                  <div class="review-card-top">
+                    <div class="review-user-info">
+                      <div class="review-avatar-wrap">
+                        <img src="assets/reviews/student_sunil.jpg" alt="Sunil Meena" class="review-avatar-img" loading="lazy">
+                        <span class="review-verified-dot" title="Verified Reviewer">✓</span>
+                      </div>
+                      <div>
+                        <div class="review-name">Sunil Meena</div>
+                        <div class="review-location">Jaipur, Rajasthan</div>
+                      </div>
+                    </div>
+                    <div class="review-google-badge">
+                      <svg width="13" height="13" viewBox="0 0 24 24" style="flex-shrink:0;">
+                      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
+                      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
+                    </svg>
+                      <span>★ 5.0</span>
+                    </div>
+                  </div>
+                  <div class="review-stars-row">
+                    <div class="review-stars">★★★★★</div>
+                    <span class="review-tag tag-green">LIVE FLOOR</span>
+                  </div>
+                  <p class="review-body-text">"Live trading floor experience at IWSM Tower Gopalpura Bypass changed my entire mindset. Mentors trade live in market hours with total transparency."</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="testimonials-marquee-col">
+              <div class="marquee-track" style="--duration:38s;">
+                <div class="review-3d-card">
+                  <div class="review-card-top">
+                    <div class="review-user-info">
+                      <div class="review-avatar-wrap">
+                        <img src="assets/reviews/student_pooja.jpg" alt="Pooja Choudhary" class="review-avatar-img" loading="lazy">
+                        <span class="review-verified-dot" title="Verified Reviewer">✓</span>
+                      </div>
+                      <div>
+                        <div class="review-name">Pooja Choudhary</div>
+                        <div class="review-location">Jaipur, Rajasthan</div>
+                      </div>
+                    </div>
+                    <div class="review-google-badge">
+                      <svg width="13" height="13" viewBox="0 0 24 24" style="flex-shrink:0;">
+                      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
+                      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
+                    </svg>
+                      <span>★ 5.0</span>
+                    </div>
+                  </div>
+                  <div class="review-stars-row">
+                    <div class="review-stars">★★★★★</div>
+                    <span class="review-tag tag-cyan">TECHNICAL DEPTH</span>
+                  </div>
+                  <p class="review-body-text">"Structured 100-day Gamma program covers SMC, ICT, and practical chart setups without false promises. World class smartboard classrooms."</p>
+                </div>
+
+                <div class="review-3d-card">
+                  <div class="review-card-top">
+                    <div class="review-user-info">
+                      <div class="review-avatar-wrap">
+                        <img src="assets/reviews/student_deepak.jpg" alt="Deepak Parihar" class="review-avatar-img" loading="lazy">
+                        <span class="review-verified-dot" title="Verified Reviewer">✓</span>
+                      </div>
+                      <div>
+                        <div class="review-name">Deepak Parihar</div>
+                        <div class="review-location">Jodhpur, Rajasthan</div>
+                      </div>
+                    </div>
+                    <div class="review-google-badge">
+                      <svg width="13" height="13" viewBox="0 0 24 24" style="flex-shrink:0;">
+                      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
+                      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
+                    </svg>
+                      <span>★ 5.0</span>
+                    </div>
+                  </div>
+                  <div class="review-stars-row">
+                    <div class="review-stars">★★★★★</div>
+                    <span class="review-tag tag-blue">SMC & PRICE ACTION</span>
+                  </div>
+                  <p class="review-body-text">"Started with small capital, learned setup discipline and booked ₹16 Lakh profit in one session. Setup discipline made me an independent trader."</p>
+                </div>
+
+                <div class="review-3d-card">
+                  <div class="review-card-top">
+                    <div class="review-user-info">
+                      <div class="review-avatar-wrap">
+                        <img src="assets/reviews/student_bharti.jpg" alt="Bharti Sharma" class="review-avatar-img" loading="lazy">
+                        <span class="review-verified-dot" title="Verified Reviewer">✓</span>
+                      </div>
+                      <div>
+                        <div class="review-name">Bharti Sharma</div>
+                        <div class="review-location">Jaipur, Rajasthan</div>
+                      </div>
+                    </div>
+                    <div class="review-google-badge">
+                      <svg width="13" height="13" viewBox="0 0 24 24" style="flex-shrink:0;">
+                      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
+                      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
+                    </svg>
+                      <span>★ 5.0</span>
+                    </div>
+                  </div>
+                  <div class="review-stars-row">
+                    <div class="review-stars">★★★★★</div>
+                    <span class="review-tag tag-gold">MCX COMMODITY</span>
+                  </div>
+                  <p class="review-body-text">"Homemaker trading MCX Natural Gas 5 to 7 PM in the evening. Consistent independent income without disturbing family responsibilities."</p>
+                </div>
+
+                <div class="review-3d-card">
+                  <div class="review-card-top">
+                    <div class="review-user-info">
+                      <div class="review-avatar-wrap">
+                        <img src="assets/reviews/student_pooja.jpg" alt="Pooja Choudhary" class="review-avatar-img" loading="lazy">
+                        <span class="review-verified-dot" title="Verified Reviewer">✓</span>
+                      </div>
+                      <div>
+                        <div class="review-name">Pooja Choudhary</div>
+                        <div class="review-location">Jaipur, Rajasthan</div>
+                      </div>
+                    </div>
+                    <div class="review-google-badge">
+                      <svg width="13" height="13" viewBox="0 0 24 24" style="flex-shrink:0;">
+                      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
+                      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
+                    </svg>
+                      <span>★ 5.0</span>
+                    </div>
+                  </div>
+                  <div class="review-stars-row">
+                    <div class="review-stars">★★★★★</div>
+                    <span class="review-tag tag-cyan">TECHNICAL DEPTH</span>
+                  </div>
+                  <p class="review-body-text">"Structured 100-day Gamma program covers SMC, ICT, and practical chart setups without false promises. World class smartboard classrooms."</p>
+                </div>
+
+                <div class="review-3d-card">
+                  <div class="review-card-top">
+                    <div class="review-user-info">
+                      <div class="review-avatar-wrap">
+                        <img src="assets/reviews/student_deepak.jpg" alt="Deepak Parihar" class="review-avatar-img" loading="lazy">
+                        <span class="review-verified-dot" title="Verified Reviewer">✓</span>
+                      </div>
+                      <div>
+                        <div class="review-name">Deepak Parihar</div>
+                        <div class="review-location">Jodhpur, Rajasthan</div>
+                      </div>
+                    </div>
+                    <div class="review-google-badge">
+                      <svg width="13" height="13" viewBox="0 0 24 24" style="flex-shrink:0;">
+                      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
+                      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
+                    </svg>
+                      <span>★ 5.0</span>
+                    </div>
+                  </div>
+                  <div class="review-stars-row">
+                    <div class="review-stars">★★★★★</div>
+                    <span class="review-tag tag-blue">SMC & PRICE ACTION</span>
+                  </div>
+                  <p class="review-body-text">"Started with small capital, learned setup discipline and booked ₹16 Lakh profit in one session. Setup discipline made me an independent trader."</p>
+                </div>
+
+                <div class="review-3d-card">
+                  <div class="review-card-top">
+                    <div class="review-user-info">
+                      <div class="review-avatar-wrap">
+                        <img src="assets/reviews/student_bharti.jpg" alt="Bharti Sharma" class="review-avatar-img" loading="lazy">
+                        <span class="review-verified-dot" title="Verified Reviewer">✓</span>
+                      </div>
+                      <div>
+                        <div class="review-name">Bharti Sharma</div>
+                        <div class="review-location">Jaipur, Rajasthan</div>
+                      </div>
+                    </div>
+                    <div class="review-google-badge">
+                      <svg width="13" height="13" viewBox="0 0 24 24" style="flex-shrink:0;">
+                      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
+                      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
+                    </svg>
+                      <span>★ 5.0</span>
+                    </div>
+                  </div>
+                  <div class="review-stars-row">
+                    <div class="review-stars">★★★★★</div>
+                    <span class="review-tag tag-gold">MCX COMMODITY</span>
+                  </div>
+                  <p class="review-body-text">"Homemaker trading MCX Natural Gas 5 to 7 PM in the evening. Consistent independent income without disturbing family responsibilities."</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Google Reviews Action & Verification Bar -->
+        <div class="google-reviews-action-bar">
+          <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+            <div style="display:flex; align-items:center; gap:6px;">
+              <span style="font-size:1.6rem; font-weight:800; color:var(--cream-pure);">4.9</span>
+              <div style="display:flex; flex-direction:column;">
+                <div style="color:#f59e0b; font-size:0.9rem;">★★★★★</div>
+                <span style="font-size:0.75rem; color:var(--text-muted);">Overall Rating on Google</span>
+              </div>
+            </div>
+            <span style="color:rgba(255,255,255,0.2); font-size:1.2rem;">|</span>
+            <span style="font-size:0.88rem; color:var(--cream-soft);"><strong style="color:var(--gold-light);">350+ Verified Ratings</strong> from Jaipur Traders</span>
+          </div>
+
+          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+            <a href="https://www.google.com/maps/place/Institute+of+World+Stock+Market/@26.8641944,75.787973,17z/data=!3m1!5s0x396db5c93ac7ff2b:0xdb64e4f18b863691!4m8!3m7!1s0x396db59eb248c9b9:0xea7cb771374d1e19!8m2!3d26.8641944!4d75.787973!9m1!1b1!16s%2Fg%2F11vcxfmvf0?hl=en-US" target="_blank" rel="noopener" class="btn btn-gold btn-sm" style="padding:10px 22px; font-size:0.88rem;">
+              <span>Read on Google Maps ↗</span>
+            </a>
+            <a href="reviews.html" class="btn btn-outline-gold btn-sm" style="padding:10px 20px; font-size:0.88rem;">
+              <span>Open All Google Reviews ↗</span>
+            </a>
+          </div>
+        </div>
+
+        <p class="story-disclaimer-note" style="margin-top:16px;">Student experiences and ratings are individual opinions and do not guarantee financial returns. Stock and derivatives trading involves market risk. Always trade with risk capital.</p>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         10. Live Stats & Trust Signals Dashboard
+         ==================================================================== -->
+    <section class="section stats-section">
+      <div class="container">
+        <div class="stats-grid">
+          <div class="stat-item-card glass-panel">
+            <div class="stat-number" data-target="100" data-suffix="+">100+</div>
+            <div class="stat-label">Student Reviews & Ratings</div>
+          </div>
+          <div class="stat-item-card glass-panel">
+            <div class="stat-number" data-target="3" data-suffix=" Structured">3</div>
+            <div class="stat-label">Structured Course Plans</div>
+          </div>
+          <div class="stat-item-card glass-panel">
+            <div class="stat-number" data-target="7" data-suffix=" Faculty">7</div>
+            <div class="stat-label">SEBI & CFA Mentors</div>
+          </div>
+          <div class="stat-item-card glass-panel">
+            <div class="stat-number" data-target="85" data-prefix="₹" data-suffix="Cr+">₹85Cr+</div>
+            <div class="stat-label">Alumni Managed Funds</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         10b. IWSM Official Graphics & Squeeze Carousel Gallery (25 Assets)
+         ==================================================================== -->
+    <section class="section gallery-section" id="gallery">
+      <div class="container">
+        <div class="section-header">
+          <div class="badge-eyebrow">
+            <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+            <span>Official Visual Creatives & Institutional Gallery</span>
+          </div>
+          <h2 class="section-title">IWSM <span class="text-gold">Graphic Gallery</span></h2>
+          <p class="section-lead">Explore 25 official institutional creatives in our interactive visual gallery. Click any card to slide and expand, hover to stretch, and click to inspect full high-resolution graphics.</p>
+        </div>
+
+        <!-- Squeeze Carousel Stage -->
+        <div class="squeeze-gallery-wrapper" id="squeeze-gallery-container">
+          <!-- Top Bar: Category Filters & Navigation Controls -->
+          <div class="squeeze-top-bar">
+            <div class="gallery-filter-bar">
+              <button class="gallery-filter-pill active" data-filter="all">All Graphics (25)</button>
+              <button class="gallery-filter-pill" data-filter="ads">Banners & Ads (2)</button>
+              <button class="gallery-filter-pill" data-filter="concepts">Trading Concepts & Vision (19)</button>
+              <button class="gallery-filter-pill" data-filter="mentors">Mentors & Campus (4)</button>
+            </div>
+
+            <div class="squeeze-nav-controls">
+              <span class="squeeze-counter" id="squeeze-counter">1 / 25</span>
+              <button class="squeeze-arrow-btn" id="squeeze-prev-btn" aria-label="Previous Graphic" title="Previous Slide">◀</button>
+              <button class="squeeze-arrow-btn" id="squeeze-next-btn" aria-label="Next Graphic" title="Next Slide">▶</button>
+            </div>
+          </div>
+
+          <!-- Squeeze Carousel Sliding Viewport -->
+          <div class="squeeze-viewport" id="squeeze-viewport" role="tablist" aria-label="IWSM Visual Creatives Carousel">
+            <div class="squeeze-strip" id="squeeze-strip">
+              <!-- Dynamically populated by js/squeeze-gallery.js -->
+            </div>
+          </div>
+
+          <!-- Active Slide Information & Inspection CTA -->
+          <div class="squeeze-details-bar" id="squeeze-details-bar">
+            <div class="squeeze-details-text">
+              <span class="squeeze-details-badge" id="squeeze-panel-badge">Institutional Creative</span>
+              <h3 class="squeeze-details-title" id="squeeze-panel-title">Live Trading Floor Sessions</h3>
+              <p class="squeeze-details-desc" id="squeeze-panel-desc">Inside the live market execution lab at IWSM Tower Jaipur.</p>
+            </div>
+
+            <button type="button" class="btn btn-gold btn-sm squeeze-action-btn" id="squeeze-panel-action" title="Inspect full high-resolution graphic">
+              <span>Inspect High-Res Graphic ↗</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         11. Video Masterclass & Testimonial Reel (Bottom of Website)
+             Contains all 22 Local MP4 Videos from assets/VIDEOS/
+         ==================================================================== -->
+    <section class="section videos-showcase-section" id="videos">
+      <div class="container">
+        <div class="section-header">
+          <div class="badge-eyebrow">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+            <span>Live Classrooms, Mentorship & Student Reels</span>
+          </div>
+          <h2 class="section-title">IWSM Video Reel & <span class="text-gold">Masterclass Showcase</span></h2>
+          <p class="section-lead">Explore 22 authentic video reels capturing live trading sessions, classroom breakdowns, student victory celebrations, and mentor psychology lessons directly from our Jaipur institute.</p>
+        </div>
+
+        <!-- Video Category Filter Pills -->
+        <div class="videos-filter-bar">
+          <button class="video-filter-pill active" data-category="all">All 22 Reels</button>
+          <button class="video-filter-pill" data-category="reviews">Student Wins & Reviews</button>
+          <button class="video-filter-pill" data-category="floor">Trading Floor & Events</button>
+          <button class="video-filter-pill" data-category="lessons">Mentor Masterclasses</button>
+        </div>
+
+        <!-- Dynamic 22 Video Cards Grid -->
+        <div class="videos-grid-container">
+          <!-- Injected dynamically by js/main.js -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         12. Interactive Contact Hub & Live Google Map
+         ==================================================================== -->
+    <section class="section contact-section" id="contact">
+      <div class="container">
+        <div class="section-header text-left">
+          <div class="badge-eyebrow">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            <span>Visit Us in Jaipur</span>
+          </div>
+          <h2 class="section-title">Visit. Connect. <span class="text-gold">Start Learning.</span></h2>
+          <p class="section-lead">Find IWSM in Jaipur, follow us on social media, or speak with our team about course details and upcoming batches.</p>
+        </div>
+
+        <div class="contact-grid">
+          <!-- Left: Contact Details & Socials -->
+          <div class="contact-info-panel glass-panel" style="padding: 36px;">
+            <div>
+              <h3 style="font-family:var(--font-display); font-size:1.4rem; color:#fff; margin-bottom:12px;">Institute of World Stock Market (IWSM)</h3>
+              <p style="color:var(--text-muted); font-size:0.95rem;">Rajasthan’s premier stock market trading and practical mentorship center.</p>
+
+              <div class="contact-detail-list">
+                <div class="contact-detail-item">
+                  <div class="contact-icon-bubble">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                  </div>
+                  <div class="contact-detail-text">
+                    <h4>Campus Address</h4>
+                    <p>4th Floor, IWSM Tower, Plot No. 1A, Under Triveni Pulia, Gopalpura Bypass Rd, Jaipur, Rajasthan 302018</p>
+                  </div>
+                </div>
+
+                <div class="contact-detail-item">
+                  <div class="contact-icon-bubble">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                  </div>
+                  <div class="contact-detail-text">
+                    <h4>Admissions & Hotline</h4>
+                    <p><strong>Call/WhatsApp:</strong> <a href="https://wa.me/918107911127?text=Hi%20IWSM,%20I%20would%20like%20to%20know%20more%20about%20your%20stock%20market%20courses%20and%20counselling." target="_blank" rel="noopener">+91 8107911127</a> &nbsp;|&nbsp; <a href="https://wa.me/918690211127?text=Hi%20IWSM,%20I%20would%20like%20to%20know%20more%20about%20your%20stock%20market%20courses%20and%20counselling." target="_blank" rel="noopener">8690211127</a><br><span style="color:var(--text-dim); font-size:0.82rem;">(Mon - Sat: 9:00 AM - 7:00 PM)</span></p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Social Links -->
+            <div>
+              <h4 style="font-size:0.9rem; font-weight:700; color:var(--gold-light); margin-bottom:12px;">Connect with @iwsm.official</h4>
+              <div class="social-links-bar">
+                <a href="https://www.facebook.com/p/IWSMOfficial-61583704766708/" target="_blank" rel="noopener" class="social-btn" title="Facebook">
+                  <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                </a>
+                <a href="https://www.instagram.com/iwsm.official/" target="_blank" rel="noopener" class="social-btn" title="Instagram">
+                  <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+                </a>
+                <a href="https://www.youtube.com/@iwsm.official" target="_blank" rel="noopener" class="social-btn" title="YouTube">
+                  <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+                </a>
+                <a href="https://www.snapchat.com/add/iwsm.official?share_id=GY9c-zIwD1M&locale=en-US" target="_blank" rel="noopener" class="social-btn" title="Snapchat">
+                  <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M12.001 0c-4.484 0-7.391 2.946-7.391 6.845 0 1.25.385 2.457 1.057 3.447.164.24.238.513.125.791-.121.3-.404.536-.78.653-.615.191-1.579.529-1.921 1.233-.199.41-.098.887.275 1.258.461.46 1.348.742 2.373.914.075.012.134.053.161.12.062.155-.008.352-.162.452-.962.628-2.079 1.579-2.079 3.072 0 1.564 1.242 2.668 3.123 2.923.367.049.715.111.967.319.467.387 1.018 1.152 2.186 1.488.583.168 1.243.254 2.083.254.839 0 1.5-.086 2.083-.254 1.168-.336 1.719-1.101 2.186-1.488.252-.208.6-.27.967-.319 1.881-.255 3.123-1.359 3.123-2.923 0-1.493-1.117-2.444-2.079-3.072-.154-.1-.224-.297-.162-.452.027-.067.086-.108.161-.12 1.025-.172 1.912-.454 2.373-.914.373-.371.474-.848.275-1.258-.342-.704-1.306-1.042-1.921-1.233-.376-.117-.659-.353-.78-.653-.113-.278-.039-.551.125-.791.672-.99 1.057-2.197 1.057-3.447C19.392 2.946 16.485 0 12.001 0z"/></svg>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Google Maps Embed -->
+          <div class="map-container-wrap glass-panel">
+            <iframe 
+              src="https://www.google.com/maps?q=Institute%20of%20World%20Stock%20Market%2C%20IWSM%20Tower%2C%20Plot%20No%201A%2C%20Under%20Triveni%20Pulia%2C%20Jaipur%2C%20Rajasthan%20302018&output=embed" 
+              loading="lazy" 
+              referrerpolicy="no-referrer-when-downgrade" 
+              title="IWSM Jaipur Location Map">
+            </iframe>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         13. Footer & Regulatory Disclaimers
+         ==================================================================== -->
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-grid">
+          <div>
+            <img src="assets/assets/01_iwsm-institute-of-world-stock-market.png" alt="IWSM Logo" style="height:44px; margin-bottom:12px;">
+            <p class="footer-brand-bio">Institute of World Stock Market (IWSM) provides institutional-grade market education, live floor trading sessions, and disciplined risk-management frameworks in Jaipur.</p>
+          </div>
+
+          <div>
+            <h4 class="footer-col-title">Navigation</h4>
+            <div class="footer-menu">
+              <a href="#curriculum">Curriculum</a>
+              <a href="#plans">Gamma 100-Day</a>
+              <a href="#carnival">Trading Carnival</a>
+              <a href="#faculty">Faculty Profiles</a>
+              <a href="#reviews">Success Stories</a>
+              <a href="#videos">22 Student Reels</a>
+            </div>
+          </div>
+
+          <div>
+            <h4 class="footer-col-title">Key Programs</h4>
+            <div class="footer-menu">
+              <a href="#enquire">Gamma Mastery Plan</a>
+              <a href="#enquire">Advanced Technicals</a>
+              <a href="#enquire">Futures & Options</a>
+              <a href="#enquire">SMC & ICT Concepts</a>
+              <a href="#enquire">ATS & Algo Automation</a>
+            </div>
+          </div>
+
+          <div>
+            <h4 class="footer-col-title">Campus & Contact</h4>
+            <p style="font-size:0.88rem; color:var(--text-muted); line-height:1.6; margin-bottom:10px;">
+              4th Floor, IWSM Tower, Plot No. 1A, Under Triveni Pulia, Jaipur, RJ 302018
+            </p>
+            <p style="font-size:0.88rem; color:var(--gold-light); font-weight:600; line-height:1.6;">
+              Call/WhatsApp: <a href="https://wa.me/918107911127?text=Hi%20IWSM,%20I%20would%20like%20to%20know%20more%20about%20your%20stock%20market%20courses%20and%20counselling." target="_blank" rel="noopener" style="color:var(--gold-light); text-decoration:none;">+91 8107911127</a> &nbsp;|&nbsp; <a href="https://wa.me/918690211127?text=Hi%20IWSM,%20I%20would%20like%20to%20know%20more%20about%20your%20stock%20market%20courses%20and%20counselling." target="_blank" rel="noopener" style="color:var(--gold-light); text-decoration:none;">8690211127</a>
+            </p>
+          </div>
+        </div>
+
+        <!-- Mandatory Regulatory Disclaimer -->
+        <div class="regulatory-disclaimer-box">
+          <strong>Mandatory Regulatory & Educational Disclaimer:</strong> All content, courses, live trading simulations, and mentorship provided by the Institute of World Stock Market (IWSM) are purely for educational and training purposes. Trading in equity, futures, options, commodities, and currencies involves substantial risk of capital loss. Past performance, student testimonials, and case studies do not guarantee future returns. No financial return or profit is guaranteed. Consult certified advisors and manage risk diligently.
+        </div>
+      </div>
+    </footer>
+
+    <!-- Sticky Floating Action Bar on Mobile/Tablet -->
+    <div class="mobile-action-dock">
+      <button class="dock-btn btn-outline-gold" id="mobile-calc-trigger">
+        <span>⚡ Risk Calc</span>
+      </button>
+      <a href="https://wa.me/918107911127?text=Hi%20IWSM,%20I%20would%20like%20to%20know%20more%20about%20your%20stock%20market%20courses%20and%20counselling." target="_blank" rel="noopener" class="dock-btn btn-outline-soft" title="Chat on WhatsApp 8107911127">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+        <span>WhatsApp 1</span>
+      </a>
+      <a href="https://wa.me/918690211127?text=Hi%20IWSM,%20I%20would%20like%20to%20know%20more%20about%20your%20stock%20market%20courses%20and%20counselling." target="_blank" rel="noopener" class="dock-btn btn-outline-soft" title="Chat on WhatsApp 8690211127">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+        <span>WhatsApp 2</span>
+      </a>
+      <a href="#enquire" class="dock-btn btn-gold">
+        <span>Join Batch</span>
+      </a>
+    </div>
+
+    <!-- Floating Tool Trigger: Risk & Position Sizing Calculator (Web & Mobile) -->
+    <aside class="floating-calc-dock" aria-label="Risk Management Tool">
+      <button class="floating-calc-btn" id="open-risk-calc-btn" aria-label="Open Position Size Calculator" title="Open Risk & Position Calculator">
+        <span class="calc-pulse-ring"></span>
+        <span class="calc-btn-icon">⚡</span>
+        <span class="calc-btn-text">Risk Calculator</span>
+      </button>
+    </aside>
+
+    <!-- Interactive Institutional Position Sizing & Risk Calculator Modal -->
+    <div class="modal-overlay risk-calc-modal" id="risk-calc-modal" aria-hidden="true">
+      <div class="risk-calc-window glass-panel-deep">
+        <div class="calc-header">
+          <div class="calc-header-title-wrap">
+            <span class="calc-badge">IWSM DISCIPLINE ENGINE</span>
+            <h3>⚡ Institutional Risk & Position Sizing Calculator</h3>
+            <p>Enforce strict mathematical risk management and exact lot sizing before placing orders.</p>
+          </div>
+          <button class="calc-close-btn" id="close-risk-calc-btn" aria-label="Close Calculator">&times;</button>
+        </div>
+
+        <div class="calc-grid">
+          <div class="calc-inputs-col">
+            <div class="calc-field-group">
+              <label for="calc-capital">Trading Capital (₹)</label>
+              <div class="calc-input-wrap">
+                <span class="calc-currency-tag">₹</span>
+                <input type="number" id="calc-capital" value="100000" min="1000" step="5000">
+              </div>
+            </div>
+
+            <div class="calc-field-group">
+              <div class="calc-label-row">
+                <label for="calc-risk-pct">Risk per Trade (%)</label>
+                <span class="calc-pct-display" id="calc-risk-pct-val">2.0%</span>
+              </div>
+              <input type="range" id="calc-risk-pct" min="0.5" max="5.0" step="0.5" value="2.0" class="calc-slider">
+              <div class="slider-ticks">
+                <span>0.5%</span>
+                <span>1%</span>
+                <span style="color:var(--gold-light); font-weight:700;">2% (Recommended)</span>
+                <span>3%</span>
+                <span>5%</span>
+              </div>
+            </div>
+
+            <div class="calc-field-group">
+              <label for="calc-instrument">Instrument / Segment</label>
+              <select id="calc-instrument" class="calc-select">
+                <option value="nifty" selected>NIFTY 50 Futures/Options (Lot: 25)</option>
+                <option value="banknifty">BANK NIFTY Futures/Options (Lot: 15)</option>
+                <option value="finnifty">FINNIFTY Futures/Options (Lot: 25)</option>
+                <option value="midcpnifty">MIDCPNIFTY (Lot: 50)</option>
+                <option value="equity">Equity Cash / Delivery (1 Share)</option>
+                <option value="crudeoil">MCX CRUDE OIL (100 Barrels)</option>
+              </select>
+            </div>
+
+            <div class="calc-field-row">
+              <div class="calc-field-group">
+                <label for="calc-entry">Entry Price (₹)</label>
+                <input type="number" id="calc-entry" value="23350" step="0.05">
+              </div>
+              <div class="calc-field-group">
+                <label for="calc-sl">Stop-Loss Price (₹)</label>
+                <input type="number" id="calc-sl" value="23300" step="0.05">
+              </div>
+            </div>
+          </div>
+
+          <div class="calc-results-col">
+            <div class="calc-metric-card highlight">
+              <span class="metric-title">Max Allowed Risk (₹)</span>
+              <div class="metric-val text-gold" id="res-max-risk">₹2,000.00</div>
+              <span class="metric-sub" id="res-risk-pct-sub">2% of ₹1,00,000 capital</span>
+            </div>
+
+            <div class="calc-results-pair">
+              <div class="calc-metric-card">
+                <span class="metric-title">Recommended Quantity</span>
+                <div class="metric-val text-green" id="res-quantity">40 Qty</div>
+                <span class="metric-sub" id="res-lots">1 Lot (25 Qty)</span>
+              </div>
+              <div class="calc-metric-card">
+                <span class="metric-title">Risk per Point</span>
+                <div class="metric-val text-red" id="res-pt-risk">50.00 pts</div>
+                <span class="metric-sub" id="res-trade-val">Value: ₹5,83,750</span>
+              </div>
+            </div>
+
+            <div class="calc-targets-panel">
+              <span class="targets-title">Disciplined R:R Targets</span>
+              <div class="targets-list">
+                <div class="target-row">
+                  <span class="target-tag r15">1 : 1.5 Target</span>
+                  <span class="target-price" id="res-target-15">₹23,425.00 (+75.00 pts)</span>
+                  <span class="target-profit text-green" id="res-profit-15">+₹3,000</span>
+                </div>
+                <div class="target-row highlight">
+                  <span class="target-tag r20">1 : 2.0 Target</span>
+                  <span class="target-price" id="res-target-20">₹23,450.00 (+100.00 pts)</span>
+                  <span class="target-profit text-green" id="res-profit-20">+₹4,000</span>
+                </div>
+                <div class="target-row">
+                  <span class="target-tag r30">1 : 3.0 Target</span>
+                  <span class="target-price" id="res-target-30">₹23,500.00 (+150.00 pts)</span>
+                  <span class="target-profit text-green" id="res-profit-30">+₹6,000</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="calc-actions-row">
+              <button class="btn btn-outline-gold btn-sm" id="calc-copy-btn">📋 Copy Setup</button>
+              <a href="#enquire" class="btn btn-gold btn-sm" onclick="document.getElementById('risk-calc-modal').classList.remove('active');">Learn Risk Mastery</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div> <!-- End .site-wrapper -->
+
+  <!-- ====================================================================
+       MODALS: Video Player Modal, Image Lightbox, Lead Confirmation
+       ==================================================================== -->
+
+  <!-- 1. Video Player Modal -->
+  <div class="video-modal-backdrop" id="video-modal" aria-hidden="true">
+    <div class="video-modal-window">
+      <div class="video-modal-header">
+        <div class="video-modal-title">IWSM Video Reel</div>
+        <button class="video-modal-close" aria-label="Close Video">&times;</button>
+      </div>
+      <div class="video-modal-screen">
+        <video id="modal-video-player" controls playsinline></video>
+      </div>
+      <div class="video-modal-controls-bar">
+        <div class="modal-video-nav-btns">
+          <button class="btn btn-outline-soft btn-sm" id="video-prev-btn">◀ Previous Reel</button>
+          <button class="btn btn-outline-soft btn-sm" id="video-next-btn">Next Reel ▶</button>
+        </div>
+        <a href="#enquire" class="btn btn-gold btn-sm">Enquire About Batch</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Image Lightbox Modal -->
+  <div class="modal-overlay image-lightbox-modal" id="image-lightbox">
+    <div class="lightbox-modal-content">
+      <button class="lightbox-close" style="position:absolute; top:12px; right:18px; font-size:1.8rem; color:#fff; cursor:pointer; z-index:20; background:none; border:none;">&times;</button>
+      <div class="lightbox-img-wrap">
+        <button class="lightbox-nav-btn lightbox-prev-btn" id="lightbox-prev" aria-label="Previous image">◀</button>
+        <img id="lightbox-img" src="" alt="Gallery Image">
+        <button class="lightbox-nav-btn lightbox-next-btn" id="lightbox-next" aria-label="Next image">▶</button>
+      </div>
+      <div class="lightbox-info-bar">
+        <div>
+          <div id="lightbox-caption" style="font-family:var(--font-display); font-size:1.15rem; font-weight:700; color:var(--gold-light);"></div>
+          <div id="lightbox-desc" style="font-size:0.85rem; color:var(--text-muted); margin-top:4px;"></div>
+        </div>
+        <a id="lightbox-raw-link" href="#" target="_blank" class="btn btn-outline-gold btn-sm">View Full Res</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Lead Confirmation Modal -->
+  <div class="modal-overlay lead-confirm-modal" id="lead-modal">
+    <div class="confirmation-modal-card glass-panel-deep">
+      <div class="modal-icon-success">✓</div>
+      <h3 style="font-family:var(--font-display); font-size:1.6rem; color:#fff; margin-bottom:12px;">Counselling Session Reserved!</h3>
+      <p id="confirm-details-text" style="color:var(--text-muted); font-size:0.95rem; line-height:1.6; margin-bottom:24px;">
+        Thank you! Your details have been submitted. An IWSM Senior Market Counselor will reach out shortly to guide you through course selection and batch timings.
+      </p>
+      <button class="btn btn-gold confirm-modal-close" style="width:100%;">Great, Thank You!</button>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/velaris-background.js"></script>
+  <script src="js/spline-handler.js"></script>
+  <script src="js/scene3d.js"></script>
+  <script src="js/squeeze-gallery.js"></script>
+  <script src="js/reviews-3d.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
