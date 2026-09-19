@@ -14,7 +14,7 @@
   // Replace these with your Supabase Project settings from:
   // Supabase Dashboard -> Project Settings -> API
   const SUPABASE_CONFIG = {
-    url: window.IWSM_SUPABASE_URL || 'https://YOUR_SUPABASE_PROJECT_ID.supabase.co',
+    url: window.IWSM_SUPABASE_URL || 'https://yrhsinstwwjqhixxxacx.supabase.co',
     anonKey: window.IWSM_SUPABASE_ANON_KEY || 'YOUR_SUPABASE_ANON_PUBLIC_KEY',
     tableName: 'leads',
     recipientNumbers: ['918107911127', '918690211127']
@@ -29,7 +29,9 @@
     if (
       window.supabase &&
       SUPABASE_CONFIG.url &&
-      !SUPABASE_CONFIG.url.includes('YOUR_SUPABASE_PROJECT_ID')
+      !SUPABASE_CONFIG.url.includes('YOUR_PROJECT_ID') &&
+      SUPABASE_CONFIG.anonKey &&
+      !SUPABASE_CONFIG.anonKey.includes('YOUR_SUPABASE_ANON_PUBLIC_KEY')
     ) {
       try {
         supabaseClient = window.supabase.createClient(

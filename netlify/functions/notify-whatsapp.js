@@ -58,7 +58,26 @@ exports.handler = async function (event, context) {
       `👉 *Direct WhatsApp with Student:* https://wa.me/91${phone.replace(/\D/g, '')}?text=${encodeURIComponent(`Hi ${full_name}, thank you for enquiring about ${course} at IWSM Jaipur! When is a good time to speak?`)}`
     ].join('\n');
 
-    // Optional WhatsApp Gateway API Dispatch (if environment variables are provided)
+    // 1. CallMeBot Free Direct WhatsApp API (if API keys are configured in Netlify env)
+    const callmebot1 = process.env.CALLMEBOT_KEY_8107911127 || process.env.CALLMEBOT_API_KEY_1;
+    const callmebot2 = process.env.CALLMEBOT_KEY_8690211127 || process.env.CALLMEBOT_API_KEY_2;
+    let callmebotDispatched = false;
+
+    const callmebotTargets = [
+      { phone: '918107911127', key: callmebot1 },
+      { phone: '918690211127', key: callmebot2 }
+    ].filter(t => !!t.key);
+
+    if (callmebotTargets.length > 0) {
+      await Promise.allSettled(
+        callmebotTargets.map(t =>
+          fetch(`https://api.callmebot.com/whatsapp.php?phone=${t.phone}&text=${encodeURIComponent(message)}&apikey=${t.key}`)
+        )
+      );
+      callmebotDispatched = true;
+    }
+
+    // 2. Generic WhatsApp Gateway / Webhook API (if environment variable is set)
     const gatewayUrl = process.env.WHATSAPP_WEBHOOK_URL;
     const gatewayToken = process.env.WHATSAPP_API_TOKEN;
     let gatewayDispatched = false;
