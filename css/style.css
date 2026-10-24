@@ -4516,12 +4516,17 @@ body{font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;text-rend
 .video-card-overlay{background:linear-gradient(to top,#030812 0%,rgba(3,8,18,.94) 20%,rgba(3,8,18,.18) 70%,transparent 100%)}
 :root .video-badge-tag{background:#0a1425;color:#e5f2ec;border-color:#126744}
 :root .video-play-trigger{color:#101828;background:#63ad88}
-/* Footer remains intentionally dark, with its own local palette. */
+/* Footer palette follows the selected site theme. */
 :root .site-footer{--cream-pure:#f8fafc;--cream-soft:#e2e8f0;--text-muted:#cbd5e1;--text-dim:#b7c4d5;--gold-light:#e5f2ec;--gold-primary:#63ad88;background:#091322;color:#e2e8f0}
 :root .site-footer :is(p,a,li,span,.footer-brand-bio){color:#cbd5e1!important}
 :root .site-footer :is(h3,h4,.footer-col-title){color:#f8fafc!important}
 :root .site-footer a:hover{color:#e5f2ec!important;text-decoration:underline}
 :root .site-footer .regulatory-disclaimer-box{background:#142138;border-color:#334155;color:#cbd5e1;line-height:1.75}
+[data-theme="light"] .site-footer{--cream-pure:#172033;--cream-soft:#344157;--text-muted:#3f5068;--text-dim:#52647b;--gold-light:#126744;--gold-primary:#126744;background:#eef4f0;color:#263449;border-top-color:#c8d8cf}
+[data-theme="light"] .site-footer :is(p,a,li,span,.footer-brand-bio){color:#3f5068!important}
+[data-theme="light"] .site-footer :is(h3,h4,.footer-col-title){color:#172033!important}
+[data-theme="light"] .site-footer a:hover{color:#126744!important}
+[data-theme="light"] .site-footer .regulatory-disclaimer-box{background:#f8fbf9;border-color:#b9cec2;color:#344157;box-shadow:0 8px 24px rgba(18,103,68,.06)}
 /* Other fixed dark surfaces: menu, video player, photo viewer and mobile dock. */
 :root :is(.video-modal-window,.lightbox-modal,.lightbox-content,.mobile-nav-drawer,.mobile-action-dock){--cream-pure:#f8fafc;--cream-soft:#e2e8f0;--text-muted:#cbd5e1;--text-dim:#b7c4d5;--gold-light:#e5f2ec;color:#f8fafc}
 :root .mobile-nav-drawer{background:#0b172a}
@@ -4620,8 +4625,8 @@ html{scroll-padding-top:148px}
 
 [data-theme='light'] .footer-sebi-bar {
   background: #ffffff;
-  border: 1px solid rgba(18, 103, 68, 0.22);
-  box-shadow: 0 6px 20px rgba(18, 103, 68, 0.08);
+  border: 1px solid #9dbdad;
+  box-shadow: 0 8px 24px rgba(18, 103, 68, 0.1);
 }
 
 .footer-sebi-badge {
@@ -4652,7 +4657,7 @@ html{scroll-padding-top:148px}
 }
 
 [data-theme='light'] .footer-sebi-label {
-  color: #126744;
+  color: #0b5939 !important;
 }
 
 .footer-sebi-reg-no {
@@ -4662,7 +4667,7 @@ html{scroll-padding-top:148px}
 }
 
 [data-theme='light'] .footer-sebi-reg-no {
-  color: #0f172a;
+  color: #172033 !important;
 }
 
 .footer-sebi-reg-no strong {
@@ -4672,7 +4677,7 @@ html{scroll-padding-top:148px}
 }
 
 [data-theme='light'] .footer-sebi-reg-no strong {
-  color: #126744;
+  color: #075b39 !important;
 }
 
 .footer-sebi-links {
@@ -4696,9 +4701,9 @@ html{scroll-padding-top:148px}
 }
 
 [data-theme='light'] .footer-sebi-status {
-  color: #126744;
-  background: rgba(18, 103, 68, 0.1);
-  border-color: rgba(18, 103, 68, 0.25);
+  color: #075b39 !important;
+  background: #e5f2eb;
+  border-color: #8eb9a3;
 }
 
 .footer-sebi-verify-link {
