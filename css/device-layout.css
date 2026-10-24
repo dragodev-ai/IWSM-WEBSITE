@@ -1,0 +1,12 @@
+
+/* Capability-based touch and viewport protection across the three site pages. */
+html{ -webkit-text-size-adjust:100%; text-size-adjust:100% }
+body{min-width:0}img,video,canvas{max-width:100%}button,a,input,select,summary{touch-action:manipulation}button{user-select:none}
+.container,.panel,.sm-results,.sm-workbench,.hero-content,.section-header{min-width:0}
+.table-scroll{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+.mobile-nav-drawer{max-height:100vh;max-height:100dvh;overflow-y:auto;padding-bottom:max(18px,env(safe-area-inset-bottom,0px))}
+@media(pointer:coarse){button,input:not([type=checkbox],[type=radio],[type=range]),select,summary,.drawer-link{min-height:44px}.drawer-link{display:flex;align-items:center}input:not([type=checkbox],[type=radio],[type=range]),select,textarea{font-size:16px!important}}
+@media(max-width:600px){.iwsm-lab .panel{padding:14px}.iwsm-lab .button-row{flex-wrap:wrap}.iwsm-lab label{min-width:0}.iwsm-lab input,.iwsm-lab select{max-width:100%}.iwsm-lab .sm-risk dl{min-width:110px}.iwsm-lab .sm-workbench{grid-template-columns:minmax(0,1fr)}#calc-risk-pct{min-height:44px}}
+@media(max-height:500px) and (orientation:landscape){.iwsm-home .site-header{position:relative!important}.iwsm-home .mobile-action-dock{display:none!important}#iwsm-music{bottom:max(8px,env(safe-area-inset-bottom,0px))}.mobile-nav-drawer{max-height:100vh;max-height:100dvh}.modal,.video-modal,.lightbox{max-height:100vh;max-height:100dvh;overflow:auto}}
+@media(min-width:2200px){.iwsm-home .container,.iwsm-reviews .container{max-width:1600px;margin-inline:auto}.iwsm-lab main{max-width:1800px;margin-inline:auto}body{font-size:17px}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.mobile-nav-drawer{transition:none!important}}

@@ -1,0 +1,123 @@
+{
+  "title": "NSE NIFTY recorded EOD options sample",
+  "downloadedOn": "2026-10-16",
+  "exchange": "NSE",
+  "symbol": "NIFTY",
+  "currency": "INR",
+  "dates": [
+    "2026-10-09",
+    "2026-10-12",
+    "2026-10-13",
+    "2026-10-14",
+    "2026-10-15"
+  ],
+  "expiries": [
+    "2026-10-19",
+    "2026-10-27"
+  ],
+  "strikeMin": 21000,
+  "strikeMax": 24500,
+  "strikeStep": 50,
+  "lotSizes": [
+    65
+  ],
+  "contractCount": 1420,
+  "underlyingCount": 5,
+  "underlyingSource": "NSE bhavcopy underlying value (UndrlygPric)",
+  "priceField": "ClsPric",
+  "underlyingField": "UndrlygPric",
+  "lotSizeField": "NewBrdLotQty",
+  "openInterestField": "OpnIntrst",
+  "volumeField": "TtlTradgVol",
+  "formatSpecificationUrl": "https://nsearchives.nseindia.com/web/mediaattachment/2026-06/UDiFF_trade_and_Bhavcopy_file_formats_20260630115803.xlsx",
+  "reportPage": "https://www.nseindia.com/all-reports-derivatives",
+  "sources": [
+    {
+      "date": "2026-10-09",
+      "url": "https://nsearchives.nseindia.com/content/fo/BhavCopy_NSE_FO_0_0_0_20261009_F_0000.csv.zip",
+      "rawZipBytes": 1151709,
+      "rawZipSHA256": "3db31a70f80a3d3c3ee2f58c1ce0ec16d9f826b3b02f8553ab86f1288e422276",
+      "rawCsvSHA256": "b73d1f504ddb4821648291cb99706f87c0406452f7e246862182e20ead88e9a0",
+      "niftyOptionRows": 1888,
+      "includedRows": 284,
+      "uniqueUnderlyingValues": [
+        22520.45
+      ]
+    },
+    {
+      "date": "2026-10-12",
+      "url": "https://nsearchives.nseindia.com/content/fo/BhavCopy_NSE_FO_0_0_0_20261012_F_0000.csv.zip",
+      "rawZipBytes": 1150222,
+      "rawZipSHA256": "6998598b58dc9b856321958644a5ea1f34543146d7a785354df59807369cbae6",
+      "rawCsvSHA256": "be24ddb22a6bbb74b93d8e5aed85aa4f095de905d5a41887588a3be52c33ede2",
+      "niftyOptionRows": 1888,
+      "includedRows": 284,
+      "uniqueUnderlyingValues": [
+        22363.35
+      ]
+    },
+    {
+      "date": "2026-10-13",
+      "url": "https://nsearchives.nseindia.com/content/fo/BhavCopy_NSE_FO_0_0_0_20261013_F_0000.csv.zip",
+      "rawZipBytes": 1171033,
+      "rawZipSHA256": "d60574a1e4e3d6a805f6988cfb7853d89bdce0f4f33d192efaaa17b0d199d389",
+      "rawCsvSHA256": "64ae69da1e7cb8c29988b251f59b07ed36e620fd233a3c9dcb0448c6e1ece471",
+      "niftyOptionRows": 1900,
+      "includedRows": 284,
+      "uniqueUnderlyingValues": [
+        22721.95
+      ]
+    },
+    {
+      "date": "2026-10-14",
+      "url": "https://nsearchives.nseindia.com/content/fo/BhavCopy_NSE_FO_0_0_0_20261014_F_0000.csv.zip",
+      "rawZipBytes": 1177523,
+      "rawZipSHA256": "3e923241fa238ae1f2d2a86cc70ff63967d1fe9e0c96423716d1991bba372835",
+      "rawCsvSHA256": "79b491810157c06817126dcc1bf9ad29f73b6f7219472a8570becb8916fc01bf",
+      "niftyOptionRows": 1826,
+      "includedRows": 284,
+      "uniqueUnderlyingValues": [
+        22622.7
+      ]
+    },
+    {
+      "date": "2026-10-15",
+      "url": "https://nsearchives.nseindia.com/content/fo/BhavCopy_NSE_FO_0_0_0_20261015_F_0000.csv.zip",
+      "rawZipBytes": 1196236,
+      "rawZipSHA256": "b00554f8d333238330acd8c076dcd5c2a12094ae772565b1c3fd3e57306f3e50",
+      "rawCsvSHA256": "02c49ac27b6ea705f92746727b884f6b76baec7e00c2ead168e241f41fae6a5b",
+      "niftyOptionRows": 1882,
+      "includedRows": 284,
+      "uniqueUnderlyingValues": [
+        22997.35
+      ]
+    }
+  ],
+  "quality": [
+    {
+      "date": "2026-10-09",
+      "zeroVolumeRows": 31,
+      "nonPositiveCloseRows": 0
+    },
+    {
+      "date": "2026-10-12",
+      "zeroVolumeRows": 29,
+      "nonPositiveCloseRows": 0
+    },
+    {
+      "date": "2026-10-13",
+      "zeroVolumeRows": 11,
+      "nonPositiveCloseRows": 0
+    },
+    {
+      "date": "2026-10-14",
+      "zeroVolumeRows": 12,
+      "nonPositiveCloseRows": 0
+    },
+    {
+      "date": "2026-10-15",
+      "zeroVolumeRows": 8,
+      "nonPositiveCloseRows": 0
+    }
+  ]
+}

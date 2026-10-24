@@ -1,0 +1,54 @@
+/* Emil Kowalski motion guidance: feedback, spatial continuity and readable content. */
+:root {
+  --ease-spring: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-smooth: cubic-bezier(0.77, 0, 0.175, 1);
+}
+:is(.btn,.curriculum-tag-btn,.gallery-filter-pill,.video-filter-pill,.persona-tab-btn,.banner-nav-btn,.tgh-controls button) {
+  transition: transform 160ms var(--ease-spring), color 180ms ease,
+    background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+:is(.btn,.curriculum-tag-btn,.gallery-filter-pill,.video-filter-pill,.persona-tab-btn,.banner-nav-btn,.tgh-controls button):active {
+  transform: scale(.97);
+}
+.mobile-nav-drawer {
+  right: 0;
+  transform: translateX(105%);
+  visibility: hidden;
+  transition: transform 250ms var(--ease-spring), visibility 250ms;
+}
+.mobile-nav-drawer.open { transform: translateX(0); visibility: visible; }
+.drawer-link:hover { padding-left: 0; }
+.confirmation-modal-card {
+  transition: transform 250ms var(--ease-spring), opacity 200ms ease;
+}
+.curriculum-check-item,.exclusive-item-card {
+  transition: opacity 300ms ease, transform 300ms var(--ease-spring), border-color 180ms ease;
+}
+.homepage-banner .banner-dot::before {
+  transition: width 200ms var(--ease-spring), background-color 180ms ease, opacity 180ms ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .drawer-link { transition: transform 180ms var(--ease-spring), color 180ms ease; }
+  .drawer-link:hover { transform: translateX(4px); }
+}
+@media (hover: none) {
+  :is(.btn,.module-card,.faculty-card,.video-card):hover { transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto !important; }
+  :is(.btn,.curriculum-tag-btn,.gallery-filter-pill,.video-filter-pill,.persona-tab-btn,.banner-nav-btn,.tgh-controls button):active { transform: none; }
+  .mobile-nav-drawer,.confirmation-modal-card,.curriculum-check-item,.exclusive-item-card,
+  .homepage-banner .banner-dot::before { transition: none; }
+  .gamma-vip-card { transform: none !important; }
+}
+
+/* Keep the full 44px arrow target stationary; press feedback belongs to its icon. */
+.homepage-banner .banner-nav-btn,
+.homepage-banner .banner-nav-btn:hover,
+.homepage-banner .banner-nav-btn:active { transform: translateY(-50%); }
+.homepage-banner .banner-nav-btn svg { pointer-events: none; transition: transform 160ms var(--ease-spring); }
+.homepage-banner .banner-nav-btn:active svg { transform: scale(.9); }
+@media (prefers-reduced-motion: reduce) {
+  .homepage-banner .banner-nav-btn svg { transition: none; }
+  .homepage-banner .banner-nav-btn:active svg { transform: none; }
+}

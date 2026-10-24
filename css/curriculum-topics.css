@@ -1,0 +1,13 @@
+.module-topics-label {
+  margin: 24px 0 12px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+}
+.module-outcomes.module-topic-list { margin: 0; gap: 10px; }
+.module-topic-list li { overflow-wrap: anywhere; }
+@media (max-width: 760px) {
+  .module-topic-list li { font-size: 16px; line-height: 1.55; }
+}

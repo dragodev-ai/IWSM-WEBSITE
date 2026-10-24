@@ -1,0 +1,136 @@
+(function(){
+ 'use strict';const E=window.IWSMStrategy,R=window.IWSMStrategyRecords,$=id=>document.getElementById(id),storageKey='iwsm_strategy_lab_v1';
+ let valuationDate=R.indiaDate();
+ let state={symbol:'NIFTY example',currency:'INR',spot:23000,lotSize:65,days:14,iv:15,step:100,rate:6,dividend:0,legs:[]},outlook='Bullish',activeQuoteKey=null;
+ const esc=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const num=(n,d=2)=>Number(n).toLocaleString('en-IN',{maximumFractionDigits:d});
+ const money=n=>n===null?'Not calculated':!Number.isFinite(n)?'Unlimited':new Intl.NumberFormat('en-IN',{style:'currency',currency:state.currency,maximumFractionDigits:0}).format(Math.abs(n)<.01?0:n);
+ function status(text){$('status').hidden=!text;$('status').textContent=text;}
+ function safeStorage(){try{return JSON.parse(localStorage.getItem(storageKey)||'[]').filter(x=>{try{R.load(x);return true;}catch{return false;}}).slice(0,50);}catch{return [];}}
+ function setMode(label){$('mode-label').textContent=label+' · Valuation as of '+valuationDate;}
+ function refreshSaved(){const select=$('saved');select.replaceChildren(new Option('Select a saved strategy',''));safeStorage().forEach((s,i)=>select.add(new Option(s.name,String(i))));}
+ function theme(mode){document.documentElement.dataset.theme=mode;$('theme').textContent=mode==='dark'?'Switch to light mode':'Switch to dark mode';try{localStorage.setItem('iwsm_theme',mode);}catch{}}
+ try{theme(localStorage.getItem('iwsm_theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'));}catch{theme('light');}
+ $('theme').onclick=()=>theme(document.documentElement.dataset.theme==='dark'?'light':'dark');
+ function syncInputs(){if($('model-valuation-date'))$('model-valuation-date').value=valuationDate;for(const key of ['symbol','currency','spot','lotSize','days','iv','step','rate','dividend'])$(key).value=state[key];$('leg-days').value=state.days;$('strike').value=Math.round(state.spot/state.step)*state.step;if($('expiry-date')){$('expiry-date').value=dateString(dateAfter(state.days));$('expiry-date').setCustomValidity('');}}
+ function horizon(){const enabled=state.legs.filter(l=>l.enabled);return enabled.length?Math.min(...enabled.map(l=>l.days)):state.days;}
+ function scenario(){return {spot:state.spot*(1+Number($('spot-shift').value)/100),shift:Number($('iv-shift').value),elapsed:Math.min(horizon(),Number($('elapsed').value))};}
+ function validState(next){if(!E.validate(next)){status('Check the values: prices must be non-negative, lots and days must be whole numbers, and IV must be between 0.1% and 300%.');return false;}return true;}
+ function setTemplate(index){state.legs=E.preset(index,state);$('strategy-name').value=E.templates[index].name;$('notes').value='';resetScenario();render();status('Loaded '+E.templates[index].name+' with model-priced example positions.');}
+ function horizonFor(s){return s.legs.length?Math.min(...s.legs.map(l=>l.days)):s.days;}
+ const referenceNames={'Iron Condor (Credit)':'Short Iron Condor','Iron Condor (Debit)':'Long Iron Condor','Iron Butterfly (Credit)':'Short Iron Fly','Iron Butterfly (Debit)':'Long Iron Fly'};
+ const referenceOrder={Bullish:['Long Call','Short Put','Bull Call Spread','Bull Put Spread','Call Ratio Back Spread','Long Synthetic','Range Forward','Bullish Butterfly','Bullish Condor'],Bearish:['Short Call','Long Put','Bear Call Spread','Bear Put Spread','Put Ratio Back Spread','Short Synthetic','Risk Reversal','Bearish Butterfly','Bearish Condor'],Neutral:['Long Straddle','Short Straddle','Long Strangle','Short Strangle','Jade Lizard','Reverse Jade Lizard','Call Ratio Spread','Put Ratio Spread','Batman strategy','Long Iron Fly','Short Iron Fly','Double Fly','Long Iron Condor','Short Iron Condor','Double Condor','Call Calendar','Put Calendar','Diagonal Calendar','Call Butterfly','Put Butterfly']};
+ const displayName=t=>referenceNames[t.name]||t.name;
+ function spark(template){
+  const temp={...state,legs:E.preset(E.templates.indexOf(template),state)},span=Math.max(state.step*7,state.spot*.035),values=Array.from({length:61},(_,i)=>E.pnl(temp,Math.max(.01,state.spot-span+2*span*i/60),horizonFor(temp),0)),scale=Math.max(1,...values.map(Math.abs)),zero=35,yp=y=>zero-y/scale*29;
+  let svg='<svg viewBox="0 0 78 72" aria-hidden="true"><path class="spark-axis" d="M6 4V68H75M4 7L6 4L8 7M72 66L75 68L72 70" fill="none"/>';
+  for(let i=1;i<values.length;i++){
+   const x1=7+(i-1),x2=7+i,a=values[i-1],b=values[i];
+   const part=(xa,ya,xb,yb,positive)=>{const color=positive?'var(--spark-gain)':'var(--spark-loss)';svg+=`<path d="M${xa} ${zero}L${xa} ${yp(ya)}L${xb} ${yp(yb)}L${xb} ${zero}Z" fill="${color}" opacity=".23"/><path d="M${xa} ${yp(ya)}L${xb} ${yp(yb)}" stroke="${color}" stroke-width="1.8" fill="none"/>`;};
+   if(a*b<0){const cross=x1+(x2-x1)*Math.abs(a)/(Math.abs(a)+Math.abs(b));part(x1,a,cross,0,a>=0);part(cross,0,x2,b,b>=0);}else part(x1,a,x2,b,a+b>=0);
+  }
+  return svg+'</svg>';
+ }
+ function renderTemplates(){
+  const order=outlook==='All'?[...referenceOrder.Bullish,...referenceOrder.Bearish,...referenceOrder.Neutral,'Long Future','Short Future']:referenceOrder[outlook];
+  $('templates').innerHTML=order.map(name=>{const i=E.templates.findIndex(t=>displayName(t)===name),t=E.templates[i];return `<button type="button" class="template" data-template="${i}" aria-label="Load ${esc(t.name)}" title="${esc(name)} · ${t.legs.length} model positions">${spark(t)}<span>${esc(name)}</span></button>`;}).join('');
+ }
+ $('templates').onclick=e=>{const b=e.target.closest('[data-template]');if(b)setTemplate(Number(b.dataset.template));};
+ $('outlooks').onclick=e=>{const b=e.target.closest('[data-outlook]');if(!b)return;outlook=b.dataset.outlook;for(const c of $('outlooks').querySelectorAll('button')){c.classList.toggle('selected',c===b);c.setAttribute('aria-pressed',String(c===b));}renderTemplates();};
+ function legRow(l,i){const input=(field,value,step='any',max=10000000,min=0)=>`<input data-index="${i}" data-field="${field}" aria-label="Position ${i+1} ${field}" type="number" min="${min}" max="${max}" step="${step}" value="${value}" required>`;return `<tr><td><input type="checkbox" data-index="${i}" data-field="enabled" aria-label="Include position ${i+1}" ${l.enabled?'checked':''}></td><td><select data-index="${i}" data-field="side" aria-label="Position ${i+1} direction"><option value="1" ${l.side===1?'selected':''}>Buy</option><option value="-1" ${l.side===-1?'selected':''}>Sell</option></select></td><td><select data-index="${i}" data-field="type" aria-label="Position ${i+1} instrument">${['CE','PE','FUT'].map(t=>`<option ${t===l.type?'selected':''}>${t}</option>`).join('')}</select></td><td>${input('strike',l.strike,'any',10000000,1)}</td><td>${input('premium',l.premium)}</td><td><input data-index="${i}" data-field="iv" aria-label="Position ${i+1} IV override" type="number" min="0.1" max="300" step="any" placeholder="Global" value="${l.iv??''}"></td><td>${input('lots',l.lots,'1',100,1)}</td><td>${input('days',l.days,'1',1460,1)}</td><td><button type="button" data-remove="${i}" aria-label="Remove position ${i+1}">×</button></td></tr>`;}
+ function renderLegs(){$('legs').innerHTML=state.legs.map(legRow).join('');$('leg-count').textContent=state.legs.length;$('empty').hidden=state.legs.length>0;}
+ $('legs').onchange=e=>{const f=e.target.dataset.field,index=Number(e.target.dataset.index);if(!f||!state.legs[index])return;const value=f==='enabled'?e.target.checked:f==='type'?e.target.value:Number(e.target.value),next=structuredClone(state);if(f==='iv'&&e.target.value==='')delete next.legs[index].iv;else next.legs[index][f]=value;if(!e.target.checkValidity()||!validState(next)){e.target.setAttribute('aria-invalid','true');return;}e.target.removeAttribute('aria-invalid');state=next;status('');renderAnalysis();};
+ $('legs').onclick=e=>{const button=e.target.closest('[data-remove]');if(!button)return;state.legs.splice(Number(button.dataset.remove),1);render();};
+ function addLeg(type,strike,side,premium,days=state.days,lots=1){if(state.legs.length>=24){status('A strategy can contain up to 24 positions.');return;}const next={...state,legs:[...state.legs,{id:'leg-'+Date.now(),enabled:true,type,strike,side,premium,days,lots}]};if(!validState(next))return;state=next;status('Position added.');render();}
+ $('leg-form').onsubmit=e=>{e.preventDefault();addLeg($('type').value,Number($('strike').value),Number($('side').value),Number($('premium').value),Number($('leg-days').value),Number($('lots').value));};
+ $('model-price').onclick=()=>{if(!$('leg-form').checkValidity()){$('leg-form').reportValidity();return;}$('premium').value=E.price($('type').value,state.spot,Number($('strike').value),Number($('leg-days').value),state.iv/100,state.rate/100,state.dividend/100).toFixed(2);};
+ $('market-form').onsubmit=e=>{e.preventDefault();const next={...state,symbol:$('symbol').value.trim(),currency:$('currency').value};for(const key of ['spot','lotSize','days','iv','step','rate','dividend'])next[key]=Number($(key).value);if(!next.symbol||!validState(next))return;const selectedDate=$('model-valuation-date').value;if(!R.parseDate(selectedDate)){status('Select a valid valuation date.');return;}const dateChanged=selectedDate!==valuationDate;if(dateChanged){next.legs=[];valuationDate=selectedDate;resetScenario();}state=next;activeQuoteKey=null;setMode('User-entered reference · model calculations');syncInputs();render();renderTemplates();status(dateChanged?'Valuation date updated. Positions cleared; prices remain manual model assumptions. Load the local archive to study recorded contracts.':'Assumptions updated. Existing entry prices and strikes were preserved.');};
+ function resetScenario(){for(const id of ['spot-shift','iv-shift','elapsed'])$(id).value='0';}
+ $('reset').onclick=()=>{state.legs=[];resetScenario();render();status('Positions cleared.');};
+ $('reset-scenario').onclick=()=>{resetScenario();renderAnalysis();};
+ for(const id of ['spot-shift','iv-shift','elapsed'])$(id).oninput=renderAnalysis;
+ function riskMetric(label,value,cls=''){return `<dl class="metric"><dt>${label}</dt><dd class="${cls}">${value}</dd></dl>`;}
+ function chart(){const s=scenario(),h=horizon(),span=Math.max(state.spot*.12,state.step*6,...state.legs.map(l=>Math.abs(l.strike-state.spot)+state.step*3)),lo=Math.max(.01,state.spot-span),hi=state.spot+span;const rows=Array.from({length:121},(_,i)=>{const x=lo+(hi-lo)*i/120;return {x,expiry:E.pnl(state,x,h,0),scenario:E.pnl(state,x,s.elapsed,s.shift)};});const all=rows.flatMap(x=>[x.expiry,x.scenario]),rawLo=Math.min(0,...all),rawHi=Math.max(0,...all),padding=Math.max((rawHi-rawLo)*.12,1),ylo=rawLo-padding,yhi=rawHi+padding,W=650,H=300,left=70,right=18,top=16,bottom=36,xp=x=>left+(x-lo)/(hi-lo)*(W-left-right),yp=y=>top+(yhi-y)/(yhi-ylo)*(H-top-bottom);let svg=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(state.symbol)} strategy profit and loss chart. Exact values are available in the scenario table below.">`;
+ for(let i=0;i<=4;i++){const y=ylo+(yhi-ylo)*i/4;svg+=`<line class="grid" x1="${left}" x2="${W-right}" y1="${yp(y)}" y2="${yp(y)}"/><text text-anchor="end" x="${left-8}" y="${yp(y)+4}">${num(y,0)}</text>`;}
+ for(let i=0;i<=4;i++){const x=lo+(hi-lo)*i/4;svg+=`<text text-anchor="middle" x="${xp(x)}" y="${H-12}">${num(x,0)}</text>`;}
+ svg+=`<line x1="${left}" x2="${W-right}" y1="${yp(0)}" y2="${yp(0)}" stroke="var(--muted)" opacity=".6"/><line x1="${xp(state.spot)}" x2="${xp(state.spot)}" y1="${top}" y2="${H-bottom}" stroke="var(--muted)" stroke-dasharray="3 4" opacity=".5"/>`;
+ // Shade positive and negative first-expiry payoff separately at zero crossings.
+ for(let i=1;i<rows.length;i++){
+  const a=rows[i-1],b=rows[i],draw=(x1,y1,x2,y2,positive)=>{svg+=`<path d="M${xp(x1)} ${yp(0)}L${xp(x1)} ${yp(y1)}L${xp(x2)} ${yp(y2)}L${xp(x2)} ${yp(0)}Z" fill="${positive?'var(--spark-gain)':'var(--spark-loss)'}" opacity=".16"/>`;};
+  if(a.expiry*b.expiry<0){const x=a.x+(b.x-a.x)*Math.abs(a.expiry)/(Math.abs(a.expiry)+Math.abs(b.expiry));draw(a.x,a.expiry,x,0,a.expiry>=0);draw(x,0,b.x,b.expiry,b.expiry>=0);}else draw(a.x,a.expiry,b.x,b.expiry,a.expiry+b.expiry>=0);
+ }
+ for(const [key,color,dash] of [['expiry','var(--chart)',''],['scenario','var(--scenario)','5 4']])svg+=`<polyline fill="none" stroke="${color}" stroke-width="2.5" stroke-dasharray="${dash}" points="${rows.map(p=>xp(p.x).toFixed(2)+','+yp(p[key]).toFixed(2)).join(' ')}"/>`;
+ const point=E.pnl(state,s.spot,s.elapsed,s.shift);if(s.spot>=lo&&s.spot<=hi)svg+=`<circle cx="${xp(s.spot)}" cy="${yp(point)}" r="4" fill="var(--scenario)"><title>Scenario ${esc(money(point))}</title></circle>`;
+ $('payoff-chart').innerHTML=svg+'</svg>';$('chart-caption').textContent=`${state.symbol} · P&L in ${state.currency} · reference-price axis ${num(lo,0)}–${num(hi,0)}. Solid line: ${h} days elapsed; dashed line: ${s.elapsed} days elapsed.`;return rows;}
+ function renderScenarioGrid(s){const spots=[-10,-5,-2,0,2,5,10],ivs=[-5,-2,0,2,5];$('scenario-grid').innerHTML=`<caption>Model P&L in ${esc(state.currency)} · ${s.elapsed} days elapsed. Columns change IV in percentage points; rows change the reference price. Fees and slippage excluded.</caption><thead><tr><th>Spot change / IV</th>${ivs.map(v=>`<th>${v>0?'+':''}${v} pp</th>`).join('')}</tr></thead><tbody>${spots.map(change=>`<tr><th scope="row">${change>0?'+':''}${change}%</th>${ivs.map(iv=>{const value=E.pnl(state,state.spot*(1+change/100),s.elapsed,iv);return `<td class="${value>=0?'gain':'loss'}" title="IV ${num(Math.max(.1,state.iv+iv))}%">${num(value,0)}</td>`;}).join('')}</tr>`).join('')}</tbody>`;}
+ function renderPositionBreakdown(s){
+  const body=$('position-breakdown');if(!body)return;
+  const active=state.legs.filter(l=>l.enabled!==false),vol=Math.max(.001,(state.iv+s.shift)/100);
+  body.innerHTML=active.length?active.map(l=>{
+   const vol=Math.max(.001,((l.iv??state.iv)+s.shift)/100),days=Math.max(0,l.days-s.elapsed),quantity=l.side*l.lots*state.lotSize,value=E.price(l.type,s.spot,l.strike,days,vol,state.rate/100,state.dividend/100),pnl=quantity*(value-l.premium),g=E.greeks(l.type,s.spot,l.strike,days,vol,state.rate/100,state.dividend/100);
+   return '<tr><th scope="row">'+(l.side===1?'Buy ':'Sell ')+esc(l.type==='FUT'?'Future':num(l.strike,0)+' '+l.type)+'</th><td>'+R.addDays(valuationDate,l.days)+'</td><td>'+num(quantity,0)+'</td><td>'+num(l.premium)+'</td><td>'+num(value)+'</td><td class="'+(pnl>=0?'gain':'loss')+'">'+esc(money(pnl))+'</td>'+['delta','gamma','theta','vega','rho'].map(key=>'<td>'+num(g[key]*quantity,key==='gamma'?4:2)+'</td>').join('')+'</tr>';
+  }).join(''):'<tr><td colspan="11">Add an enabled position to see its value and sensitivities.</td></tr>';
+ }
+ function renderAnalysis(){const h=horizon();$('elapsed').max=h;if(Number($('elapsed').value)>h)$('elapsed').value=h;const s=scenario(),m=E.metrics(state);$('spot-output').value=$('spot-shift').value+'%';$('iv-output').value=$('iv-shift').value+' pp';$('days-output').value=s.elapsed+' days';
+ $('metrics').innerHTML=riskMetric('Maximum expiry profit',money(m.maxProfit),'gain')+riskMetric('Maximum expiry loss',money(m.maxLoss),'loss')+riskMetric('Net premium '+(m.credit>=0?'credit':'debit'),money(Math.abs(m.credit)))+riskMetric('Expiry breakeven'+(m.breaks.length>1?'s':''),m.mixed?'Mixed expiries':m.breaks.length?m.breaks.map(x=>num(x,1)).join(' / '):'None','small-value')+riskMetric('Model probability of profit',m.pop===null?'Not calculated':num(m.pop*100,1)+'%')+riskMetric('Risk / reward',m.mixed||!Number.isFinite(m.maxLoss)||!Number.isFinite(m.maxProfit)||m.maxLoss<=0?'Not applicable':'1 : '+num(m.maxProfit/m.maxLoss,2),'small-value');
+ renderPositionBreakdown(s);
+ const g=E.aggregateGreeks(state,s.spot,s.elapsed,s.shift);$('greeks').innerHTML=Object.entries(g).map(([key,value])=>`<dl><dt>${key[0].toUpperCase()+key.slice(1)}</dt><dd>${num(value,key==='gamma'?4:2)}</dd></dl>`).join('');
+ const p=E.pnl(state,s.spot,s.elapsed,s.shift);$('scenario-result').innerHTML=`Reference price <strong>${esc(num(s.spot))}</strong> · IV <strong>${num(Math.max(.1,state.iv+s.shift))}%</strong><br>Model scenario P&L <strong class="${p>=0?'gain':'loss'}">${esc(money(p))}</strong>${m.mixed?'<br>Calendar / mixed-expiry position: first-expiry values are model estimates; exact maximum risk and POP are not calculated.':''}`;
+ $('payoff-date').value=dateString(dateAfter(s.elapsed));$('payoff-date').max=dateString(dateAfter(h));chart();$('pnl-table').innerHTML=[-.1,-.05,-.02,0,.02,.05,.1].map(change=>{const x=state.spot*(1+change),a=E.pnl(state,x,h,0),b=E.pnl(state,x,s.elapsed,s.shift);return `<tr><td>${num(x)} (${change>=0?'+':''}${num(change*100)}%)</td><td class="${a>=0?'gain':'loss'}">${esc(money(a))}</td><td class="${b>=0?'gain':'loss'}">${esc(money(b))}</td></tr>`;}).join('');renderScenarioGrid(s);window.dispatchEvent(new CustomEvent('iwsm:strategy-changed'));}
+ let chainRange=10;
+ function renderChain(){const atm=Math.round(state.spot/state.step)*state.step;let html='';for(let i=-chainRange;i<=chainRange;i++){
+  const k=atm+i*state.step;if(k<=0)continue;
+  const ce=E.price('CE',state.spot,k,state.days,state.iv/100,state.rate/100,state.dividend/100),pe=E.price('PE',state.spot,k,state.days,state.iv/100,state.rate/100,state.dividend/100),cg=E.greeks('CE',state.spot,k,state.days,state.iv/100,state.rate/100,state.dividend/100),pg=E.greeks('PE',state.spot,k,state.days,state.iv/100,state.rate/100,state.dividend/100),T=state.days/365,v=state.iv/100,d2=(Math.log(state.spot/k)+(state.rate/100-state.dividend/100-v*v/2)*T)/(v*Math.sqrt(T)),itm=100*E.cdf(d2);
+  const actions=(type,value)=>`<span class="chain-price ${type==='CE'?'call-price':'put-price'}">${num(value)}</span><span class="chain-actions">`+[1,-1].map(side=>`<button type="button" data-chain="${type}" data-strike="${k}" data-side="${side}" aria-label="${side===1?'Buy':'Sell'} ${k} ${type==='CE'?'call':'put'}">${side===1?'B':'S'}</button>`).join('')+'</span>';
+  html+=`<tr ${k===atm?'class="atm-row"':''}><td>${num(itm,1)}</td><td>${num(state.iv)}</td><td>${num(cg.delta*100,2)}</td><td class="unavailable">—</td><td>${actions('CE',ce)}</td><td class="strike-cell">${num(k,0)}</td><td>${actions('PE',pe)}</td><td class="unavailable">—</td><td>${num(pg.delta*100,2)}</td><td>${num(state.iv)}</td><td>${num(100-itm,1)}</td></tr>`;
+ }$('chain-rows').innerHTML=html;$('chain-expiry').textContent=dateAfter(state.days).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}).replaceAll(' ','').toUpperCase();}
+ document.querySelector('.chain-toolbar').onclick=e=>{const b=e.target.closest('[data-range]');if(!b)return;chainRange=Number(b.dataset.range);document.querySelectorAll('[data-range]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));renderChain();};
+ $('chain-rows').onclick=e=>{const b=e.target.closest('[data-chain]');if(!b)return;const k=Number(b.dataset.strike),type=b.dataset.chain;addLeg(type,k,Number(b.dataset.side),Number(E.price(type,state.spot,k,state.days,state.iv/100,state.rate/100,state.dividend/100).toFixed(2)));};
+ function render(){renderLegs();renderAnalysis();renderChain();renderSnapshot();}
+ function saveRecord(){return R.create(state,{name:$('strategy-name').value,notes:$('notes').value,asOf:valuationDate});}
+ $('save').onclick=()=>{try{const all=safeStorage();if(all.length>=50){status('This browser already has 50 strategies. Export or delete one before saving another.');return;}all.push(saveRecord());localStorage.setItem(storageKey,JSON.stringify(all));refreshSaved();$('saved').value=String(all.length-1);window.dispatchEvent(new CustomEvent('iwsm:strategies-saved'));status('Strategy saved in this browser as of '+valuationDate+'.');}catch{status('Browser storage is unavailable. Use Export strategy to keep a copy.');}};
+ function loadRecord(record){const loaded=R.load(record);activeQuoteKey=null;valuationDate=loaded.asOf;state=loaded.state;state.legs.forEach(l=>l.enabled=l.enabled!==false);$('strategy-name').value=loaded.name;$('notes').value=loaded.notes;setMode('Dated model snapshot');syncInputs();resetScenario();render();renderTemplates();status(loaded.notice);return saveRecord();}
+ $('load').onclick=()=>{const index=$('saved').value;if(index===''){status('Select a saved strategy first.');return;}try{loadRecord(safeStorage()[Number(index)]);}catch{status('This saved strategy could not be loaded.');}};
+ $('delete').onclick=()=>{const index=$('saved').value;if(index===''){status('Select a saved strategy first.');return;}try{const all=safeStorage();all.splice(Number(index),1);localStorage.setItem(storageKey,JSON.stringify(all));refreshSaved();window.dispatchEvent(new CustomEvent('iwsm:strategies-saved'));status('Selected local strategy deleted.');}catch{status('Browser storage is unavailable.');}};
+ function download(content,type,name){const url=URL.createObjectURL(new Blob([content],{type})),a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+ $('export-json').onclick=()=>download(JSON.stringify(saveRecord(),null,2),'application/json','iwsm-strategy.json');
+ $('import-json').onchange=async e=>{const file=e.target.files[0];if(!file)return;try{if(file.size>100000)throw Error('File too large');loadRecord(JSON.parse(await file.text()));}catch{status('Import failed. Choose an IWSM strategy JSON file smaller than 100 KB with valid positions.');}e.target.value='';};
+ $('export-csv').onclick=()=>{const rows=chart();download(['reference_price,first_expiry_pnl,scenario_pnl,currency',...rows.map(p=>[p.x.toFixed(2),p.expiry.toFixed(2),p.scenario.toFixed(2),state.currency].join(','))].join('\r\n'),'text/csv;charset=utf-8','iwsm-scenario-pnl.csv');};
+
+ // Calendar controls use local calendar dates, avoiding UTC midnight shifts.
+ function today(){return new Date(valuationDate+'T12:00:00');}
+ function dateAfter(days){const d=today();d.setDate(d.getDate()+Number(days));return d;}
+ function dateString(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+ function dateDays(value){const d=new Date(value+'T12:00:00');return Math.round((d-today())/86400000);}
+ function renderSnapshot(){
+  if($('valuation-asof'))$('valuation-asof').textContent='Valuation as of '+valuationDate+(valuationDate!==R.indiaDate()?' · dated snapshot':'');
+  $('snapshot-spot').textContent=num(state.spot);$('snapshot-lot').textContent=state.lotSize;$('snapshot-iv').textContent=num(state.iv);$('snapshot-dte').textContent=state.days;
+  $('payoff-date').min=dateString(today());$('payoff-date').max=dateString(dateAfter(horizon()));
+  $('expiry-date').min=dateString(dateAfter(1));$('expiry-date').max=dateString(dateAfter(1460));
+ }
+ $('edit-assumptions').onclick=()=>{$('assumptions').open=!$('assumptions').open;if($('assumptions').open)$('spot').focus();};
+ $('payoff-date').onchange=()=>{const n=dateDays($('payoff-date').value);if(!Number.isFinite(n)||n<0||n>horizon()){status('Choose a pay-off date between the valuation date and the earliest position expiry.');renderAnalysis();return;}$('elapsed').value=n;renderAnalysis();};
+ $('expiry-date').onchange=()=>{const n=dateDays($('expiry-date').value);if(!Number.isInteger(n)||n<1||n>1460){$('expiry-date').setCustomValidity('Choose an expiry 1–1460 days from the valuation date.');return;}$('expiry-date').setCustomValidity('');$('leg-days').value=n;};
+ document.querySelectorAll('input[name=direction]').forEach(r=>r.onchange=()=>{$('side').value=r.value;});
+ $('lots-minus').onclick=()=>{$('lots').value=Math.max(1,Number($('lots').value||1)-1);};
+ $('lots-plus').onclick=()=>{$('lots').value=Math.min(100,Number($('lots').value||1)+1);};
+ $('segment').onchange=()=>{const future=$('segment').value==='Futures';$('type').value=future?'FUT':'CE';$('option-type-label').hidden=future;$('strike-label').hidden=future;$('entry-price-label').textContent=future?'Futures Entry Price':'Entry Price';$('premium').value=E.price($('type').value,state.spot,Number($('strike').value),Number($('leg-days').value),state.iv/100,state.rate/100,state.dividend/100).toFixed(2);};
+ function selectAnalysis(name,focus=false){document.querySelectorAll('[data-analysis]').forEach(b=>{const selected=b.dataset.analysis===name;b.setAttribute('aria-selected',String(selected));b.tabIndex=selected?0:-1;$('analysis-'+b.dataset.analysis).hidden=!selected;if(selected&&focus)b.focus();});}
+ document.querySelector('.analysis-tabs').onclick=e=>{const b=e.target.closest('[data-analysis]');if(b)selectAnalysis(b.dataset.analysis);};
+ document.querySelector('.analysis-tabs').onkeydown=e=>{const tabs=[...document.querySelectorAll('[data-analysis]')],index=tabs.indexOf(document.activeElement);if(index<0||!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;e.preventDefault();const next=e.key==='Home'?0:e.key==='End'?tabs.length-1:(index+(e.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;selectAnalysis(tabs[next].dataset.analysis,true);};
+
+ window.addEventListener('iwsm:apply-market-quote',e=>{
+  const {quote:q,refresh}=e.detail||{};
+  if(!q||!Number.isFinite(q.price)||q.price<=0||q.price>1e7||q.currency!=='INR'||!['NSE','BSE'].includes(q.exchange)||! /^[A-Z0-9][A-Z0-9&.-]{0,29}$/.test(q.symbol||''))return;
+  const key=(q.provider||'Indian Stock Market API')+':'+q.exchange+':'+q.symbol,label=q.symbol+' ('+q.exchange+')';
+  if(refresh&&(activeQuoteKey!==key||state.symbol!==label||state.currency!=='INR'))return;
+  const next=refresh?{...state,spot:q.price}:{...state,symbol:label,currency:'INR',spot:q.price,lotSize:1,step:q.symbol==='NIFTY50'?50:['NIFTYBANK','SENSEX'].includes(q.symbol)?100:Math.max(1,Math.round(q.price*.01)),legs:[]};
+  if(!validState(next))return;valuationDate=R.indiaDate();state=next;activeQuoteKey=key;if(!refresh)resetScenario();syncInputs();render();renderTemplates();
+  const sourceDate=q.sourceAsOf?new Date(q.sourceAsOf):null,stamp=sourceDate&&Number.isFinite(+sourceDate)?sourceDate.toLocaleString('en-IN',{timeZone:'Asia/Kolkata',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',hour12:false})+' IST':'time unavailable';
+  setMode(q.exchange+' reference · '+(q.provider==='Finstack'?'Finstack free / delayed · ':'' )+stamp+' · '+(q.provider==='Finstack'?'model options':'delay unverified · model options'));
+  status(refresh?'Market reference refreshed. Existing strikes and entry premiums were preserved.':'Market reference applied in INR. Positions cleared; units per lot are set to an example of 1. Verify contract units, expiry and IV.');
+  window.dispatchEvent(new CustomEvent('iwsm:quote-applied',{detail:{key,refresh:!!refresh}}));
+ });
+ window.IWSMLab=Object.freeze({snapshot:()=>structuredClone(state),getScenario:()=>({...scenario()}),getAsOf:()=>valuationDate,exportSaveRecord:saveRecord,savedRecords:()=>structuredClone(safeStorage()),loadRecord,loadSnapshot:record=>loadRecord(R.create(record.state,{name:record.name,notes:record.notes,asOf:record.asOf}))});
+ setMode('Editable assumptions · model calculations');syncInputs();state.legs=E.preset(1,state);$('strategy-name').value='Bull Call Spread';renderTemplates();render();refreshSaved();
+})();

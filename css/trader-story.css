@@ -1,0 +1,46 @@
+#trader-story{height:280vh;position:relative;background:var(--navy-base,#081526);color:var(--cream-pure,#edf3f9);isolation:isolate}
+#trader-story .trader-sticky{position:sticky;top:110px;min-height:calc(100svh - 110px);display:grid;grid-template-columns:minmax(0,.37fr) minmax(0,.63fr);gap:clamp(24px,4vw,72px);align-items:center;max-width:1600px;margin:auto;padding:60px clamp(24px,5vw,90px);box-sizing:border-box}
+#trader-story h2{font-family:'IWSM Compressed',Impact,sans-serif!important;font-weight:400!important;font-size:clamp(48px,5.5vw,96px)!important;line-height:.98!important;letter-spacing:-.015em!important;margin:0;max-width:7.8ch;color:inherit}
+#trader-story .trader-visual{position:relative;min-width:0}
+#trader-story .trader-screen{position:relative;aspect-ratio:16/9;overflow:hidden;background:#d5d5ce}
+#trader-story canvas,#trader-story img{display:block;width:100%;height:100%;object-fit:contain;position:absolute;inset:0}
+#trader-story canvas[hidden]{display:none}
+#trader-story .trader-track{height:2px;background:color-mix(in srgb,currentColor 18%,transparent);margin-top:24px}
+#trader-story .trader-track span{display:block;width:100%;height:100%;background:var(--type-accent,#6095df);transform:scaleX(0);transform-origin:left}
+html[data-theme=light] #trader-story{background:#f0f5f1;color:#123b2a}
+@media(max-width:800px){#trader-story{height:210vh}#trader-story .trader-sticky{top:85px;min-height:calc(100svh - 85px);grid-template-columns:1fr;align-content:center;gap:30px;padding:35px 20px}#trader-story h2{font-size:clamp(44px,9vw,70px)!important;max-width:none}#trader-story .trader-track{margin-top:16px}}
+@media(prefers-reduced-motion:reduce){#trader-story{height:auto}#trader-story .trader-sticky{position:relative;top:auto;min-height:0;padding-block:64px}#trader-story .trader-track{display:none}}
+#trader-story.trader-static{height:auto}#trader-story.trader-static .trader-sticky{position:relative;top:auto;min-height:0}
+/* Blend only the leading edge; preserve the classroom's full composition. */
+#trader-story{--trader-backdrop:var(--navy-base,#081526);background:var(--trader-backdrop)}
+html[data-theme=light] #trader-story{--trader-backdrop:#f0f5f1}
+#trader-story .trader-sticky{gap:clamp(16px,2.2vw,40px);grid-template-columns:minmax(0,.34fr) minmax(0,.66fr)}
+#trader-story .trader-screen{background:var(--trader-backdrop)}
+#trader-story .trader-screen::after{content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,var(--trader-backdrop) 0%,color-mix(in srgb,var(--trader-backdrop) 80%,transparent) 4%,color-mix(in srgb,var(--trader-backdrop) 30%,transparent) 12%,transparent 24%);z-index:1}
+#trader-story h2{position:relative;z-index:2;text-wrap:balance}
+#trader-story .trader-motion-toggle{margin-top:16px;min-height:44px;padding:8px 16px;background:transparent;border:1px solid currentColor;border-radius:24px;color:inherit;font:600 13px/1.4 Arial,sans-serif;cursor:pointer}
+#trader-story .trader-motion-toggle[hidden]{display:none}
+#trader-story .trader-motion-toggle:focus-visible{outline:3px solid var(--type-accent);outline-offset:4px}
+@media(max-width:800px){#trader-story .trader-sticky{grid-template-columns:1fr;gap:24px}#trader-story .trader-screen::after{background:linear-gradient(90deg,var(--trader-backdrop),transparent 15%)}}
+@media(prefers-reduced-motion:reduce){#trader-story.trader-motion-enabled{height:280vh}#trader-story.trader-motion-enabled .trader-sticky{position:sticky;top:110px;min-height:calc(100svh - 110px)}#trader-story.trader-motion-enabled .trader-track{display:block}}
+@media(prefers-reduced-motion:reduce) and (max-width:800px){#trader-story.trader-motion-enabled{height:210vh}#trader-story.trader-motion-enabled .trader-sticky{top:85px;min-height:calc(100svh - 85px)}}
+
+/* Full-screen editorial replay. */
+#trader-story{height:420vh;background:#06111e;--trader-backdrop:#06111e;color:#fff}
+html[data-theme=light] #trader-story{background:#06111e;--trader-backdrop:#06111e;color:#fff}
+#trader-story .trader-sticky{top:0;height:100svh;min-height:0;max-width:none;width:100%;display:block;padding:0;overflow:hidden}
+#trader-story .trader-visual,#trader-story .trader-screen{position:absolute;inset:0;width:100%;height:100%;aspect-ratio:auto}
+#trader-story .trader-screen img,#trader-story .trader-screen canvas{object-fit:cover}
+#trader-story .trader-screen::after{background:linear-gradient(90deg,rgba(4,12,23,.9) 0%,rgba(4,12,23,.68) 30%,rgba(4,12,23,.13) 72%,rgba(4,12,23,.05) 100%)}
+#trader-story .trader-copy{position:absolute;z-index:3;top:clamp(118px,16vh,210px);left:clamp(24px,7vw,132px);right:clamp(24px,7vw,132px);max-width:900px;pointer-events:none}
+#trader-story h2{max-width:14ch;font-size:clamp(62px,8vw,150px)!important;text-wrap:balance;text-shadow:0 3px 28px rgba(0,0,0,.28)}
+#trader-story .trader-caption{font:500 clamp(18px,2vw,30px)/1.3 Arial,sans-serif;max-width:42ch;margin:22px 0 0;color:#e7edf1;text-shadow:0 2px 12px #06111e}
+#trader-story .trader-track{position:absolute;z-index:4;left:clamp(24px,7vw,132px);right:clamp(24px,7vw,132px);bottom:clamp(36px,7vh,82px);margin:0}
+#trader-story .trader-copy.is-changing{animation:trader-copy-in .38s ease-out both}
+@keyframes trader-copy-in{from{opacity:.2;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+#trader-story .trader-motion-toggle{display:none!important}
+@media(max-width:800px){#trader-story{height:350vh}#trader-story .trader-sticky{top:0;height:100svh;min-height:0;padding:0}#trader-story .trader-screen::after{background:linear-gradient(180deg,rgba(4,12,23,.85),rgba(4,12,23,.24) 60%,rgba(4,12,23,.3))}#trader-story .trader-copy{top:clamp(112px,16vh,180px);left:24px;right:24px}#trader-story h2{font-size:clamp(50px,12vw,88px)!important}#trader-story .trader-caption{font-size:18px}#trader-story .trader-track{left:24px;right:24px;bottom:42px}}
+@media(prefers-reduced-motion:reduce){#trader-story{height:auto}#trader-story .trader-sticky{position:relative;top:auto;height:100svh}#trader-story .trader-track{display:none}#trader-story .trader-copy.is-changing{animation:none}}
+@media(prefers-reduced-motion:reduce){#trader-story{height:420vh}#trader-story .trader-sticky{position:sticky;top:0;height:100svh}#trader-story .trader-track{display:block}}
+@media(prefers-reduced-motion:reduce) and (max-width:800px){#trader-story{height:350vh}}
+#trader-story,#trader-story.trader-static{position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;z-index:0!important;pointer-events:none;opacity:.38}#trader-story .trader-sticky,#trader-story.trader-static .trader-sticky{position:absolute!important;inset:0!important;width:100%!important;max-width:none!important;height:100%!important;padding:0!important}#trader-story .trader-track{display:none!important}#hero,#trusted-featured,#portfolio-demo{position:relative;z-index:1;background:transparent!important}#curriculum{position:relative;z-index:2}body{isolation:isolate}

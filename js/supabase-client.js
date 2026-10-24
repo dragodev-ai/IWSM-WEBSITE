@@ -11,13 +11,15 @@
   // ============================================================================
   // Supabase Configuration
   // ============================================================================
-  // Replace these with your Supabase Project settings from:
-  // Supabase Dashboard -> Project Settings -> API
+  // Credentials are injected at runtime via server-side globals (never hardcoded).
+  // Set window.IWSM_SUPABASE_URL and window.IWSM_SUPABASE_ANON_KEY on the page
+  // via a Netlify edge function or a <script> block generated server-side.
+  // Recipient numbers are injected via window.IWSM_RECIPIENT_NUMBERS (array of strings).
   const SUPABASE_CONFIG = {
-    url: window.IWSM_SUPABASE_URL || 'https://yrhsinstwwjqhixxxacx.supabase.co',
-    anonKey: window.IWSM_SUPABASE_ANON_KEY || 'YOUR_SUPABASE_ANON_PUBLIC_KEY',
+    url: window.IWSM_SUPABASE_URL || null,
+    anonKey: window.IWSM_SUPABASE_ANON_KEY || null,
     tableName: 'leads',
-    recipientNumbers: ['918107911127', '918690211127']
+    recipientNumbers: Array.isArray(window.IWSM_RECIPIENT_NUMBERS) ? window.IWSM_RECIPIENT_NUMBERS : []
   };
 
   let supabaseClient = null;
@@ -29,9 +31,7 @@
     if (
       window.supabase &&
       SUPABASE_CONFIG.url &&
-      !SUPABASE_CONFIG.url.includes('YOUR_PROJECT_ID') &&
-      SUPABASE_CONFIG.anonKey &&
-      !SUPABASE_CONFIG.anonKey.includes('YOUR_SUPABASE_ANON_PUBLIC_KEY')
+      SUPABASE_CONFIG.anonKey
     ) {
       try {
         supabaseClient = window.supabase.createClient(
@@ -158,9 +158,8 @@
     };
   }
 
-  // Expose to window for global access
+  // Expose only the API surface — never expose raw config (credentials / phone numbers)
   window.IWSM_BACKEND = {
-    config: SUPABASE_CONFIG,
     getSupabaseClient,
     submitLeadToSupabase,
     dispatchWhatsAppAlerts

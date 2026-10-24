@@ -1,0 +1,646 @@
+/* ==========================================================================
+   IWSM Homepage Top Banner Slider with Flag-Wave Animation & Touch/Mouse Swipe
+   ========================================================================== */
+
+/* Section Spacing directly under sticky navigation */
+.homepage-banner {
+  padding: calc(var(--header-height, 128px) + 16px) 0 8px;
+  position: relative;
+  z-index: 10;
+  overflow: visible;
+}
+
+.homepage-banner + .hero-section {
+  padding-top: 48px;
+}
+
+/* ==========================================================================
+   Something at the Top of the Banner: Live Batch Strip, Tabs & Counter
+   ========================================================================== */
+.banner-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 18px;
+  margin-bottom: 12px;
+  border-radius: 12px;
+  background: rgba(13, 24, 43, 0.72);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow: 0 8px 24px -6px rgba(0, 0, 0, 0.35);
+  transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+[data-theme='light'] .banner-top-bar {
+  background: #ffffff;
+  border: 1px solid rgba(18, 103, 68, 0.16);
+  box-shadow: 0 6px 20px -4px rgba(18, 103, 68, 0.08);
+}
+
+/* Top Left: Pulse Dot & Live Status Headline */
+.banner-top-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.banner-pulse-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  animation: bannerPulseGlow 2s infinite cubic-bezier(0.4, 0, 0.6, 1);
+  flex-shrink: 0;
+}
+
+@keyframes bannerPulseGlow {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.75);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+.banner-top-headline {
+  font-family: var(--font-display, 'Outfit', sans-serif);
+  font-size: 0.88rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: #f1f5f9;
+}
+
+[data-theme='light'] .banner-top-headline {
+  color: #0f172a;
+}
+
+.banner-top-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-radius: 999px;
+  background: rgba(234, 179, 8, 0.16);
+  color: #fbbf24;
+  border: 1px solid rgba(234, 179, 8, 0.35);
+}
+
+[data-theme='light'] .banner-top-badge {
+  background: rgba(18, 103, 68, 0.1);
+  color: #126744;
+  border-color: rgba(18, 103, 68, 0.25);
+}
+
+/* Top Center: Interactive Category Tabs */
+.banner-top-tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(6, 17, 36, 0.55);
+  padding: 4px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+[data-theme='light'] .banner-top-tabs {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+}
+
+.banner-tab-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 14px;
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+}
+
+.tab-pill-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.45;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.banner-tab-pill:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+[data-theme='light'] .banner-tab-pill:hover {
+  color: #126744;
+  background: #ffffff;
+}
+
+.banner-tab-pill.active {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+}
+
+.banner-tab-pill.active .tab-pill-dot {
+  opacity: 1;
+  background: #ffffff;
+  transform: scale(1.25);
+}
+
+[data-theme='light'] .banner-tab-pill.active {
+  background: #126744;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(18, 103, 68, 0.25);
+}
+
+/* Top Right: Swipe Prompt & Counter */
+.banner-top-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.banner-swipe-prompt {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #94a3b8;
+  letter-spacing: 0.02em;
+  opacity: 0.85;
+}
+
+[data-theme='light'] .banner-swipe-prompt {
+  color: #64748b;
+}
+
+.banner-swipe-prompt svg {
+  animation: bannerSwipeNudge 2.2s infinite ease-in-out;
+}
+
+@keyframes bannerSwipeNudge {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(3px); }
+}
+
+.banner-count-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 9px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  font-family: var(--font-mono, monospace);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #e2e8f0;
+}
+
+[data-theme='light'] .banner-count-indicator {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.count-curr {
+  color: #10b981;
+}
+
+[data-theme='light'] .count-curr {
+  color: #126744;
+}
+
+.count-sep {
+  opacity: 0.45;
+}
+
+/* ==========================================================================
+   Banner Slider Wrapper (Stage)
+   ========================================================================== */
+.banner-slider-wrapper {
+  position: relative;
+  width: 100%;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 20px 48px -12px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  background: #061124;
+  touch-action: pan-y;
+}
+
+.banner-slider-wrapper:active,
+.banner-slider-wrapper.is-dragging {
+  cursor: grabbing;
+}
+
+[data-theme='light'] .banner-slider-wrapper {
+  box-shadow: 0 16px 36px -8px rgba(0, 0, 0, 0.16), 0 0 0 1px rgba(0, 0, 0, 0.08);
+  background: #f8fafc;
+}
+
+/* Slides Track */
+.banner-track {
+  display: flex;
+  width: 300%;
+  transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+.banner-slider-wrapper.is-dragging .banner-track {
+  transition: none !important;
+}
+
+.banner-slide {
+  position: relative;
+  width: 33.333333%;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.banner-cloth-wave-wrapper {
+  position: relative;
+  width: 100%;
+  perspective: 1200px;
+  transform-style: preserve-3d;
+}
+
+.banner-link {
+  display: block;
+  position: relative;
+  width: 100%;
+  text-decoration: none;
+  color: inherit;
+  outline: none;
+}
+
+.banner-link:focus-visible {
+  outline: 3px solid #10b981;
+  outline-offset: 3px;
+}
+
+/* ==========================================================================
+   Subtle Flag Waving Animation & Cloth Fabric Sheen
+   ========================================================================== */
+.banner-flag-layer {
+  position: relative;
+  width: 100%;
+  border-radius: 14px;
+  overflow: hidden;
+  transform-origin: left center;
+  perspective: 1200px;
+  transform-style: preserve-3d;
+  will-change: transform, filter;
+  animation: flagUndulation 8s ease-in-out infinite;
+  transition: transform 0.4s ease;
+}
+
+/* Subtle sinusoidal 3D wave matching fabric in wind */
+@keyframes flagUndulation {
+  0% {
+    transform: perspective(1400px) rotateY(0deg) skewY(0deg) translateZ(0);
+  }
+  20% {
+    transform: perspective(1400px) rotateY(-0.85deg) skewY(0.28deg) translateZ(1.2px);
+  }
+  45% {
+    transform: perspective(1400px) rotateY(0.75deg) skewY(-0.24deg) translateZ(-0.8px);
+  }
+  68% {
+    transform: perspective(1400px) rotateY(-0.55deg) skewY(0.18deg) translateZ(0.9px);
+  }
+  85% {
+    transform: perspective(1400px) rotateY(0.65deg) skewY(-0.14deg) translateZ(-0.4px);
+  }
+  100% {
+    transform: perspective(1400px) rotateY(0deg) skewY(0deg) translateZ(0);
+  }
+}
+
+/* Pause waving on active slide hover for comfortable reading */
+.banner-slider-wrapper:hover .banner-flag-layer {
+  animation-play-state: paused;
+}
+
+/* SVG Displacement Map for authentic organic cloth ripple */
+@supports (filter: url('#iwsm-flag-wave-filter')) {
+  .banner-flag-layer {
+    filter: url(#iwsm-flag-wave-filter);
+  }
+}
+
+.banner-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1920 / 550;
+  object-fit: cover;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* Fabric Light & Shadow Sheen that sweeps across the flag */
+.banner-flag-sheen {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    115deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.0) 22%,
+    rgba(255, 255, 255, 0.11) 36%,
+    rgba(0, 0, 0, 0.1) 48%,
+    rgba(255, 255, 255, 0.1) 60%,
+    rgba(0, 0, 0, 0.08) 72%,
+    transparent 100%
+  );
+  background-size: 260% 100%;
+  animation: flagSheenSweep 8s ease-in-out infinite alternate;
+  mix-blend-mode: overlay;
+  border-radius: inherit;
+  z-index: 2;
+}
+
+@keyframes flagSheenSweep {
+  0% {
+    background-position: 0% 0%;
+  }
+  100% {
+    background-position: 100% 0%;
+  }
+}
+
+/* ==========================================================================
+   Navigation Arrow Buttons (Previous & Next)
+   ========================================================================== */
+.banner-nav-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 5;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(10, 20, 38, 0.75);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0.78;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.banner-prev-btn {
+  left: 14px;
+}
+
+.banner-next-btn {
+  right: 14px;
+}
+
+.banner-slider-wrapper:hover .banner-nav-btn {
+  opacity: 0.95;
+}
+
+.banner-nav-btn:hover {
+  opacity: 1 !important;
+  transform: translateY(-50%) scale(1.1);
+  background: #10b981;
+  border-color: #10b981;
+  color: #ffffff;
+  box-shadow: 0 10px 28px rgba(16, 185, 129, 0.45);
+}
+
+[data-theme='light'] .banner-nav-btn {
+  background: rgba(255, 255, 255, 0.88);
+  border-color: rgba(0, 0, 0, 0.12);
+  color: #0f172a;
+}
+
+[data-theme='light'] .banner-nav-btn:hover {
+  background: #126744;
+  border-color: #126744;
+  color: #ffffff;
+  box-shadow: 0 10px 24px rgba(18, 103, 68, 0.35);
+}
+
+.banner-nav-btn:active {
+  transform: translateY(-50%) scale(0.96);
+}
+
+/* ==========================================================================
+   Bottom Navigation: Pagination Dots with Auto-Progress Fill
+   ========================================================================== */
+.banner-bottom-bar {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  pointer-events: auto;
+}
+
+.banner-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(10, 20, 38, 0.72);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+[data-theme='light'] .banner-dots {
+  background: rgba(255, 255, 255, 0.88);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+.banner-dot {
+  position: relative;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  border: none;
+  background: rgba(255, 255, 255, 0.3);
+  padding: 0;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+[data-theme='light'] .banner-dot {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.banner-dot:hover {
+  background: rgba(255, 255, 255, 0.6);
+  transform: scale(1.15);
+}
+
+.banner-dot.active {
+  width: 28px;
+  background: #10b981;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.6);
+}
+
+[data-theme='light'] .banner-dot.active {
+  background: #126744;
+  box-shadow: 0 0 12px rgba(18, 103, 68, 0.4);
+}
+
+/* ==========================================================================
+   Responsive Adaptations
+   ========================================================================== */
+@media (max-width: 960px) {
+  .banner-top-bar {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 10px 14px;
+  }
+  .banner-top-tabs {
+    order: 3;
+    width: 100%;
+    justify-content: space-between;
+  }
+  .banner-tab-pill {
+    flex: 1;
+    justify-content: center;
+    padding: 6px 10px;
+    font-size: 0.74rem;
+  }
+  .banner-swipe-prompt {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .homepage-banner {
+    padding-top: calc(var(--header-height, 120px) + 12px);
+    padding-bottom: 4px;
+  }
+  .homepage-banner + .hero-section {
+    padding-top: 28px;
+  }
+  .banner-top-bar {
+    border-radius: 10px;
+    margin-bottom: 8px;
+    padding: 8px 10px;
+  }
+  .banner-top-headline {
+    font-size: 0.78rem;
+  }
+  .banner-top-badge {
+    display: none;
+  }
+  .banner-slider-wrapper {
+    border-radius: 10px;
+  }
+  .banner-flag-layer {
+    border-radius: 10px;
+  }
+  .banner-nav-btn {
+    width: 36px;
+    height: 36px;
+    opacity: 0.85;
+  }
+  .banner-prev-btn {
+    left: 8px;
+  }
+  .banner-next-btn {
+    right: 8px;
+  }
+  .banner-bottom-bar {
+    bottom: 8px;
+  }
+  .banner-dots {
+    padding: 4px 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .banner-tab-pill {
+    padding: 5px 6px;
+    font-size: 0.68rem;
+    gap: 4px;
+  }
+  .tab-pill-dot {
+    display: none;
+  }
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .banner-flag-layer {
+    animation: none !important;
+    filter: none !important;
+  }
+  .banner-flag-sheen {
+    display: none !important;
+  }
+  .banner-pulse-dot {
+    animation: none !important;
+  }
+  .banner-swipe-prompt svg {
+    animation: none !important;
+  }
+}
+
+/* Impeccable refinement: accessible controls, bounded navigation and brand tokens. */
+.homepage-banner .banner-top-bar{flex-wrap:wrap;gap:12px;min-width:0}
+.homepage-banner .banner-top-left{flex:1 1 360px;min-width:0;flex-wrap:wrap;gap:8px}
+.homepage-banner .banner-top-headline{white-space:normal;overflow-wrap:anywhere;line-height:1.5}
+.homepage-banner .banner-top-right{margin-left:auto;gap:12px}
+.homepage-banner .banner-swipe-prompt{display:none}
+.homepage-banner .banner-top-tabs{order:3;width:100%;min-width:0;overflow-x:auto;scrollbar-width:thin;scrollbar-color:var(--control-border) transparent;justify-content:flex-start;border-radius:8px;gap:6px;padding:4px}
+.homepage-banner .banner-tab-pill{flex:1 0 auto;justify-content:center;min-width:150px;min-height:44px;padding:10px 14px;font-size:13px;line-height:1.4;color:var(--control-soft-ink);border-radius:6px;transition:background-color .18s ease,color .18s ease}
+:root .homepage-banner .banner-tab-pill.active{background:var(--control-bg);color:var(--control-ink);box-shadow:none}
+.homepage-banner .banner-top-badge{background:var(--control-soft);color:var(--control-soft-ink);border-color:var(--control-border)}
+.homepage-banner .banner-count-indicator{font-family:var(--font-body,Inter,sans-serif);font-variant-numeric:tabular-nums}
+:root .homepage-banner .count-curr{color:var(--gold-primary)}
+.banner-autoplay{min-height:44px;min-width:44px;padding:8px 12px;background:var(--control-soft);color:var(--control-soft-ink);border:1px solid var(--control-border);border-radius:7px;font:600 12px/1.4 var(--font-body,Inter,sans-serif);cursor:pointer}
+.banner-autoplay:hover{filter:brightness(1.08)}.banner-autoplay:disabled{cursor:default;opacity:1}
+.homepage-banner .banner-bottom-bar{position:static;inset:auto;transform:none;width:100%;min-height:54px;padding:4px 0;background:var(--index-bg);pointer-events:auto;display:flex;align-items:center;justify-content:center;gap:12px}
+.homepage-banner .banner-dots{padding:0 6px;gap:4px;border:0;background:transparent;box-shadow:none}
+.homepage-banner .banner-dot,.homepage-banner .banner-dot.active{width:44px;height:44px;min-width:44px;min-height:44px;background:transparent;border:0;box-shadow:none;overflow:visible;transition:none}
+.homepage-banner .banner-dot::before{content:'';position:absolute;left:50%;top:50%;width:9px;height:9px;transform:translate(-50%,-50%);border-radius:999px;background:var(--control-soft-ink);opacity:.65}
+.homepage-banner .banner-dot.active::before{width:26px;background:var(--gold-primary);opacity:1}
+.homepage-banner .banner-dot:hover{background:var(--control-soft);transform:none}
+.homepage-banner .banner-dot .dot-progress{display:none}
+.homepage-banner .banner-nav-btn{width:44px;height:44px;min-width:44px;min-height:44px;opacity:1;top:calc((100% - 54px)/2);background:var(--control-bg);color:var(--control-ink);border:1px solid var(--control-border);box-shadow:none}
+.homepage-banner .banner-nav-btn:hover{background:var(--control-bg);color:var(--control-ink);filter:brightness(1.08)}
+.homepage-banner :is(button,.banner-link):focus-visible{outline:3px solid var(--gold-primary);outline-offset:2px}
+.homepage-banner .banner-link:focus-visible{outline-offset:-4px}
+.homepage-banner[data-autoplay=paused] :is(.banner-flag-layer,.banner-flag-sheen,.banner-pulse-dot,.banner-swipe-prompt svg){animation-play-state:paused}
+@media(max-width:760px){.homepage-banner .banner-top-left{flex:1 1 0}.homepage-banner .banner-top-right{width:auto;justify-content:flex-end;margin:0}.homepage-banner .banner-top-tabs{border-radius:7px}.homepage-banner .banner-tab-pill{font-size:12px;min-width:145px}.homepage-banner .banner-top-badge{display:none}.banner-autoplay{font-size:12px}}
+@media(prefers-reduced-motion:reduce){.homepage-banner .banner-track{transition:none!important}.homepage-banner :is(.banner-tab-pill,.banner-nav-btn,.banner-dot,.banner-autoplay){transition:none!important}}

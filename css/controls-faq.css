@@ -1,0 +1,43 @@
+/* Readable semantic actions in both themes; shader frames only for media controls. */
+:root{--control-bg:#1757a4;--control-ink:#fff;--control-border:#669de1;--control-soft:#172a45;--control-soft-ink:#e5efff}
+[data-theme="light"]{--control-bg:#126744;--control-ink:#fff;--control-border:#126744;--control-soft:#e7f3eb;--control-soft-ink:#174a34}
+.btn,.account-button{min-height:44px;max-width:100%;height:auto;white-space:normal;text-align:center;line-height:1.4;overflow-wrap:anywhere;box-shadow:none!important}
+:root :is(.btn-gold,.account-primary){background:var(--control-bg)!important;color:var(--control-ink)!important;border:1px solid var(--control-border)!important;-webkit-text-fill-color:currentColor}
+:root :is(.btn-outline-gold,.btn-outline-soft,.account-button:not(.account-primary),.squeeze-arrow-btn,.campus-controls button){background:var(--control-soft)!important;color:var(--control-soft-ink)!important;border:1px solid var(--control-border)!important}
+:root :is(.btn,.account-button):hover{filter:brightness(1.12);transform:translateY(-1px)}
+:root :is(.curriculum-tab-btn,.curriculum-tag-btn,.gallery-filter-pill,.video-filter-pill){background:var(--control-soft);color:var(--control-soft-ink);border:1px solid var(--control-border);min-height:44px;padding:10px 16px;box-shadow:none}
+:root :is(.curriculum-tab-btn,.curriculum-tag-btn,.gallery-filter-pill,.video-filter-pill).active{background:var(--control-bg)!important;color:#fff!important}
+.curriculum-tags-filter{gap:12px;align-items:stretch}
+:root .curriculum-tag-btn{font-family:var(--font-body,Inter,sans-serif);font-size:16px;font-weight:600;line-height:1.4;letter-spacing:0;justify-content:center;max-width:100%;white-space:normal;overflow-wrap:anywhere;text-align:center;opacity:1;-webkit-text-fill-color:currentColor;transition:background-color .18s ease,border-color .18s ease}
+:root .curriculum-tag-btn:hover{transform:none;box-shadow:none}
+:root .curriculum-tag-btn:not(.active):hover{background:#254365;color:#fff}
+[data-theme="light"] .curriculum-tag-btn:not(.active):hover{background:#d4e9dc;color:#174a34}
+@media(max-width:600px){.curriculum-tags-filter{justify-content:flex-start;gap:10px}:root .curriculum-tag-btn{padding:10px 14px}}
+:root .video-play-trigger{background:var(--control-bg);color:#fff}
+:where(button,a,summary,input,select):focus-visible{outline:3px solid var(--control-border);outline-offset:4px}
+.liquid-action.play-control{position:relative;display:block;width:120px;height:120px;flex:none}
+.liquid-action .liquid-metal-button{position:relative!important;width:100%!important;height:100%!important;min-height:0!important;overflow:hidden;border-radius:50%}
+.liquid-action .liquid-metal-button__frame{position:absolute;inset:0;width:100%;height:100%;border:0}
+.header-actions .account-button{display:inline-flex;align-items:center;justify-content:center;white-space:nowrap}
+.module-enquire-link{color:var(--control-soft-ink);display:inline-flex;align-items:center;min-height:44px;padding:6px 0}
+[data-theme="light"] .module-enquire-link{color:#126744}
+.faq-section{background:#0b1628;border-top:1px solid #29415f;padding:80px 0;color:#edf3fb}
+.faq-layout{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:64px;align-items:start}
+.faq-copy h2{font-size:clamp(30px,3.5vw,46px);line-height:1.15;letter-spacing:-.035em;margin:18px 0}.faq-copy p{color:#bfcede;line-height:1.7}
+.faq-list details{border-bottom:1px solid #34506f}.faq-list summary{display:flex;align-items:center;justify-content:space-between;gap:20px;list-style:none;cursor:pointer;font-size:16px;font-weight:600;line-height:1.5;padding:20px 0;min-height:60px;color:#edf3fb}.faq-list summary::-webkit-details-marker{display:none}.faq-list summary::after{content:'+';font-size:24px;flex:none;color:#99c7ff}.faq-list details[open] summary::after{content:'−'}.faq-list details p{font-size:15px;line-height:1.8;color:#bfcede;padding:0 30px 22px 0;margin:0}
+.faq-list a{color:#a8cdff;text-decoration:underline}.faq-copy .faq-eyebrow{font-size:12px;letter-spacing:.12em;color:#a8cdff}
+[data-theme="light"] .faq-section{background:#f0f7f3;color:#152a22;border-color:#bad6c7}[data-theme="light"] .faq-list details{border-color:#bad6c7}[data-theme="light"] .faq-list summary,[data-theme="light"] .faq-copy h2{color:#152a22}[data-theme="light"] .faq-list details p,[data-theme="light"] .faq-copy p{color:#354e43}[data-theme="light"] .faq-list a,[data-theme="light"] .faq-list summary::after,[data-theme="light"] .faq-eyebrow{color:#126744}
+@media(max-width:760px){.faq-layout{grid-template-columns:1fr;gap:24px}.faq-section{padding:60px 0}.header-actions{gap:6px}.header-actions .account-button{padding:8px 10px}.btn{padding:12px 18px}.hero-cta-wrap{display:flex;flex-wrap:wrap}.hero-cta-wrap .btn{flex:1 1 220px}}
+@media(prefers-reduced-motion:reduce){:root :is(.btn,.account-button):hover{transform:none}}
+/* Compact reel actions; preserve the preview and caption space. */
+:root .video-play-trigger{width:44px;height:44px;min-height:44px;flex:0 0 44px;border-radius:50%;border:1px solid #8abaff;background:#1757a4;color:#fff;box-shadow:0 3px 10px #0003;padding:0;cursor:pointer}
+[data-theme="light"] .video-play-trigger{background:#126744;border-color:#126744;color:#fff}
+.video-play-trigger svg{width:18px;height:18px;pointer-events:none}
+.video-card-item:hover .video-play-trigger{transform:scale(1.06)}
+.carnival-grid{grid-template-columns:minmax(0,1fr)}.campus-gallery-intro{display:none}
+#campus-gallery-root{margin-top:40px;min-width:0}.campus-masonry{column-gap:18px}
+.campus-thumbnail{display:block;width:100%;padding:0;border:0;background:transparent;text-align:left;margin-bottom:18px;cursor:zoom-in}
+.campus-thumbnail img{display:block;width:100%;height:auto;border-radius:12px}
+.campus-photo-modal{z-index:10000!important}.campus-photo-modal button{width:44px;height:44px;border:1px solid #ffffff55;display:grid;place-items:center}
+.campus-photo-modal img{max-height:85vh;max-height:85dvh}
+@media(max-width:560px){.campus-masonry{columns:1}.campus-photo-modal button{top:16px;right:16px}.video-card-info h4{font-size:14px}.video-card-overlay{padding:14px}.carnival-grid .section-title{font-size:34px}}

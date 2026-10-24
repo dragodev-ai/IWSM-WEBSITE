@@ -51,6 +51,7 @@
   let mouseNormX = 0;
   let mouseNormY = 0;
 
+  const compactReviews=matchMedia('(max-width:900px)');let renderFrame=null;compactReviews.addEventListener('change',()=>{if(compactReviews.matches){cancelAnimationFrame(renderFrame);renderFrame=null;}else{cancelAnimationFrame(renderFrame);renderFrame=requestAnimationFrame(renderLoop);}});
   const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   function init3DReviewsEngine() {
@@ -98,7 +99,7 @@
     onPageScroll();
 
     // Start continuous 60fps render loop
-    requestAnimationFrame(renderLoop);
+    if(!compactReviews.matches)renderFrame=requestAnimationFrame(renderLoop);
   }
 
   function updateTargets() {
@@ -186,7 +187,7 @@
       }
     });
 
-    requestAnimationFrame(renderLoop);
+    if(!compactReviews.matches)renderFrame=requestAnimationFrame(renderLoop);
   }
 
   // Initialize on DOM ready

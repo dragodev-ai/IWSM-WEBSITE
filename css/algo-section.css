@@ -1,0 +1,28 @@
+.algo-section{background:var(--navy-base);border-block:1px solid var(--glass-border);scroll-margin-top:24px}
+.algo-layout{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,.85fr);gap:clamp(32px,5vw,80px);align-items:center}
+.algo-copy,.algo-access{min-width:0}.algo-copy .section-title{font-size:clamp(32px,3.6vw,52px);text-align:left;letter-spacing:-.04em;line-height:1.12;margin:20px 0}
+.algo-copy .section-lead{font-size:17px;text-align:left;max-width:640px;line-height:1.8;margin:0;color:var(--text-muted)}
+.algo-topics{display:grid;gap:22px;margin:32px 0 20px}.algo-topics article{display:flex;align-items:start;gap:16px}
+.algo-step{font-size:12px;font-weight:700;line-height:22px;letter-spacing:.06em;color:var(--gold-primary);flex:0 0 28px;border-top:2px solid currentColor;padding-top:6px}
+.algo-topics h3{font-family:var(--font-display);font-size:17px;line-height:1.45;font-weight:650;color:var(--cream-pure);margin:0 0 5px}
+.algo-topics p{font-size:14px;line-height:1.7;color:var(--text-muted);margin:0;max-width:510px}
+.algo-learning-link{display:inline-flex;gap:12px;align-items:center;min-height:44px;font-size:14px;font-weight:650;color:var(--gold-light);text-decoration:none}
+.algo-learning-link:hover{text-decoration:underline;text-underline-offset:4px}
+.algo-access{padding:clamp(24px,3.2vw,42px);border:1px solid var(--glass-border-bright);border-radius:18px;background:var(--control-soft)}
+.algo-access-eyebrow{font-size:11px;letter-spacing:.13em;font-weight:700;color:var(--gold-light)}
+.algo-broker-name{font-family:var(--font-display);font-size:30px;font-weight:700;letter-spacing:-.04em;color:var(--cream-pure);display:flex;justify-content:space-between;align-items:center;margin:20px 0 24px}
+.algo-broker-name>span{font-size:24px;font-weight:400;color:var(--gold-light)}
+.algo-access h3{font-family:var(--font-display);font-size:25px;font-weight:650;line-height:1.25;letter-spacing:-.025em;color:var(--cream-pure);margin:0 0 14px}
+.algo-access>p{font-size:14px;line-height:1.75;color:var(--text-muted);margin:0}
+.algo-route{list-style:none;display:grid;gap:16px;padding:24px 0;margin:24px 0;border-block:1px solid var(--glass-border-bright)}
+.algo-route li{display:flex;align-items:center;gap:12px;font-size:14px;line-height:1.6;color:var(--cream-soft)}
+.algo-route li>span{display:flex;justify-content:center;align-items:center;flex:0 0 26px;width:26px;height:26px;font-size:11px;border:1px solid var(--control-border);border-radius:50%;color:var(--gold-light)}
+.algo-access .algo-account-link{display:flex;justify-content:center;gap:12px;align-items:center;width:100%;font-size:14px;padding:14px 16px;min-height:50px;border-radius:9px;font-weight:700}
+.algo-access p.algo-link-note{font-size:11px;line-height:1.8;margin-top:14px;color:var(--text-muted)}
+[data-theme=light] .algo-section{background:#f7faf8}
+[data-theme=light] .algo-access{background:#eaf4ee;border-color:#b5d4c3}
+@media(max-width:900px){.algo-layout{grid-template-columns:minmax(0,1fr);gap:36px}.algo-copy .section-lead{max-width:none}.algo-access{max-width:680px;width:100%;padding:28px}.algo-copy .section-title br{display:none}}
+@media(max-width:480px){.algo-section{padding-block:56px}.algo-section .badge-eyebrow{font-size:10px;letter-spacing:.06em;line-height:1.8;white-space:normal}.algo-copy .section-title{font-size:34px;margin:16px 0}.algo-copy .section-lead{font-size:15px;line-height:1.8}.algo-topics{gap:20px;margin-top:28px}.algo-topics article{gap:10px}.algo-topics h3{font-size:16px}.algo-topics p{font-size:14px}.algo-access{padding:24px 20px;border-radius:14px}.algo-access h3{font-size:24px}.algo-broker-name{font-size:28px}.algo-access .algo-account-link{font-size:13px;padding:14px 10px}.algo-route li{font-size:13px}}
+
+.algo-section .badge-eyebrow{background:var(--control-soft);border-color:var(--glass-border);color:var(--gold-light)}
+[data-theme=light] .algo-section{--glass-border-bright:#b5d4c3}

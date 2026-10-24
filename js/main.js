@@ -111,149 +111,14 @@
   // --------------------------------------------------------------------------
   // 3. Real-Time Indian Stock Market IST Clock & Seamless Left-to-Right Live Ribbon
   // --------------------------------------------------------------------------
-  const sessionStatusEl = document.getElementById('market-session-status');
-  const istClockEl = document.getElementById('ist-live-clock');
-  const tickerScrollTrack = document.getElementById('ticker-scroll-track');
-
-  function updateIndianMarketStatus() {
-    const now = new Date();
-    const timeFormatter = new Intl.DateTimeFormat('en-IN', {
-      timeZone: 'Asia/Kolkata',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: true
-    });
-
-    if (istClockEl) {
-      istClockEl.textContent = `IST ${timeFormatter.format(now)}`;
-    }
-
-    if (sessionStatusEl) {
-      const istDateStr = now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' });
-      const istDate = new Date(istDateStr);
-      const day = istDate.getDay(); // 0 = Sun, 6 = Sat
-      const hours = istDate.getHours();
-      const minutes = istDate.getMinutes();
-      const currentMinuteOfDay = hours * 60 + minutes;
-
-      const isWeekday = day >= 1 && day <= 5;
-      const marketOpen = 9 * 60 + 15;   // 09:15 AM IST
-      const marketClose = 15 * 60 + 30; // 03:30 PM IST
-
-      if (isWeekday && currentMinuteOfDay >= marketOpen && currentMinuteOfDay <= marketClose) {
-        sessionStatusEl.textContent = '● NSE/BSE LIVE TRADING SESSION';
-        sessionStatusEl.classList.remove('closed');
-      } else if (isWeekday && currentMinuteOfDay >= 9 * 60 && currentMinuteOfDay < marketOpen) {
-        sessionStatusEl.textContent = '◐ PRE-MARKET AUCTION SESSION';
-        sessionStatusEl.classList.remove('closed');
-      } else {
-        sessionStatusEl.textContent = '○ MARKET CLOSED (POST-MARKET FEED)';
-        sessionStatusEl.classList.add('closed');
-      }
-    }
-  }
-
-  updateIndianMarketStatus();
-  setInterval(updateIndianMarketStatus, 1000);
-
-  // Benchmark Indian Market quotes (15 assets across NSE, BSE, MCX, FOREX - Zero warning badges)
-  const indianMarketQuotes = [
-    { symbol: 'NIFTY 50', ex: 'NSE', price: 24964.25, change: 142.60, pct: 0.58, isUp: true },
-    { symbol: 'SENSEX', ex: 'BSE', price: 81721.40, change: 480.15, pct: 0.59, isUp: true },
-    { symbol: 'BANK NIFTY', ex: 'NSE', price: 51840.10, change: 315.80, pct: 0.61, isUp: true },
-    { symbol: 'NIFTY IT', ex: 'NSE', price: 42650.30, change: -118.40, pct: -0.28, isUp: false },
-    { symbol: 'RELIANCE', ex: 'NSE', price: 2985.60, change: 24.30, pct: 0.82, isUp: true },
-    { symbol: 'HDFC BANK', ex: 'NSE', price: 1678.90, change: 12.45, pct: 0.75, isUp: true },
-    { symbol: 'ICICI BANK', ex: 'NSE', price: 1234.50, change: 9.80, pct: 0.80, isUp: true },
-    { symbol: 'TCS', ex: 'NSE', price: 4310.20, change: -14.60, pct: -0.34, isUp: false },
-    { symbol: 'INFOSYS', ex: 'NSE', price: 1895.40, change: -8.20, pct: -0.43, isUp: false },
-    { symbol: 'SBIN', ex: 'NSE', price: 842.15, change: 7.60, pct: 0.91, isUp: true },
-    { symbol: 'TATA MOTORS', ex: 'NSE', price: 988.75, change: 15.30, pct: 1.57, isUp: true },
-    { symbol: 'BAJAJ FINANCE', ex: 'NSE', price: 7420.00, change: 85.50, pct: 1.17, isUp: true },
-    { symbol: 'MCX GOLD', ex: 'MCX', price: 75820.00, change: 240.00, pct: 0.32, isUp: true },
-    { symbol: 'MCX CRUDE', ex: 'MCX', price: 6140.00, change: -42.00, pct: -0.68, isUp: false },
-    { symbol: 'USD/INR', ex: 'FOREX', price: 83.74, change: 0.03, pct: 0.04, isUp: true }
-  ];
-
-  function buildTickerGroupHTML(quotes) {
-    return quotes.map((q) => {
-      const isUp = q.change >= 0;
-      const sign = isUp ? '+' : '';
-      const arrow = isUp ? '▲' : '▼';
-      const chgClass = isUp ? 'bull' : 'bear';
-      const formattedPrice = q.price >= 1000 
-        ? q.price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-        : q.price.toFixed(2);
-
-      return `
-        <div class="ticker-item-card" data-symbol="${q.symbol}">
-          <span class="ticker-exchange-tag">${q.ex}</span>
-          <span class="ticker-name">${q.symbol}</span>
-          <span class="ticker-val">₹${formattedPrice}</span>
-          <span class="ticker-chg-pill ${chgClass}">${arrow} ${sign}${q.change.toFixed(2)} (${sign}${q.pct.toFixed(2)}%)</span>
-        </div>
-      `;
-    }).join('');
-  }
-
-  function initLiveMarketRibbon() {
-    if (!tickerScrollTrack) return;
-
-    // Dual-cloned groups guarantee 100% continuous left-to-right movement with zero gaps on left or right
-    const groupHTML = buildTickerGroupHTML(indianMarketQuotes);
-    tickerScrollTrack.innerHTML = `
-      <div class="ticker-track-group group-1">${groupHTML}</div>
-      <div class="ticker-track-group group-2">${groupHTML}</div>
-    `;
-
-    // Real-time micro-fluctuations (subtle Wall St / Dalal St pulse animation)
-    setInterval(() => {
-      const randomIndex = Math.floor(Math.random() * indianMarketQuotes.length);
-      const item = indianMarketQuotes[randomIndex];
-      const deltaFactor = (Math.random() * 0.004 - 0.002); // -0.2% to +0.2%
-      const oldPrice = item.price;
-      item.price = Math.max(1, +(item.price * (1 + deltaFactor)).toFixed(2));
-      item.change = +(item.change + (item.price - oldPrice)).toFixed(2);
-      item.pct = +((item.change / (item.price - item.change)) * 100).toFixed(2);
-      const isUp = item.change >= 0;
-      item.isUp = isUp;
-
-      const sign = isUp ? '+' : '';
-      const arrow = isUp ? '▲' : '▼';
-      const chgClass = isUp ? 'bull' : 'bear';
-      const flashClass = deltaFactor >= 0 ? 'tick-flash-up' : 'tick-flash-down';
-      const formattedPrice = item.price >= 1000 
-        ? item.price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-        : item.price.toFixed(2);
-
-      const matchingElements = tickerScrollTrack.querySelectorAll(`.ticker-item-card[data-symbol="${item.symbol}"]`);
-      matchingElements.forEach((el) => {
-        const valEl = el.querySelector('.ticker-val');
-        const chgEl = el.querySelector('.ticker-chg-pill');
-
-        if (valEl) valEl.textContent = `₹${formattedPrice}`;
-        if (chgEl) {
-          chgEl.className = `ticker-chg-pill ${chgClass}`;
-          chgEl.textContent = `${arrow} ${sign}${item.change.toFixed(2)} (${sign}${item.pct.toFixed(2)}%)`;
-        }
-
-        el.classList.remove('tick-flash-up', 'tick-flash-down');
-        void el.offsetWidth;
-        el.classList.add(flashClass);
-        setTimeout(() => el.classList.remove(flashClass), 1000);
-      });
-    }, 2400);
-  }
-
-  initLiveMarketRibbon();
-
-  // --------------------------------------------------------------------------
+  // Market data is supplied by the official widget in campus-market.js.
   // 4. 3D Tilt Card Interaction
   // --------------------------------------------------------------------------
+  const fineMotion = window.matchMedia('(hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference)');
   const tiltCards = document.querySelectorAll('.gamma-vip-card');
   tiltCards.forEach((card) => {
     card.addEventListener('mousemove', (e) => {
+      if (!fineMotion.matches) return;
       const rect = card.getBoundingClientRect();
       const x = e.clientX - rect.left - rect.width / 2;
       const y = e.clientY - rect.top - rect.height / 2;
@@ -274,12 +139,18 @@
   const moduleCards = document.querySelectorAll('.module-card');
 
   curriculumBtns.forEach((btn) => {
+    btn.setAttribute('type', 'button');
+    btn.setAttribute('aria-pressed', String(btn.classList.contains('active')));
     btn.addEventListener('click', (e) => {
       e.preventDefault();
       const targetId = btn.getAttribute('data-target');
 
-      curriculumBtns.forEach((b) => b.classList.remove('active'));
+      curriculumBtns.forEach((b) => {
+        b.classList.remove('active');
+        b.setAttribute('aria-pressed', 'false');
+      });
       btn.classList.add('active');
+      btn.setAttribute('aria-pressed', 'true');
 
       moduleCards.forEach((card) => card.classList.remove('highlighted'));
 
@@ -287,7 +158,7 @@
         const matchingCard = document.getElementById(targetId);
         if (matchingCard) {
           matchingCard.classList.add('highlighted');
-          matchingCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          matchingCard.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches || e.detail === 0 ? 'instant' : 'smooth', block: 'center' });
         }
       }
     });
@@ -307,6 +178,10 @@
           const targetValue = parseInt(el.getAttribute('data-target') || '0', 10);
           const prefix = el.getAttribute('data-prefix') || '';
           const suffix = el.getAttribute('data-suffix') || '';
+          if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            el.textContent = `${prefix}${targetValue}${suffix}`;
+            return;
+          }
           let count = 0;
           const duration = 1800;
           const stepTime = 25;
@@ -380,16 +255,16 @@
       card.setAttribute('data-index', index);
 
       card.innerHTML = `
-        <video preload="metadata" muted playsinline poster="assets/assets/02_iwsm-classroom-and-practical-learning-environment.jpg">
+        <video preload="none" muted playsinline aria-hidden="true" poster="assets/assets/02_iwsm-classroom-and-practical-learning-environment.jpg">
           <source src="assets/VIDEOS/${item.file}#t=0.5" type="video/mp4">
         </video>
         <div class="video-card-overlay">
           <span class="video-badge-tag">${item.tag}</span>
-          <div class="video-play-trigger">
+          <button type="button" class="video-play-trigger" aria-label="Play ${item.title}">
             <svg width="22" height="22" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-          </div>
+          </button>
           <div class="video-card-info">
-            <h4>${item.title}</h4>
+            <h3>${item.title}</h3>
             <p>IWSM Official • Watch Reel</p>
           </div>
         </div>
@@ -426,6 +301,7 @@
 
     videoModalTitle.textContent = item.title;
     videoModalScreen.src = `assets/VIDEOS/${item.file}`;
+    videoModal.setAttribute('aria-hidden', 'false');
     videoModal.classList.add('active');
     videoModalScreen.play().catch(() => {});
   }
@@ -435,6 +311,7 @@
     videoModalScreen.pause();
     videoModalScreen.src = '';
     videoModal.classList.remove('active');
+    videoModal.setAttribute('aria-hidden', 'true');
   }
 
   if (videoModalClose) videoModalClose.addEventListener('click', closeVideoModal);
@@ -1081,181 +958,9 @@ Generated via IWSM Risk Discipline Engine (Jaipur)`;
   }
 
   // --------------------------------------------------------------------------
-  // 11. Lead Capture Form Submission (Direct Email to iwsm.official.global@gmail.com)
+  // 11. Enquiry course selection (submission handled by lead-form.js)
   // --------------------------------------------------------------------------
-  const forms = document.querySelectorAll('form.lead-form');
-  const confirmModal = document.querySelector('.lead-confirm-modal');
-  const confirmModalClose = document.querySelector('.confirm-modal-close');
-  const confirmDetailsWrap = document.querySelector('#confirm-details-text');
-  const confirmWhatsAppActions = document.querySelector('#confirm-whatsapp-actions');
-
-  forms.forEach((form) => {
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-
-      const nameInput = form.querySelector('input[name="fullname"]') || form.querySelector('input[placeholder*="Name"]');
-      const phoneInput = form.querySelector('input[name="phone"]') || form.querySelector('input[type="tel"]');
-      const emailInput = form.querySelector('input[name="email"]') || form.querySelector('input[type="email"]');
-      const courseSelect = form.querySelector('select');
-      const submitBtn = form.querySelector('button[type="submit"]');
-
-      const name = nameInput ? nameInput.value.trim() : 'Learner';
-      const phone = phoneInput ? phoneInput.value.trim() : '';
-      const email = emailInput ? emailInput.value.trim() : 'Not Provided';
-      const course = courseSelect ? courseSelect.value : 'Gamma Plan — 100 Days Complete Mastery (Flagship)';
-
-      if (!phone || phone.length < 8) {
-        alert('Please enter a valid mobile number so our mentor can contact you.');
-        if (phoneInput) phoneInput.focus();
-        return;
-      }
-
-      // Button loading state
-      const originalBtnHTML = submitBtn ? submitBtn.innerHTML : '';
-      if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = `<span>Sending Enquiry...</span>`;
-      }
-
-      const timestampIST = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
-
-      // 1. Send Email to iwsm.official.global@gmail.com via FormSubmit AJAX
-      try {
-        await fetch('https://formsubmit.co/ajax/iwsm.official.global@gmail.com', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify({
-            'Student Name': name,
-            'Mobile Phone': `+91 ${phone}`,
-            'Email Address': email,
-            'Course Selected': course,
-            'Submitted At (IST)': timestampIST,
-            '_subject': `🚨 New Admission Enquiry: ${name} (+91 ${phone})`,
-            '_template': 'table',
-            '_captcha': 'false'
-          })
-        });
-        console.log('✅ [IWSM] Enquiry email dispatched to iwsm.official.global@gmail.com');
-      } catch (err) {
-        console.warn('⚠️ [IWSM] Email dispatch notice:', err);
-      }
-
-      // 2. Also submit to Netlify Forms (if hosted on Netlify)
-      try {
-        const formData = new FormData(form);
-        formData.set('form-name', 'iwsm-admissions');
-        await fetch('/', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: new URLSearchParams(formData).toString()
-        });
-      } catch (err) {
-        // Silent fallback
-      }
-
-      // 3. Backup to Supabase / LocalStorage
-      const leadEntry = {
-        name,
-        phone,
-        email,
-        course,
-        timestamp: new Date().toISOString()
-      };
-      if (window.IWSM_BACKEND && window.IWSM_BACKEND.submitLeadToSupabase) {
-        window.IWSM_BACKEND.submitLeadToSupabase(leadEntry).catch(() => {});
-      }
-
-      // Restore submit button
-      if (submitBtn) {
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalBtnHTML;
-      }
-
-      // 4. Show Confirmation Modal with admission counselor details (Ending with 'soon')
-      if (confirmDetailsWrap) {
-        confirmDetailsWrap.innerHTML = `
-          <strong>Thank you, ${name}!</strong><br>
-          We have reserved your free counselling session for <strong>${course}</strong>.<br>
-          Our senior market counselor will call you on <strong>+91 ${phone}</strong> soon.
-        `;
-      }
-
-      if (confirmWhatsAppActions) {
-        confirmWhatsAppActions.innerHTML = `
-          <div style="font-size:0.85rem; color:var(--gold-light); margin-bottom:8px; font-weight:600; text-align:center;">
-            Want an instant reply? Chat with Admissions on WhatsApp:
-          </div>
-          <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
-            <a href="https://wa.me/918107911127?text=${encodeURIComponent(`Hi IWSM, I just submitted an enquiry for ${course} on your website. My name is ${name}.`)}" target="_blank" rel="noopener" class="btn btn-outline-gold" style="padding:8px 14px; font-size:0.82rem; display:inline-flex; align-items:center; gap:6px;">
-              <span>💬 8107911127</span>
-            </a>
-            <a href="https://wa.me/918690211127?text=${encodeURIComponent(`Hi IWSM, I just submitted an enquiry for ${course} on your website. My name is ${name}.`)}" target="_blank" rel="noopener" class="btn btn-outline-gold" style="padding:8px 14px; font-size:0.82rem; display:inline-flex; align-items:center; gap:6px;">
-              <span>💬 8690211127</span>
-            </a>
-          </div>
-        `;
-        confirmWhatsAppActions.style.display = 'block';
-      }
-
-      // PhonePe signature success chime
-      try {
-        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-        if (AudioContextClass) {
-          const ctx = new AudioContextClass();
-          if (ctx.state === 'suspended') ctx.resume();
-          const now = ctx.currentTime;
-
-          // Note 1: E5 (659Hz)
-          const osc1 = ctx.createOscillator();
-          const gain1 = ctx.createGain();
-          osc1.type = 'sine';
-          osc1.frequency.setValueAtTime(659.25, now + 0.1);
-          gain1.gain.setValueAtTime(0.12, now + 0.1);
-          gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
-          osc1.connect(gain1);
-          gain1.connect(ctx.destination);
-          osc1.start(now + 0.1);
-          osc1.stop(now + 0.4);
-
-          // Note 2: A5 (880Hz) - Bright harmonic chime
-          const osc2 = ctx.createOscillator();
-          const gain2 = ctx.createGain();
-          osc2.type = 'sine';
-          osc2.frequency.setValueAtTime(880, now + 0.25);
-          gain2.gain.setValueAtTime(0.15, now + 0.25);
-          gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.85);
-          osc2.connect(gain2);
-          gain2.connect(ctx.destination);
-          osc2.start(now + 0.25);
-          osc2.stop(now + 0.85);
-        }
-      } catch (err) {
-        // Optional audio chime
-      }
-
-      if (confirmModal) {
-        confirmModal.classList.remove('active');
-        void confirmModal.offsetWidth; // Force CSS reflow to re-trigger PhonePe animation
-        confirmModal.classList.add('active');
-      }
-      form.reset();
-    });
-  });
-
-  if (confirmModalClose) {
-    confirmModalClose.addEventListener('click', () => {
-      confirmModal.classList.remove('active');
-    });
-  }
-
-  if (confirmModal) {
-    confirmModal.addEventListener('click', (e) => {
-      if (e.target === confirmModal) confirmModal.classList.remove('active');
-    });
-  }
+  // Lead capture and confirmed-save messages are handled by lead-form.js.
 
   // Pre-fill enquiry with module/faculty on click (keeping #hero-course strictly on Gamma Plan)
   window.enquireForCourse = function (courseName) {
@@ -1283,26 +988,7 @@ Generated via IWSM Risk Discipline Engine (Jaipur)`;
     }
   };
 
-  // Universal WhatsApp router: When anybody clicks any mobile number or phone element, route directly to WhatsApp chat
-  document.addEventListener('click', function (e) {
-    const link = e.target.closest('a') || e.target.closest('button');
-    const text = (e.target.textContent || '') + ' ' + (link ? link.textContent : '');
-    const href = link ? (link.getAttribute('href') || '') : '';
-    
-    // Check if clicked element or text references 8107911127 or 8690211127 or tel:
-    if (href.includes('8107911127') || text.includes('8107911127')) {
-      e.preventDefault();
-      window.open('https://wa.me/918107911127?text=' + encodeURIComponent('Hi IWSM, I would like to enquire about your stock market courses and counselling.'), '_blank');
-    } else if (href.includes('8690211127') || text.includes('8690211127')) {
-      e.preventDefault();
-      window.open('https://wa.me/918690211127?text=' + encodeURIComponent('Hi IWSM, I would like to enquire about your stock market courses and counselling.'), '_blank');
-    } else if (href.startsWith('tel:')) {
-      e.preventDefault();
-      const num = href.replace(/[^0-9]/g, '');
-      const waNum = num.length === 10 ? ('91' + num) : num;
-      window.open('https://wa.me/' + waNum + '?text=' + encodeURIComponent('Hi IWSM, I would like to enquire about your stock market courses and counselling.'), '_blank');
-    }
-  });
+  // Contact links use their own explicit href; surrounding page space is inert.
 
   console.log('[IWSM Main] Application logic initialized with 3D Orbital Globe, Live Left-to-Right Ticker, Theme Switcher & Risk Calculator.');
 })();

@@ -1,0 +1,108 @@
+{
+  "retrieved": "2026-10-17",
+  "relationshipBasis": "Organizations supplied by the website owner. Logo sourcing does not verify endorsements or relationships.",
+  "logos": [
+    {
+      "id": "maharaja",
+      "name": "Maharaja College, Jaipur",
+      "file": "maharaja.jpeg",
+      "website": "https://www.uniraj.ac.in/MaharajaCollege/",
+      "source": "https://images.shiksha.com/mediadata/images/1603042653phpnytxnT.jpeg",
+      "shape": "seal",
+      "sha256": "8f6bf99bc24333af69ae7708dba8e3f8e923075594f2ff7b4ac971fc2c75f7ff"
+    },
+    {
+      "id": "poddar",
+      "name": "Poddar International College",
+      "file": "poddar.webp",
+      "website": "https://www.poddarinstitute.org/poddar-international-college/",
+      "source": "https://www.poddarinstitute.org/assets/img/logos/poddar-logo.webp",
+      "shape": "seal",
+      "sha256": "e5f0dff298c237a1b60c74b5ee402f57c00ee1335e127dc0218d2cdf011986d1"
+    },
+    {
+      "id": "taxila",
+      "name": "Taxila Business School",
+      "file": "taxila.png",
+      "website": "https://taxila.in/",
+      "source": "https://taxila.in/static/web/images/logo.png",
+      "shape": "wide",
+      "sha256": "3966da890c3b59c1e9d19483264a93f91e3f0c1426b23c9195a06e9c8b8309e3"
+    },
+    {
+      "id": "bhaskar",
+      "name": "Dainik Bhaskar",
+      "file": "bhaskar.svg",
+      "website": "https://www.bhaskar.com/",
+      "source": "https://www.bhaskar.com/",
+      "shape": "wide",
+      "sha256": "5cd83c0a6089380abf11dc5d596cdad39e9bdc19b8c5e091f02daa1fbb8f7041"
+    },
+    {
+      "id": "newsindia",
+      "name": "News India 24×7",
+      "file": "newsindia.png",
+      "website": "https://newsindia24x7.tv/",
+      "source": "https://newsindia24x7.tv/wp-content/uploads/2026/08/NEW-LOGO-WITHOUT-TAG.png",
+      "shape": "seal",
+      "sha256": "8c24e1730340750107a743e7fc9d9d13560515f8b3a8d26c26437a5bac50fb9b"
+    },
+    {
+      "id": "nse",
+      "name": "NSE",
+      "file": "nse.svg",
+      "website": "https://www.nseindia.com/",
+      "source": "https://www.nseindia.com/next-assets/images/NSE_Logo.svg",
+      "shape": "wide",
+      "sha256": "19f462ca1a561b97b8ba402f7186b1e2d5ce478f1059930232024e52e62a08cd"
+    },
+    {
+      "id": "bse",
+      "name": "BSE",
+      "file": "bse.png",
+      "website": "https://www.bseindia.com/",
+      "source": "https://www.bseindia.com/assets/includenew/images/bselogo.png",
+      "shape": "wide",
+      "sha256": "4a5c86619f54fb294e238f8fe1209ae3425f786f5c18c58f5a02454dc7b05f1f"
+    },
+    {
+      "id": "tradingview",
+      "name": "TradingView",
+      "file": "tradingview.svg",
+      "website": "https://www.tradingview.com/",
+      "source": "https://s3.tradingview.com/pub/TradingView-media-kit.zip",
+      "shape": "wide",
+      "sha256": "5a21738929bdc2ee1f2b59fa260f2de4b42c3427a6921e152dd277a1809dcf69"
+    },
+    {
+      "id": "aliceblue",
+      "name": "Alice Blue",
+      "file": "aliceblue.svg",
+      "website": "https://aliceblueonline.com/",
+      "source": "https://aliceblueonline.com/Alice-blue-logo.svg",
+      "shape": "wide",
+      "sha256": "28a8f65262719c04dc7ba8e4cbe9675d1c837d1dad40d0d14cf25c3881575b3c"
+    },
+    {
+      "id": "sharekhan",
+      "name": "Sharekhan",
+      "file": "sharekhan.svg",
+      "website": "https://www.sharekhan.com/",
+      "source": "https://www.sharekhan.com/CmsApp/MediaGalary/images/sharekhan_logo-202207131537046949004.svg?0",
+      "shape": "wide",
+      "sha256": "b10369a4729d4c91fde2afbd0c6b08506a9a6b67c5c8ef11dc7c3ec5b893acbc"
+    }
+  ],
+  "pending": [
+    {
+      "name": "SEBI registered",
+      "reason": "Registered entity name and registration number have not been provided; no registration credential is rendered."
+    }
+  ],
+  "notes": [
+    "Maharaja College logo retrieved from its Shiksha listing because the official college website timed out.",
+    "Dainik Bhaskar inline SVG from its official homepage: its foreground variable has a black fallback for standalone image display; geometry and original sun colour are unchanged.",
+    "TradingView logo is the original black wordmark from its official media kit; its ink remains black when restored.",
+    "Poddar crest is the logo used in the official page metadata."
+  ]
+}
