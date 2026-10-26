@@ -4656,14 +4656,9 @@ html{scroll-padding-top:148px}
 }
 
 .footer-sebi-icon {
-  box-sizing: border-box;
   height: 52px;
   width: 52px;
-  padding: 5px;
   object-fit: contain;
-  background: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.78);
-  border-radius: 50%;
   filter: drop-shadow(0 2px 8px rgba(220, 38, 38, 0.45));
   flex-shrink: 0;
 }
