@@ -1,0 +1,86 @@
+{
+  "version": 1,
+  "project": {
+    "name": "IWSM WEBSITE",
+    "productType": null,
+    "stack": [
+      "HTML",
+      "CSS",
+      "JavaScript",
+      "Node.js server functions"
+    ]
+  },
+  "sources": {
+    "tokens": [],
+    "components": [
+      "components/ui"
+    ],
+    "assets": [
+      "assets"
+    ],
+    "instructions": []
+  },
+  "design": {
+    "colorMode": "unknown",
+    "colors": {},
+    "typography": {},
+    "spacing": {},
+    "radius": {},
+    "shadows": {},
+    "motion": {},
+    "density": "unknown"
+  },
+  "components": {
+    "installed": [
+      "3d-testimonails",
+      "3d-testimonials-demo",
+      "carousel-squeeze",
+      "demo",
+      "shared-element-gallery",
+      "shiny-button",
+      "tilted-grid-hero",
+      "velaris",
+      "velaris-demo"
+    ],
+    "preferredPrimitives": [],
+    "patterns": []
+  },
+  "constraints": {
+    "must": [],
+    "avoid": []
+  },
+  "decisions": [
+    {
+      "date": "2026-10-16",
+      "scope": "Strategy Lab",
+      "decision": "User-selected Opstra reference: self-hosted Roboto; compact underline controls; square strategy diagrams; bullish/bearish/non-directional groups; dense call/put model chain. Preserve IWSM identity, blue dark mode and explicitly labelled theoretical values."
+    },
+    {
+      "date": "2026-10-16",
+      "scope": "Strategy Lab data connection",
+      "decision": "Use an expandable compact quote panel above the existing builder; preserve reference-style Roboto, green light/blue dark tokens and readable mobile controls. Actual source time and retrieval time are separate, and refresh preserves model entry positions."
+    },
+    {
+      "date": "2026-10-16",
+      "scope": "Strategy Lab visual theme",
+      "decision": "Match the institute homepage: offline Inter typography, green #126744 on #f7faf8 in light mode, blue actions #1757a4 on navy #030812 in dark mode, rounded bordered panels and 8px controls. Supersedes the previous Roboto/grey/square visual treatment while preserving compact financial workflows and semantic gain/loss colors."
+    },
+    {
+      "date": "2026-10-17",
+      "scope": "Trusted and featured strip",
+      "decision": "Owner-selected monochrome logo strip below the hero. Use locally saved original artwork, five columns on desktop and two on mobile, green light and navy dark surfaces. Restore original colours with a subtle glow on hover and keyboard focus; disable transitions for reduced motion. Sources and pending registration details are tracked in assets/featured-logos/sources.json."
+    },
+    {
+      "date": "2026-10-26",
+      "scope": "Partnership and regulatory branding",
+      "decision": "Strategy Lab shows the Shree Ram Traders Lounge mark without a repeated text label. Footer IWSM artwork switches by theme, and the SEBI verification card uses a short angled green accent in light mode and blue-green in dark mode while keeping registration text on a high-contrast neutral surface."
+    }
+  ],
+  "evidence": [
+    {
+      "fact": "components.installed",
+      "source": "components/ui"
+    }
+  ],
+  "generatedAt": "2026-10-16T05:51:30.566Z"
+}

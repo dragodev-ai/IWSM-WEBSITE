@@ -4607,6 +4607,10 @@ html{scroll-padding-top:148px}
    Footer SEBI Registration Verification & Compliance Bar
    ========================================================================== */
 .footer-sebi-bar {
+  --sebi-strip: linear-gradient(135deg, #123b66, #12675b);
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -4623,7 +4627,23 @@ html{scroll-padding-top:148px}
   box-shadow: 0 10px 30px -8px rgba(0, 0, 0, 0.45);
 }
 
+.footer-sebi-bar::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 0 auto 0 0;
+  width: 96px;
+  background: var(--sebi-strip);
+  clip-path: polygon(0 0, 74% 0, 100% 50%, 74% 100%, 0 100%);
+}
+
+.footer-sebi-bar > * {
+  position: relative;
+  z-index: 1;
+}
+
 [data-theme='light'] .footer-sebi-bar {
+  --sebi-strip: linear-gradient(135deg, #0b5939, #149064);
   background: #ffffff;
   border: 1px solid #9dbdad;
   box-shadow: 0 8px 24px rgba(18, 103, 68, 0.1);
@@ -4632,12 +4652,18 @@ html{scroll-padding-top:148px}
 .footer-sebi-badge {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 22px;
 }
 
 .footer-sebi-icon {
-  height: 42px;
-  width: auto;
+  box-sizing: border-box;
+  height: 52px;
+  width: 52px;
+  padding: 5px;
+  object-fit: contain;
+  background: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  border-radius: 50%;
   filter: drop-shadow(0 2px 8px rgba(220, 38, 38, 0.45));
   flex-shrink: 0;
 }
@@ -4762,6 +4788,9 @@ html{scroll-padding-top:148px}
     align-items: flex-start;
     padding: 14px 16px;
     gap: 12px;
+  }
+  .footer-sebi-bar::before {
+    width: 88px;
   }
   .footer-bottom-row {
     flex-direction: column;
