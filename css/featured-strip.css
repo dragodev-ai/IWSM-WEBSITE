@@ -1,26 +1,26 @@
-/* Official brand artwork, muted at rest and restored on hover or keyboard focus. */
+/* Official brand artwork shown in full color at rest, with a restrained hover lift. */
 .featured-strip{padding:46px 0 42px;background:#f0f7f3;border-block:1px solid #dceae1;color:#152a22;isolation:isolate}
 .featured-strip-heading{text-align:center;margin:0 0 26px;font:700 12px/1.6 var(--font-body,Inter,sans-serif);letter-spacing:.18em;text-transform:uppercase;color:#52695d}
 .featured-logos{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));align-items:center;gap:14px 24px;list-style:none;padding:0;margin:0}
 .featured-logos li{min-width:0}
 .featured-mark{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;min-height:102px;padding:10px 12px;color:inherit;text-decoration:none;border-radius:12px}
 .featured-mark::before{content:'';position:absolute;inset:2px 14px;background:rgba(18,103,68,.055);box-shadow:0 0 28px rgba(18,103,68,.13);border-radius:18px;opacity:0;transition:opacity .25s ease;z-index:-1}
-.featured-art{display:flex;align-items:center;justify-content:center;max-width:100%;width:180px;height:62px;transition:filter .3s ease,opacity .3s ease,transform .3s ease;filter:grayscale(1);opacity:.58;mix-blend-mode:multiply}
+.featured-art{display:flex;align-items:center;justify-content:center;max-width:100%;width:180px;height:62px;transition:filter .3s ease,opacity .3s ease,transform .3s ease;filter:none;opacity:1;mix-blend-mode:normal}
 .featured-art img{display:block;max-width:100%;width:auto;max-height:62px;height:auto;object-fit:contain}
 .featured-mark[data-shape=seal] .featured-art img{max-height:68px}
 .featured-mark[data-brand=taxila] .featured-art img{max-width:138px}
-[data-theme=light] .featured-mark[data-brand=taxila]:not(:hover):not(:focus-visible) .featured-art img{filter:brightness(.65)}
+
 .featured-mark[data-brand=nse] .featured-art img{max-height:62px}
 .featured-name{font:500 11px/1.5 var(--font-body,Inter,sans-serif);color:#52695d;text-align:center;transition:color .25s ease}
-.featured-mark:is(:hover,:focus-visible) .featured-art{filter:grayscale(0) drop-shadow(0 0 9px rgba(18,103,68,.24));opacity:1;transform:translateY(-2px);mix-blend-mode:normal}
+.featured-mark:is(:hover,:focus-visible) .featured-art{filter:drop-shadow(0 0 9px rgba(18,103,68,.24));opacity:1;transform:translateY(-2px);mix-blend-mode:normal}
 .featured-mark:is(:hover,:focus-visible)::before{opacity:1}
 .featured-mark:is(:hover,:focus-visible) .featured-name{color:#126744}
 .featured-mark:focus-visible{outline:2px solid #126744;outline-offset:3px}
 [data-theme=dark] .featured-strip,html:not([data-theme=light]) .featured-strip{background:#0b1628;border-color:#253e5b;color:#eef5ff}
 [data-theme=dark] .featured-strip-heading,html:not([data-theme=light]) .featured-strip-heading,[data-theme=dark] .featured-name,html:not([data-theme=light]) .featured-name{color:#aebfd2}
-[data-theme=dark] .featured-art,html:not([data-theme=light]) .featured-art{filter:grayscale(1) invert(1) brightness(2);mix-blend-mode:screen;opacity:.75}
+[data-theme=dark] .featured-art,html:not([data-theme=light]) .featured-art{filter:none;mix-blend-mode:normal;opacity:1}
 [data-theme=dark] .featured-mark::before,html:not([data-theme=light]) .featured-mark::before{background:rgba(104,168,255,.08);box-shadow:0 0 28px rgba(104,168,255,.22)}
-[data-theme=dark] .featured-mark:is(:hover,:focus-visible) .featured-art,html:not([data-theme=light]) .featured-mark:is(:hover,:focus-visible) .featured-art{filter:grayscale(0) drop-shadow(0 0 10px rgba(104,168,255,.4));opacity:1;mix-blend-mode:normal;background:#f7faf8;border-radius:7px;padding:5px 7px}
+[data-theme=dark] .featured-mark:is(:hover,:focus-visible) .featured-art,html:not([data-theme=light]) .featured-mark:is(:hover,:focus-visible) .featured-art{filter:drop-shadow(0 0 10px rgba(104,168,255,.4));opacity:1;mix-blend-mode:normal}
 [data-theme=dark] .featured-mark:is(:hover,:focus-visible) .featured-name,html:not([data-theme=light]) .featured-mark:is(:hover,:focus-visible) .featured-name{color:#b1d2ff}
 [data-theme=dark] .featured-mark:focus-visible,html:not([data-theme=light]) .featured-mark:focus-visible{outline-color:#99c7ff}
 @media(max-width:900px){.featured-logos{gap:12px 14px}.featured-art{width:145px}.featured-art img{max-height:54px}.featured-name{font-size:10px}.featured-mark{padding-inline:4px}}
