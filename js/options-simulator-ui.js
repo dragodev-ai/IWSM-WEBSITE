@@ -116,5 +116,13 @@ render=function(){replayRender();if(!s)return;const values={fee:s.feesPerOrder,s
 adopt=function(raw,saved){replayAdopt(raw,saved);search.value='';riskEditor.hidden=true;filterStrategies();render();};
 $('expiry').onchange=()=>render();
 
+// Timestamped replay and interactive chart adapter. Recorded fills remain in IWSMSimulator.
+const enhanced=IWSMReplayUI.install({host:h,tabbar,dataset:()=>d,session:()=>s,message:msg,
+ act:fn=>act(fn),adopt:(raw,saved)=>adopt(raw,saved),loadWindow:options=>{const next=M.createSession(d,options);if(s.events.length)save();pause();s=next;$('name').value=s.name;render();},refresh:()=>render(),setTab:value=>{tab=value;analysis();}});
+const beforeEnhancedRender=render,beforeEnhancedAnalysis=analysis,beforeEnhancedAdopt=adopt,beforeEnhancedChain=chain;
+chain=function(){const previous=showAll;showAll=true;try{beforeEnhancedChain();enhanced.chain();}finally{showAll=previous;}};
+analysis=function(){if(!s)return;for(const b of tabbar.children)b.setAttribute('aria-pressed',String(b.dataset.smTab===tab));if(!enhanced.analysis(tab))beforeEnhancedAnalysis();};
+render=function(){beforeEnhancedRender();enhanced.render();};
+adopt=function(raw,saved){beforeEnhancedAdopt(raw,saved);enhanced.reset();enhanced.render();};
 try{adopt(IWSMHistoryLab.dataset());}catch(e){msg(e.message);}list();fetch('/api/nse-library?mode=catalog').then(r=>r.json()).then(c=>{if(c.success){librarySymbols=c.symbols;opts($('symbol'),[...new Set([...c.symbols,...d.symbols])].sort(),s.symbol);}}).catch(()=>{});
 })();

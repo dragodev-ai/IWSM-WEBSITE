@@ -98,7 +98,7 @@
       if(targetDate){const sameDay=list.filter(t=>t.startsWith(targetDate));next=list.indexOf(sameDay.find(t=>t.slice(11)>=s.cursor.slice(11))||sameDay.at(-1));}
       else next=direction===1?list.length-1:0;
     }else{
-      if(![1,5,15,30,60].includes(amount))throw Error('Use a supported minute timeframe.');
+      if(![1,5,15,30,60,120].includes(amount))throw Error('Use a supported minute timeframe.');
       const target=instant(s.cursor)+direction*amount*MINUTE;
       if(direction===1){const found=list.findIndex((t,i)=>i>index&&instant(t)>=target);next=found<0?list.length-1:found;}
       else{for(let i=index-1;i>=0;i--)if(instant(list[i])<=target){next=i;break;}if(next===index)next=0;}
