@@ -95,6 +95,7 @@
     const frames=M.frames(d,s),days=[...new Set(frames.map(t=>t.slice(0,10)))],times=frames.filter(t=>t.startsWith(s.cursor.slice(0,10))).map(t=>t.slice(11));
     source.textContent=(d.metadata?.synthetic?'PRACTICE · SYNTHETIC PRICES':d.kind==='intraday'?'RECORDED INTRADAY':'RECORDED DAILY CLOSES')+' · '+d.source;
     source.dataset.kind=d.metadata?.synthetic?'practice':d.kind;
+    if(d.metadata?.synthetic)$('context').textContent=s.symbol+' · '+s.cursor.replace('T',' ')+' IST · Synthetic practice prices · Not historical market data';
     $('replay-date').min=days[0];$('replay-date').max=days.at(-1);$('replay-date').value=s.cursor.slice(0,10);
     options($('replay-clock'),times,s.cursor.slice(11));$('replay-clock').disabled=d.kind==='daily';
     for(const b of jumps.querySelectorAll('[data-jump]')){b.disabled=d.kind==='daily'&&b.dataset.jump!=='day';b.title=b.disabled?'Import timestamped data for minute replay.':'';}
