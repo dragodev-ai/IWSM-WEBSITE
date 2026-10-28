@@ -63,6 +63,43 @@
     const points=Array.from({length:241},(_,i)=>point(lo+(hi-lo)*i/240));
     return {spot:ref,lo,hi,points,point,expiry:expDate,mixed,start:s.start,cursor:s.cursor,hasPositions:val.positions.length>0,recordedNet:val.net,metrics:analysis.metrics};
   }
+  function scenario(d,s,options={}){
+    const val=M.valuation(d,s),open=val.positions.filter(p=>!p.closed);
+    const at=M.timestamp(options.at||s.cursor),now=M.instant(s.cursor),target=M.instant(at);
+    const spotChange=options.spotChange??0,ivChange=options.ivChange??0;
+    if(!finite(spotChange)||spotChange<-90||spotChange>100)throw Error('Use a spot change between -90% and 100%.');
+    if(!finite(ivChange)||ivChange<-100||ivChange>100)throw Error('Use a volatility change between -100 and 100 percentage points.');
+    if(target<now)throw Error('Scenario time must be at or after the recorded replay time.');
+    const expiry=open.map(p=>p.expiry).sort()[0]||M.chain(d,s)[0]?.expiry;
+    if(expiry&&target>Date.parse(expiry+'T15:30:00+05:30'))throw Error('Keep scenarios at or before the first expiry. Replay recorded exits before projecting later expiries.');
+    const base=profile(d,s,options);if(!base)return null;
+    const ref=base.spot,rate=s.rate/100,q=options.basis&&options.basis!=='spot'?rate:s.dividend/100;
+    const elapsed=(target-now)/DAY;
+    const legs=open.map(p=>{
+      const days=Math.max(0,(Date.parse(p.expiry+'T15:30:00+05:30')-now)/DAY);
+      return {...p,days,iv:p.type==='FUT'||p.mark===null?null:infer(p.type,ref,p.strike,days,p.mark,rate,q)};
+    });
+    function point(x){
+      let net=val.realized-val.costs,available=true;
+      for(const p of legs){
+        if(p.mark===null){available=false;continue;}
+        let mark;
+        if(p.type==='FUT')mark=p.mark+x-ref; // Constant recorded basis assumption.
+        else{
+          const remaining=Math.max(0,p.days-elapsed);
+          if(remaining<=1e-9)mark=E.price(p.type,x,p.strike,0,.001,rate,q);
+          else if(p.iv===null){available=false;continue;}
+          else mark=Math.max(0,p.mark+E.price(p.type,x,p.strike,remaining,Math.max(.00001,p.iv+ivChange/100),rate,q)-E.price(p.type,ref,p.strike,p.days,p.iv,rate,q));
+        }
+        net+=p.side*p.units*(mark-p.entry);
+      }
+      return {...base.point(x),current:available?net:null};
+    }
+    // Scenarios are pure projections. They never seek the cursor or create fills.
+    const selectedSpot=ref*(1+spotChange/100),lo=Math.max(.01,Math.min(base.lo,selectedSpot*.98)),hi=Math.max(base.hi,selectedSpot*1.02);
+    return {...base,lo,hi,point,points:Array.from({length:241},(_,i)=>point(lo+(hi-lo)*i/240)),selected:point(selectedSpot),at,modelled:true,spotChange,ivChange};
+  }
+
   function infer(type,spot,strike,days,price,rate,dividend){
     if(days<=0)return Math.abs(price-E.price(type,spot,strike,0,.001,rate,dividend))<.05?.001:null;
     const low=E.price(type,spot,strike,days,.00001,rate,dividend),high=E.price(type,spot,strike,days,5,rate,dividend);
@@ -117,5 +154,35 @@
     });
     return {source:'Synthetic intraday practice — not historical market prices',metadata:{synthetic:true,description:'Deterministic teaching prices and illustrative contract sizes; import timestamped observations for actual history.'},contracts,underlying};
   }
-  return {selectTime,jump,profile,readCSV,readJSON,practice};
+  const contractKeys=['date','timestamp','symbol','expiry','type','strike','close','lotSize','volume','oi','spot'];
+  const underlyingKeys=['date','timestamp','symbol','close'];
+  function packDataset(raw){
+    if(raw?.encoding==='iwsm-columns-v1')return raw;
+    return {encoding:'iwsm-columns-v1',source:raw.source,metadata:raw.metadata,
+      contracts:raw.contracts.map(r=>contractKeys.map(k=>r[k]??null)),
+      underlying:(raw.underlying||[]).map(r=>underlyingKeys.map(k=>r[k]??null))};
+  }
+  function unpackDataset(raw){
+    if(raw?.encoding!=='iwsm-columns-v1')return raw;
+    const rows=(items,keys)=>{if(!Array.isArray(items))throw Error('Invalid saved dataset.');return items.map(values=>{if(!Array.isArray(values)||values.length!==keys.length)throw Error('Invalid saved observation.');return Object.fromEntries(keys.map((k,i)=>[k,values[i]]));});};
+    return {source:raw.source,metadata:raw.metadata,contracts:rows(raw.contracts,contractKeys),underlying:rows(raw.underlying,underlyingKeys)};
+  }
+  function writeSaved(records){
+    const datasets=[],indices=new Map();
+    const sessions=records.map(({session,data})=>{
+      const packed=packDataset(unpackDataset(data)),key=JSON.stringify(packed);
+      if(!indices.has(key)){indices.set(key,datasets.length);datasets.push(packed);}
+      return {session,dataRef:indices.get(key)};
+    });
+    return {version:2,datasets,sessions};
+  }
+  function readSaved(raw){
+    if(Array.isArray(raw))return raw;
+    if(raw?.version!==2||!Array.isArray(raw.datasets)||!Array.isArray(raw.sessions))throw Error('Invalid saved simulations. Keep an exported backup.');
+    return raw.sessions.map(r=>{
+      if(!r.session||!Number.isInteger(r.dataRef)||r.dataRef<0||r.dataRef>=raw.datasets.length)throw Error('Invalid saved simulation data reference.');
+      return {session:r.session,data:raw.datasets[r.dataRef]};
+    });
+  }
+  return {selectTime,jump,profile,scenario,readCSV,readJSON,practice,packDataset,unpackDataset,writeSaved,readSaved};
 });
