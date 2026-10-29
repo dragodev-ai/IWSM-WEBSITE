@@ -1,0 +1,158 @@
+/* Reference trading workspace. Colours remain IWSM theme tokens. */
+body.iwsm-reference-lab .lab-header{padding:8px 16px;min-height:54px;max-width:none;width:100%;gap:12px;border-radius:0}
+body.iwsm-reference-lab .lab-brand img{height:34px;width:auto;max-width:100px}
+body.iwsm-reference-lab .lab-partner-logo{max-height:35px;width:52px;object-fit:contain}
+body.iwsm-reference-lab .lab-collaboration{font-size:10px}
+body.iwsm-reference-lab main{max-width:none;width:100%;margin:0;padding:0 4px 16px}
+body.iwsm-reference-lab .terminal-title{display:none}
+body.iwsm-reference-lab .lab-jumps{max-width:none;gap:0;margin:0;padding:0 8px;border-radius:0;min-height:35px;overflow-x:auto;flex-wrap:nowrap;border-bottom:1px solid var(--border);background:var(--surface)}
+body.iwsm-reference-lab .lab-jumps a{padding:8px 16px;border:0;border-radius:0;white-space:nowrap;background:none;font-size:12px;min-height:34px}
+body.iwsm-reference-lab .lab-jumps a[aria-current=page]{color:var(--accent);background:var(--soft);box-shadow:inset 0 -2px var(--accent)}
+#options-simulator.sm-terminal{margin:0;max-width:none;font-size:12px;line-height:1.4}
+#options-simulator.sm-terminal [hidden]{display:none!important}
+#options-simulator.sm-terminal .panel{box-shadow:none;border-radius:0}
+#options-simulator.sm-terminal .sm-session-panel{padding:0;border:0;margin:0;background:var(--surface)}
+#options-simulator.sm-terminal .nt-top{padding:4px 8px;border-bottom:1px solid var(--border)}
+#options-simulator.sm-terminal .nt-heading{display:flex;align-items:center;gap:12px;flex-wrap:wrap;min-height:28px}
+#options-simulator.sm-terminal .nt-heading h2{font-family:inherit;font-size:14px;line-height:20px;font-weight:700;margin:0;white-space:nowrap;text-transform:none}
+#options-simulator.sm-terminal .sm-market-strip{margin:0;padding:0;gap:12px;font-size:11px}
+#options-simulator.sm-terminal .sm-market-strip span{font-size:11px;padding:0;margin:0}
+#options-simulator.sm-terminal .sm-data-badge{font-size:10px;line-height:16px;padding:0;margin:0;margin-left:auto;border:0;background:none}
+#options-simulator.sm-terminal .nt-actions{display:flex;align-items:center;flex-wrap:wrap;gap:4px;min-height:30px}
+#options-simulator.sm-terminal .nt-actions button{font-size:12px;line-height:18px;padding:3px 10px;min-height:28px;background:none;border-color:transparent;color:var(--muted);border-radius:4px}
+#options-simulator.sm-terminal .nt-actions button:hover{color:var(--accent);background:var(--soft)}
+#options-simulator.sm-terminal .nt-actions #sm-new{border-color:var(--border);color:var(--accent);margin-left:4px}
+#options-simulator.sm-terminal .sm-reference-header,#options-simulator.sm-terminal .sm-retired-actions,#options-simulator.sm-terminal .nt-legacy-tabs{display:none!important}
+#options-simulator.sm-terminal .nt-timebar{display:flex;align-items:center;flex-wrap:nowrap;gap:4px;padding:5px 4px;margin:0;background:var(--surface);border:0;border-bottom:1px solid var(--border);border-radius:0;overflow-x:auto}
+#options-simulator.sm-terminal .sm-clock-fields,#options-simulator.sm-terminal .sm-replay-shortcuts,#options-simulator.sm-terminal .sm-jumps{display:contents!important}
+#options-simulator.sm-terminal .sm-clock-fields>label,#options-simulator.sm-terminal #sm-replay-expiry>label{display:flex;align-items:center;gap:5px;font-size:9px;line-height:10px;margin:0;flex:0 0 auto;max-width:none;min-width:0}
+#options-simulator.sm-terminal .sm-clock-fields>label:first-child{order:0;font-size:0}
+#options-simulator.sm-terminal .sm-jumps>.button-row:first-child{order:1}
+#options-simulator.sm-terminal .sm-clock-fields>label:nth-child(2){order:2}
+#options-simulator.sm-terminal .sm-clock-fields>label:nth-child(3){order:3}
+#options-simulator.sm-terminal #sm-replay-expiry{order:4;flex:0 0 auto}
+#options-simulator.sm-terminal .sm-jumps>.button-row:last-child{order:5}
+#options-simulator.sm-terminal .sm-jumps>.button-row{display:flex;align-items:center;gap:3px;flex:0 0 auto;margin:0;flex-wrap:nowrap}
+#options-simulator.sm-terminal .nt-timebar button{min-height:26px;min-width:30px;padding:3px 5px;font-size:11px;line-height:18px;border-radius:4px;background:var(--surface);white-space:nowrap}
+#options-simulator.sm-terminal .nt-timebar select,#options-simulator.sm-terminal .nt-timebar input{height:28px;min-height:28px;margin:0;padding:3px 7px;font-size:12px;line-height:18px;border-radius:4px;width:auto;max-width:145px;background:var(--soft)}
+#options-simulator.sm-terminal #sm-symbol{width:115px;background:var(--surface)}
+#options-simulator.sm-terminal #sm-replay-clock{width:75px}
+#options-simulator.sm-terminal #sm-replay-date,#options-simulator.sm-terminal #sm-expiry{width:112px}
+#options-simulator.sm-terminal #sm-play{order:6;margin-left:auto;min-width:90px}
+#options-simulator.sm-terminal #sm-move-note{order:7;flex-basis:100%;font-size:10px;line-height:15px;margin:0;color:var(--muted)}
+#options-simulator.sm-terminal .nt-rail{display:flex;align-items:center;gap:8px;font-size:10px;padding:2px 6px;min-height:24px;background:var(--surface)}
+#options-simulator.sm-terminal .nt-rail #sm-slider{margin:0;min-height:22px;flex:1;width:0;accent-color:var(--accent)}
+#options-simulator.sm-terminal .nt-status{font-size:11px;line-height:16px;padding:3px 8px;margin:0;background:var(--soft);color:var(--ink);border:0}
+#options-simulator.sm-terminal .nt-status:empty{display:none}
+#options-simulator.sm-terminal .sm-workbench{display:grid;grid-template-columns:minmax(330px,40%) minmax(0,1fr);gap:6px;align-items:start}
+#options-simulator.sm-terminal .sm-chain-panel,#options-simulator.sm-terminal .sm-results>.panel{padding:0;border:1px solid var(--border);background:var(--surface);margin:0}
+#options-simulator.sm-terminal .sm-results{gap:0;border:1px solid var(--border);background:var(--surface)}
+#options-simulator.sm-terminal .sm-results>.panel{border:0}
+#options-simulator.sm-terminal .nt-tabs{display:flex;align-items:center;gap:0;margin:0;min-height:30px;border-bottom:1px solid var(--border);background:var(--soft);overflow-x:auto;flex-wrap:nowrap}
+#options-simulator.sm-terminal .nt-tabs [role=tab]{min-height:30px;flex:0 0 auto;padding:5px 14px;font-size:12px;line-height:18px;border:0;border-right:1px solid var(--border);border-radius:0;background:none;color:var(--muted);white-space:nowrap}
+#options-simulator.sm-terminal .nt-tabs [role=tab][aria-selected=true]{color:var(--accent);background:var(--surface);box-shadow:inset 0 -2px var(--accent)}
+#options-simulator.sm-terminal #sm-left-tabs>button:last-child{margin-left:auto;padding:3px 10px;font-size:18px;min-height:28px;border:0;background:none;color:var(--muted)}
+#options-simulator.sm-terminal #sm-chart-view{font-size:10px;min-height:26px;height:26px;max-width:150px;width:auto;padding:2px 6px;margin:0 4px 0 auto;background:var(--surface)}
+#options-simulator.sm-terminal .sm-expiry-tabs{gap:4px;margin:0;padding:4px;min-height:31px;border-bottom:1px solid var(--border)}
+#options-simulator.sm-terminal .sm-expiry-tabs button{padding:3px 7px;min-height:25px;font-size:10px;line-height:16px;border-radius:3px;white-space:nowrap}
+#options-simulator.sm-terminal .sm-instrument-tabs{padding:3px 6px;margin:0;gap:2px;min-height:30px;border:0;background:var(--soft);display:flex;align-items:center;flex-wrap:nowrap}
+#options-simulator.sm-terminal .sm-instrument-tabs button{min-height:24px;padding:3px 9px;font-size:11px;line-height:16px;border:0;border-radius:4px;color:var(--muted);background:none}
+#options-simulator.sm-terminal .sm-instrument-tabs button[aria-pressed=true]{color:var(--accent);background:var(--surface)}
+#options-simulator.sm-terminal .sm-instrument-tabs button:last-child{margin-left:4px}
+#options-simulator.sm-terminal #sm-instrument-note{font-size:10px;line-height:14px}
+#options-simulator.sm-terminal .sm-chain-panel .table-scroll{max-height:calc(100dvh - 255px)!important;min-height:380px;overflow:auto;overscroll-behavior:contain}
+#options-simulator.sm-terminal .sm-chain-panel table{min-width:0;width:100%;border-collapse:collapse;table-layout:auto}
+#options-simulator.sm-terminal .sm-chain-panel th,#options-simulator.sm-terminal .sm-chain-panel td{padding:5px 4px;font-size:11px;line-height:18px;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap;height:30px}
+#options-simulator.sm-terminal .sm-chain-panel thead th{position:sticky;top:0;z-index:2;background:var(--soft);font-size:9px;font-weight:500;letter-spacing:.04em;text-align:center;height:27px}
+#options-simulator.sm-terminal #sm-chain th{font-weight:700;text-align:center;background:var(--soft);min-width:55px}
+#options-simulator.sm-terminal #sm-chain td:first-child,#options-simulator.sm-terminal #sm-chain td:last-child{min-width:0;white-space:nowrap}
+#options-simulator.sm-terminal #sm-chain td:has(.nt-bs){min-width:48px;white-space:nowrap;padding:4px 2px}
+#options-simulator.sm-terminal #sm-chain button{font-size:10px;line-height:15px;height:21px;min-height:21px;width:20px;min-width:20px;padding:1px;margin:0;border-radius:3px;background:var(--soft)}
+#options-simulator.sm-terminal #sm-chain .nt-premium{width:auto;min-width:38px;border:0;background:none;color:var(--ink);padding:0;font-size:11px;text-align:right}
+#options-simulator.sm-terminal #sm-chain .nt-premium:hover{color:var(--accent);text-decoration:underline}
+#options-simulator.sm-terminal .nt-bs{display:inline-flex;gap:3px;white-space:nowrap}
+#options-simulator.sm-terminal #sm-chain .sm-buy{color:var(--accent);border:1px solid color-mix(in srgb,var(--accent) 40%,transparent)}
+#options-simulator.sm-terminal #sm-chain .sm-sell{color:var(--loss);border:1px solid color-mix(in srgb,var(--loss) 40%,transparent)}
+#options-simulator.sm-terminal #sm-chain .sm-atm td,#options-simulator.sm-terminal #sm-chain .sm-atm th{background:var(--atm)}
+#options-simulator.sm-terminal #sm-chain tr:nth-child(even):not(.sm-atm){background:color-mix(in srgb,var(--soft) 45%,var(--surface))}
+#options-simulator.sm-terminal .nt-riskbar{display:flex;overflow-x:auto;align-items:stretch;gap:0;border-bottom:1px solid var(--border);background:var(--surface);min-height:57px}
+#options-simulator.sm-terminal .sm-pnl-strip,#options-simulator.sm-terminal .sm-model-metrics{display:contents!important}
+#options-simulator.sm-terminal .sm-pnl-strip>div,#options-simulator.sm-terminal .sm-model-metrics>dl,#options-simulator.sm-terminal .nt-pop{display:block;flex:0 0 auto;min-width:100px;margin:0;padding:6px 10px;border:0;border-right:1px solid var(--border);background:none}
+#options-simulator.sm-terminal .sm-pnl-strip span,#options-simulator.sm-terminal .sm-model-metrics dt,#options-simulator.sm-terminal .nt-pop span{display:block;font-size:8px;line-height:15px;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;color:var(--muted)}
+#options-simulator.sm-terminal .sm-pnl-strip strong,#options-simulator.sm-terminal .sm-model-metrics dd,#options-simulator.sm-terminal .nt-pop strong{display:block;font-size:12px;line-height:18px;margin:0;font-weight:700;white-space:nowrap}
+#options-simulator.sm-terminal #sm-analysis{padding:6px 8px 0;min-height:400px}
+#options-simulator.sm-terminal #sm-payoff-svg{width:100%;height:auto;max-height:none;display:block}
+#options-simulator.sm-terminal #sm-payoff-svg text{font-size:12px;line-height:16px;font-family:inherit}
+#options-simulator.sm-terminal .sm-chart-controls{margin:0;padding:2px 3px;min-height:24px;gap:6px}
+#options-simulator.sm-terminal .sm-chart-legend{font-size:9px;line-height:15px}
+#options-simulator.sm-terminal .sm-chart-controls label{font-size:9px;gap:4px}
+#options-simulator.sm-terminal .sm-chart-controls select{font-size:10px;min-height:23px;height:23px;padding:2px 4px}
+#options-simulator.sm-terminal .sm-chart-inspector{font-size:10px;min-height:26px;margin:0;gap:6px}
+#options-simulator.sm-terminal .sm-chart-inspector input{min-height:25px;margin:0}
+#options-simulator.sm-terminal .sm-inspect-values{padding:4px 0;gap:8px;grid-template-columns:repeat(5,minmax(0,1fr))}
+#options-simulator.sm-terminal .sm-inspect-values span{font-size:9px;line-height:15px}
+#options-simulator.sm-terminal .sm-inspect-values strong{font-size:10px;line-height:15px}
+#options-simulator.sm-terminal #sm-analysis>.fine{font-size:9px;line-height:14px;margin:4px 0 8px}
+#options-simulator.sm-terminal .sm-payoff-tooltip{width:230px;padding:10px;font-size:10px;box-shadow:0 3px 10px #0002}
+#options-simulator.sm-terminal .nt-tradebar{display:flex;justify-content:space-between;align-items:center;border-block:1px solid var(--border);background:var(--soft);gap:6px;overflow-x:auto}
+#options-simulator.sm-terminal .nt-tradebar .nt-tabs{border:0;flex:0 0 auto}
+#options-simulator.sm-terminal .nt-trade-actions{display:flex;align-items:center;gap:0;flex:0 0 auto}
+#options-simulator.sm-terminal .nt-trade-actions button{font-size:10px;line-height:16px;min-height:28px;padding:4px 8px;border:0;background:none;white-space:nowrap}
+#options-simulator.sm-terminal #sm-trade-clock{font-size:10px;color:var(--muted);padding:0 8px;white-space:nowrap}
+#options-simulator.sm-terminal .nt-trades-panel .table-scroll{max-height:260px;overflow:auto}
+#options-simulator.sm-terminal .nt-trades-panel th,#options-simulator.sm-terminal .nt-trades-panel td,#options-simulator.sm-terminal .nt-left-positions td,#options-simulator.sm-terminal .nt-left-positions th{padding:5px 6px;font-size:10px;line-height:16px;border-bottom:1px solid var(--border);white-space:nowrap}
+#options-simulator.sm-terminal .nt-trades-panel th{font-size:9px;background:var(--soft);font-weight:500;letter-spacing:.03em;position:sticky;top:0;z-index:1}
+#options-simulator.sm-terminal #sm-positions td:last-child{min-width:180px;white-space:normal}
+#options-simulator.sm-terminal #sm-positions button{font-size:9px;line-height:14px;min-height:22px;padding:2px 5px;margin:2px;border-radius:3px}
+#options-simulator.sm-terminal .nt-order-footer{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:4px 8px;border-top:1px solid var(--border);background:var(--soft);font-size:9px}
+#options-simulator.sm-terminal .nt-order-footer label{display:flex;align-items:center;gap:6px;font-size:10px;margin:0;min-width:0;flex:0 0 auto}
+#options-simulator.sm-terminal .nt-order-footer input{width:56px;min-height:26px;height:26px;font-size:12px;margin:0;padding:3px 6px}
+#options-simulator.sm-terminal .nt-order-footer button{min-height:25px;font-size:10px;padding:3px 8px}
+#options-simulator.sm-terminal #sm-reset,#options-simulator.sm-terminal #sm-branch{font-size:10px;min-height:26px;padding:3px 8px;margin:6px}
+#options-simulator.sm-terminal #sm-trade-greeks{padding:4px 8px}
+#options-simulator.sm-terminal .nt-left-positions .table-scroll{max-height:calc(100dvh - 215px);min-height:300px}
+#options-simulator.sm-terminal .nt-left-positions table{width:100%;min-width:0}
+#options-simulator.sm-terminal .nt-left-positions small{display:block;font-size:9px;color:var(--muted)}
+#options-simulator.sm-terminal .nt-left-positions button{font-size:10px;min-height:25px;padding:3px 6px}
+#options-simulator.sm-terminal .nt-empty{padding:40px 16px;color:var(--muted);text-align:center;font-size:12px}
+#options-simulator.sm-terminal .nt-session{padding:16px;min-height:500px}
+#options-simulator.sm-terminal .nt-session h3{font-size:16px;margin:8px 0 16px}
+#options-simulator.sm-terminal .nt-session dl{display:grid;grid-template-columns:120px 1fr;gap:8px;margin:0 0 16px}
+#options-simulator.sm-terminal .nt-session dt{color:var(--muted)}
+#options-simulator.sm-terminal .nt-session dd{margin:0;overflow-wrap:anywhere}
+#options-simulator.sm-terminal .nt-session td,#options-simulator.sm-terminal .nt-session th{padding:8px;font-size:11px;white-space:nowrap}
+#options-simulator.sm-terminal .nt-chain-expanded{grid-template-columns:minmax(0,1fr)}
+#options-simulator.sm-terminal .nt-chain-expanded .sm-results{display:none}
+#options-simulator.sm-terminal .nt-dialog{width:min(820px,calc(100vw - 24px));max-height:85dvh;padding:0;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--ink);box-shadow:0 12px 48px #0005;font:inherit}
+#options-simulator.sm-terminal .nt-dialog::backdrop{background:#0008}
+#options-simulator.sm-terminal .nt-dialog-head{position:sticky;top:0;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;background:var(--surface);border-bottom:1px solid var(--border);z-index:3}
+#options-simulator.sm-terminal .nt-dialog-head h2{font-family:inherit;font-size:18px;line-height:24px;margin:0}
+#options-simulator.sm-terminal .nt-dialog-head button{min-height:32px;min-width:32px;font-size:20px;padding:0;border:0;background:var(--soft)}
+#options-simulator.sm-terminal #sm-dialog-content{padding:16px;overflow-x:auto}
+#options-simulator.sm-terminal #sm-dialog-content>details{border:0;padding:0;margin:0;background:none}
+#options-simulator.sm-terminal #sm-dialog-content>details>summary{display:none}
+#options-simulator.sm-terminal .nt-settings-content>.sm-data-settings{border:0;margin:0}
+#options-simulator.sm-terminal .nt-settings-content .sm-settings{margin:12px 0;padding:12px 0}
+#options-simulator.sm-terminal .nt-settings-content>label{display:inline-flex;gap:8px;align-items:center;margin:12px 16px 0 0}
+#options-simulator.sm-terminal .nt-settings-content>label select{width:auto;min-height:36px;margin:0;font-size:14px}
+#options-simulator.sm-terminal #sm-dialog-content label,#options-simulator.sm-terminal #sm-dialog-content p{font-size:12px;line-height:20px}
+#options-simulator.sm-terminal #sm-dialog-content input,#options-simulator.sm-terminal #sm-dialog-content select{min-height:36px;font-size:14px;line-height:20px}
+#options-simulator.sm-terminal #sm-dialog-content button{min-height:34px;font-size:12px;padding:6px 10px}
+#options-simulator.sm-terminal #sm-dialog-content .sm-checkbox input{min-height:18px}
+#options-simulator.sm-terminal #sm-dialog-content .sm-ticket{margin:0;padding:0;border:0;background:none}
+#options-simulator.sm-terminal .nt-position-settings label{display:flex;gap:8px;align-items:center;min-height:40px}
+#options-simulator.sm-terminal .nt-position-settings input{width:18px!important;min-height:18px!important}
+#options-simulator.sm-terminal .nt-aux svg{width:100%;max-height:340px}
+#options-simulator.sm-terminal .nt-aux svg text{fill:var(--muted);font-size:12px}
+#options-simulator.sm-terminal .nt-aux .table-scroll{max-height:250px}
+#options-simulator.sm-terminal .nt-aux th,#options-simulator.sm-terminal .nt-aux td{padding:6px;font-size:12px}
+#options-simulator.sm-terminal .nt-oi-bars{max-height:450px;overflow-y:auto}
+#options-simulator.sm-terminal .nt-oi-bars>div{display:grid;grid-template-columns:60px 1fr 60px 1fr 60px;gap:8px;align-items:center;min-height:30px;font-size:11px}
+#options-simulator.sm-terminal .nt-oi-bars>div>div{height:12px;background:var(--soft)}
+#options-simulator.sm-terminal .nt-oi-bars i{display:block;height:100%;background:var(--accent)}
+#options-simulator.sm-terminal .nt-oi-bars>div>div:nth-of-type(2) i{background:var(--loss)}
+#options-simulator.sm-terminal .nt-oi-legend{margin-bottom:12px;font-size:11px;color:var(--muted)}
+#options-simulator.sm-terminal button:focus-visible,#options-simulator.sm-terminal select:focus-visible,#options-simulator.sm-terminal input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media(max-width:850px){#options-simulator.sm-terminal .sm-workbench{grid-template-columns:minmax(295px,40%) minmax(0,1fr)}#options-simulator.sm-terminal .nt-tabs [role=tab]{padding:5px 9px;font-size:11px}#options-simulator.sm-terminal #sm-chart-view{max-width:115px}#options-simulator.sm-terminal .nt-trade-actions button{padding:4px 5px}#options-simulator.sm-terminal .nt-heading{gap:6px}#options-simulator.sm-terminal .sm-data-badge{margin-left:0}}
+@media(max-width:700px){body.iwsm-reference-lab .lab-header{padding:8px;gap:8px}body.iwsm-reference-lab .lab-collaboration{display:none}body.iwsm-reference-lab .lab-header nav{gap:6px}body.iwsm-reference-lab .lab-jumps a{padding:8px 12px}#options-simulator.sm-terminal .sm-workbench{display:flex;flex-direction:column;gap:6px}#options-simulator.sm-terminal .sm-chain-panel,#options-simulator.sm-terminal .sm-results{width:100%;min-width:0}#options-simulator.sm-terminal .sm-chain-panel .table-scroll{max-height:360px!important;min-height:250px}#options-simulator.sm-terminal .nt-timebar{flex-wrap:nowrap;padding-bottom:6px;overscroll-behavior-x:contain}#options-simulator.sm-terminal #sm-move-note{display:none}#options-simulator.sm-terminal .nt-timebar #sm-play{margin-left:4px}#options-simulator.sm-terminal #sm-payoff-svg text{font-size:15px}#options-simulator.sm-terminal .sm-inspect-values{grid-template-columns:repeat(3,minmax(0,1fr))}#options-simulator.sm-terminal .nt-top{padding:6px}#options-simulator.sm-terminal .nt-actions{flex-wrap:nowrap;overflow-x:auto}#options-simulator.sm-terminal .nt-actions button{flex-shrink:0;padding:3px 8px}#options-simulator.sm-terminal .nt-riskbar{min-height:51px}#options-simulator.sm-terminal .nt-dialog{width:calc(100vw - 16px);max-height:90dvh}#options-simulator.sm-terminal .nt-tabs [role=tab]{padding:5px 11px}#options-simulator.sm-terminal .nt-session{padding:12px}#options-simulator.sm-terminal .nt-tradebar{display:block}#options-simulator.sm-terminal .nt-trade-actions{justify-content:flex-end}#options-simulator.sm-terminal .nt-trades-panel .table-scroll{max-height:260px}#options-simulator.sm-terminal #sm-analysis{min-height:320px}#options-simulator.sm-terminal .nt-left-positions .table-scroll{min-height:250px;max-height:360px}}
+@media(pointer:coarse){#options-simulator.sm-terminal #sm-chain button{min-height:30px;min-width:25px;width:25px}#options-simulator.sm-terminal .nt-tabs [role=tab]{min-height:40px}#options-simulator.sm-terminal .nt-timebar button{min-height:34px}#options-simulator.sm-terminal .nt-actions button{min-height:36px}}

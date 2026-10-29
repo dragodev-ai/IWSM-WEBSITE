@@ -182,12 +182,12 @@
     if(d.kind==='daily')$('move-note').textContent='Daily archive: minute steps are unavailable. Import timestamped quotes or choose the labelled 5-minute practice dataset.';
   }
   function chartHTML(profile){
-    const W=960,H=470,L=90,T=32,RIGHT=25,B=55,iw=W-L-RIGHT,ih=H-T-B;
-    const vals=profile.points.flatMap(p=>[p.expiry,p.current]).filter(Number.isFinite),min=Math.min(0,...vals),max=Math.max(1,...vals),pad=Math.max(10,(max-min)*.09),lo=min-pad,hi=max+pad;
+    const W=960,H=800,L=90,T=32,RIGHT=25,B=55,iw=W-L-RIGHT,ih=H-T-B;
+    const vals=profile.points.flatMap(p=>[p.expiry,p.current]).filter(Number.isFinite),min=Math.min(0,...vals),max=Math.max(1,...vals),pad=Math.max(10,(max-min)*.09),rawStep=(max-min+2*pad)/6,power=10**Math.floor(Math.log10(rawStep)),step=[1,2,2.5,5,10].map(v=>v*power).find(v=>v>=rawStep),lo=Math.floor((min-pad)/step)*step,hi=Math.ceil((max+pad)/step)*step;
     const x=v=>L+(v-profile.lo)/(profile.hi-profile.lo)*iw,y=v=>T+(hi-v)/(hi-lo)*ih;
     chart={profile,x,y,L,T,W,H,iw,ih};
     let svg='<svg id="sm-payoff-svg" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Expiry and replay-time model payoff by underlying price"><defs><clipPath id="sm-green-area"><rect x="'+L+'" y="'+T+'" width="'+iw+'" height="'+(y(0)-T)+'"/></clipPath><clipPath id="sm-red-area"><rect x="'+L+'" y="'+y(0)+'" width="'+iw+'" height="'+(T+ih-y(0))+'"/></clipPath></defs>';
-    for(let i=0;i<=6;i++){const v=lo+(hi-lo)*i/6,yy=y(v);svg+='<line class="sm-grid" x1="'+L+'" x2="'+(W-RIGHT)+'" y1="'+yy+'" y2="'+yy+'"/><text x="'+(L-10)+'" y="'+(yy+4)+'" text-anchor="end">'+num(v)+'</text>';}
+    for(let v=lo;v<=hi+step/2;v+=step){const yy=y(v);svg+='<line class="sm-grid" x1="'+L+'" x2="'+(W-RIGHT)+'" y1="'+yy+'" y2="'+yy+'"/><text x="'+(L-10)+'" y="'+(yy+4)+'" text-anchor="end">₹'+(Math.abs(v)>=100000?num(v/100000)+'L':Math.abs(v)>=1000?num(v/1000)+'K':num(v))+'</text>';}
     for(let i=0;i<=6;i++){const v=profile.lo+(profile.hi-profile.lo)*i/6,xx=x(v);svg+='<line class="sm-grid" x1="'+xx+'" x2="'+xx+'" y1="'+T+'" y2="'+(T+ih)+'"/><text x="'+xx+'" y="'+(H-28)+'" text-anchor="middle">'+num(v)+'</text>';}
     const points=profile.points;
     if(points.every(p=>p.expiry!==null)){
@@ -229,6 +229,7 @@
     svg.onpointerleave=()=>{$('payoff-tooltip').hidden=true;};
     inspect(inspectIndex);return true;
   }
-  return {render,analysis,chain:renderChain,reset(){chart=null;scenarioAt='';scenarioSpot=0;scenarioIV=0;if(api.dataset().kind==='intraday')$('step').value='5';ticket.hidden=true;$('ticket-toggle').setAttribute('aria-expanded','false');$('move-note').textContent='';}};
+  const terminal=root.IWSMTerminal.install({...api,main,data,prebuilt,source,toolbar,transport,chainSettings});
+  return {render(){render();terminal.render();},analysis,chain:renderChain,reset(){chart=null;scenarioAt='';scenarioSpot=0;scenarioIV=0;if(api.dataset().kind==='intraday')$('step').value='5';ticket.hidden=true;$('ticket-toggle').setAttribute('aria-expanded','false');$('move-note').textContent='';}};
  }};
 })(window);
