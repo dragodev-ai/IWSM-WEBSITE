@@ -230,6 +230,7 @@
     inspect(inspectIndex);return true;
   }
   const terminal=root.IWSMTerminal.install({...api,main,data,prebuilt,source,toolbar,transport,chainSettings});
-  return {render(){render();terminal.render();},analysis,chain:renderChain,reset(){chart=null;scenarioAt='';scenarioSpot=0;scenarioIV=0;if(api.dataset().kind==='intraday')$('step').value='5';ticket.hidden=true;$('ticket-toggle').setAttribute('aria-expanded','false');$('move-note').textContent='';}};
+  const archive=root.IWSMArchive.install(api);
+  return {render(){render();terminal.render();archive.render();},analysis,chain:renderChain,reset(){chart=null;scenarioAt='';scenarioSpot=0;scenarioIV=0;if(api.dataset().kind==='intraday')$('step').value='5';ticket.hidden=true;$('ticket-toggle').setAttribute('aria-expanded','false');$('move-note').textContent='';}};
  }};
 })(window);
