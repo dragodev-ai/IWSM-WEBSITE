@@ -131,7 +131,7 @@ root.IWSMOpstraReplay={install(host){
     }).catch(e=>{catalogueTask=null;throw e;});}
     return catalogueTask;
   }
-  async function brokerApi(path){const r=await fetch('/api/aliceblue/'+path,{credentials:'same-origin',signal:AbortSignal.timeout(120000)});const j=await r.json();if(!r.ok)throw Error(j.detail||'Broker data unavailable');return j;}
+  async function brokerApi(path){const r=await fetch('/api/aliceblue/'+path,{credentials:'same-origin',signal:AbortSignal.timeout(120000)});if(!(r.headers.get('content-type')||'').includes('application/json'))throw Error('Live broker data requires the connected data backend.');const j=await r.json();if(!r.ok)throw Error(j.detail||'Broker data unavailable');return j;}
   function newSimulation(preferred){
     generation++;pause();const selected=instrumentChoice(preferred||((d?.metadata.exchange||'nse_fo')+'|'+(s?.symbol||'NIFTY'))),now=new Date(Date.now()+19800000).toISOString().slice(0,10),prior=new Date(now+'T00:00Z');prior.setUTCDate(prior.getUTCDate()-1);const day=prior.toISOString().slice(0,10);
     const dom=dialog('New Simulation','<form><div class="opstra-fields"><label>Index / Stock<select name="symbol" required>'+instrumentOptions(selected.symbol,selected.exchange)+'</select></label><label>Data<select name="data"><option value="minute">Recorded minute prices</option><option value="snapshot">Latest option-chain snapshot</option><option value="daily">Historical daily archive</option></select></label><label class="history-date">Start Date<input name="start" type="date" value="'+day+'" required></label><label class="history-date">End Date<input name="end" type="date" value="'+now+'" required></label><label class="broker-expiry">Expiry<select name="expiry"></select></label></div><p class="opstra-dialog-status" role="status"></p><button type="button" class="connect-broker" hidden>Connect Alice Blue</button><button type="submit">Start Simulation</button></form>');
@@ -202,7 +202,11 @@ root.IWSMOpstraReplay={install(host){
   el('orders').onclick=guard(e=>{if(e.target.dataset.cancel!==undefined)change(P.cancel(d,s,P.valuation(d,s).orders[+e.target.dataset.cancel].id));});
   document.addEventListener('visibilitychange',()=>{if(document.hidden)pause();});root.addEventListener('hashchange',pause);
   msg('Opening your saved simulation…');host.querySelectorAll('[data-mins]').forEach(b=>b.disabled=true);
-  (async()=>{const request=generation;try{db=await Store.open();const saved=await db.latest();if(request!==generation)return;if(saved){restore(saved);return;}}catch(e){msg(e.message);}if(request!==generation)return;const raw=root.IWSMHistoryLab?.dataset()||root.IWSMNSEHistory;if(raw?.metadata?.synthetic||raw?.metadata?.modelled)throw Error('Load recorded data or explicitly choose a teaching example.');adopt(raw);msg('Recorded daily window ready. Use New Simulation to load other dates or import minute candles.');})().catch(e=>msg(e.message));
+  root.IWSMSimulatorStartup.initialize({
+    seed(){const raw=root.IWSMHistoryLab?.dataset()||root.IWSMNSEHistory;if(raw?.metadata?.synthetic||raw?.metadata?.modelled)throw Error('Load recorded data or explicitly choose a teaching example.');adopt(raw);msg('Recorded daily window ready. Use New Simulation to load other dates or import minute candles.');},
+    open:async()=>{db=await Store.open();},latest:()=>db.latest(),restore,save:persist,revision:()=>generation,
+    onError:e=>msg(e.message+' · Included recorded data remains available.')
+  }).catch(e=>msg(e.message));
   fetch('/api/nse-library?mode=catalog').then(jsonResponse).then(j=>{symbols=(j.symbols||[]).map(x=>typeof x==='string'?x:x.symbol);archiveDates=j.dates||[];symbolDates=j.symbolDates||{};const years=[...new Set(archiveDates.map(t=>t.slice(0,4)))].sort();el('archive-year').innerHTML=options(years,s?.start.slice(0,4)||years.at(-1));archiveMonths();if(s)render();}).catch(()=>{el('browse-expiries').disabled=true;el('resolution-note').textContent='Archive browsing requires the local data backend.';});
   refreshInstruments().then(()=>{if(s)render();}).catch(e=>{msg(e.message+' · Saved simulations remain available.');});
   return {pause};
