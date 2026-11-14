@@ -1,0 +1,58 @@
+/* Responsive controls shared by the home page, reviews and Strategy Lab. */
+@media (max-width: 900px), (pointer: coarse) {
+  #options-simulator :is(button, select, input:not([type="checkbox"], [type="radio"])) {
+    min-height: 44px !important;
+  }
+  #options-simulator button { min-width: 44px; font-size: 13px !important; }
+  #options-simulator .opstra-playback-group {
+    max-width: 100%;
+    gap: 8px;
+    overflow-x: auto;
+    padding-block: 4px;
+    overscroll-behavior-x: contain;
+  }
+  #options-simulator .opstra-playback-group button { flex-shrink: 0; }
+  #options-simulator .opstra-switch { width: 44px; height: 44px; flex: 0 0 44px; }
+  #options-simulator .opstra-switch .opstra-slider {
+    inset: 13px 6px;
+  }
+  #options-simulator .pp-readout { font-size: 13px; line-height: 1.6; }
+  /* The same chart values must be inspectable with a finger, without hover. */
+  #options-simulator .pp-inspector {
+    position: static;
+    width: auto;
+    height: auto;
+    clip-path: none;
+    overflow: visible;
+    margin-block: 12px;
+  }
+  #options-simulator .pp-inspector input[type="range"] {
+    min-height: 44px !important;
+    width: 100% !important;
+    touch-action: pan-y;
+  }
+  #options-simulator .opstra-chain-table td { min-height: 44px; }
+  #options-simulator .opstra-dialog-body { overflow-wrap: anywhere; }
+  #options-simulator .opstra-dialog > header { position: sticky; top: 0; z-index: 3; background: var(--surface); }
+}
+@media (max-width: 600px) {
+  .iwsm-home .site-header { width: 100%; max-width: 100vw; }
+  .iwsm-home .site-header .container { grid-template-columns: minmax(0, 1fr); }
+  .iwsm-home #ar-tooltip { left: 50% !important; min-width: 0; max-width: calc(100% - 16px); width: max-content; white-space: normal; }
+  #options-simulator .opstra-symbol-block { min-width: 0; width: 100%; max-width: 100%; }
+  #options-simulator .opstra-symbol-select { width: 100% !important; min-width: 0; }
+  #options-simulator .opstra-expiry-row { flex-wrap: wrap; gap: 12px; }
+  #options-simulator .opstra-expiry-row > div { min-width: 0; width: 100%; }
+  #options-simulator .opstra-btn-record { flex-shrink: 0; white-space: normal; }
+  #options-simulator :is(input:not([type="checkbox"], [type="radio"]), select) { font-size: 16px !important; }
+  #options-simulator .opstra-top-actions { gap: 8px; }
+  #options-simulator .opstra-top-actions button { flex: 1 1 130px; white-space: normal; }
+  #options-simulator .opstra-dates-block { display: grid; grid-template-columns: minmax(0, 1fr); }
+  #options-simulator .opstra-date-field { min-width: 0; width: 100%; }
+  #options-simulator .opstra-clock-actions { display: flex; flex-wrap: wrap; }
+  .iwsm-lab :is(.table-scroll, .research-table-scroll, .opstra-table-container) { -webkit-overflow-scrolling: touch; }
+  .iwsm-home :is(.ar-controls, #ar-range-controls) label { min-width: 0; max-width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #options-simulator .opstra-slider { transition: none; }
+}

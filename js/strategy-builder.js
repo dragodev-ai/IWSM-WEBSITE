@@ -42,8 +42,8 @@
  $('legs').onchange=e=>{const f=e.target.dataset.field,index=Number(e.target.dataset.index);if(!f||!state.legs[index])return;const value=f==='enabled'?e.target.checked:f==='type'?e.target.value:Number(e.target.value),next=structuredClone(state);if(f==='iv'&&e.target.value==='')delete next.legs[index].iv;else next.legs[index][f]=value;if(!e.target.checkValidity()||!validState(next)){e.target.setAttribute('aria-invalid','true');return;}e.target.removeAttribute('aria-invalid');state=next;status('');renderAnalysis();};
  $('legs').onclick=e=>{const button=e.target.closest('[data-remove]');if(!button)return;state.legs.splice(Number(button.dataset.remove),1);render();};
  function addLeg(type,strike,side,premium,days=state.days,lots=1){if(state.legs.length>=24){status('A strategy can contain up to 24 positions.');return;}const next={...state,legs:[...state.legs,{id:'leg-'+Date.now(),enabled:true,type,strike,side,premium,days,lots}]};if(!validState(next))return;state=next;status('Position added.');render();}
- $('leg-form').onsubmit=e=>{e.preventDefault();addLeg($('type').value,Number($('strike').value),Number($('side').value),Number($('premium').value),Number($('leg-days').value),Number($('lots').value));};
- $('model-price').onclick=()=>{if(!$('leg-form').checkValidity()){$('leg-form').reportValidity();return;}$('premium').value=E.price($('type').value,state.spot,Number($('strike').value),Number($('leg-days').value),state.iv/100,state.rate/100,state.dividend/100).toFixed(2);};
+ $('leg-form').onsubmit=e=>{e.preventDefault();const days=Number($('leg-days').value)||state.days;addLeg($('type').value,Number($('strike').value),Number($('side').value),Number($('premium').value),days,Number($('lots').value));};
+ $('model-price').onclick=()=>{if(!$('leg-form').checkValidity()){$('leg-form').reportValidity();return;}const days=Number($('leg-days').value)||state.days;$('premium').value=E.price($('type').value,state.spot,Number($('strike').value),days,state.iv/100,state.rate/100,state.dividend/100).toFixed(2);};
  $('market-form').onsubmit=e=>{e.preventDefault();const next={...state,symbol:$('symbol').value.trim(),currency:$('currency').value};for(const key of ['spot','lotSize','days','iv','step','rate','dividend'])next[key]=Number($(key).value);if(!next.symbol||!validState(next))return;const selectedDate=$('model-valuation-date').value;if(!R.parseDate(selectedDate)){status('Select a valid valuation date.');return;}const dateChanged=selectedDate!==valuationDate;if(dateChanged){next.legs=[];valuationDate=selectedDate;resetScenario();}state=next;activeQuoteKey=null;setMode('User-entered reference · model calculations');syncInputs();render();renderTemplates();status(dateChanged?'Valuation date updated. Positions cleared; prices remain manual model assumptions. Load the local archive to study recorded contracts.':'Assumptions updated. Existing entry prices and strikes were preserved.');};
  function resetScenario(){for(const id of ['spot-shift','iv-shift','elapsed'])$(id).value='0';}
  $('reset').onclick=()=>{state.legs=[];resetScenario();render();status('Positions cleared.');};
@@ -61,7 +61,38 @@
  }
  for(const [key,color,dash] of [['expiry','var(--chart)',''],['scenario','var(--scenario)','5 4']])svg+=`<polyline fill="none" stroke="${color}" stroke-width="2.5" stroke-dasharray="${dash}" points="${rows.map(p=>xp(p.x).toFixed(2)+','+yp(p[key]).toFixed(2)).join(' ')}"/>`;
  const point=E.pnl(state,s.spot,s.elapsed,s.shift);if(s.spot>=lo&&s.spot<=hi)svg+=`<circle cx="${xp(s.spot)}" cy="${yp(point)}" r="4" fill="var(--scenario)"><title>Scenario ${esc(money(point))}</title></circle>`;
- $('payoff-chart').innerHTML=svg+'</svg>';$('chart-caption').textContent=`${state.symbol} · P&L in ${state.currency} · reference-price axis ${num(lo,0)}–${num(hi,0)}. Solid line: ${h} days elapsed; dashed line: ${s.elapsed} days elapsed.`;return rows;}
+ svg+=`<g id="builder-crosshair-group" style="pointer-events:none;"><line id="builder-crosshair-v" y1="${top}" y2="${H-bottom}" stroke="var(--ink)" stroke-width="1.2" stroke-dasharray="3 3" opacity="0.85" style="display:none;"/><line id="builder-crosshair-h" x1="${left}" x2="${W-right}" stroke="var(--ink)" stroke-width="1" stroke-dasharray="2 2" opacity="0.35" style="display:none;"/><circle id="builder-dot-expiry" r="4.5" fill="var(--chart)" stroke="#fff" stroke-width="1.5" style="display:none;"/><circle id="builder-dot-scenario" r="4.5" fill="var(--scenario)" stroke="#fff" stroke-width="1.5" style="display:none;"/></g><rect id="builder-chart-tracker" x="${left}" y="${top}" width="${W-left-right}" height="${H-top-bottom}" fill="transparent" style="cursor:crosshair;"/>`;
+ const chartBox=$('payoff-chart');chartBox.style.position='relative';chartBox.innerHTML=svg+'</svg>';
+ let tip=chartBox.querySelector('#builder-chart-tooltip');
+ if(!tip){tip=document.createElement('div');tip.id='builder-chart-tooltip';tip.style.cssText='display:none;position:absolute;pointer-events:none;z-index:30;background:rgba(18,32,53,0.96);color:#fff;padding:8px 12px;border-radius:6px;font-size:12px;box-shadow:0 6px 18px rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.2);transform:translate(-50%,-120%);white-space:nowrap;transition:opacity 0.08s ease;';chartBox.appendChild(tip);}
+ const tracker=$('builder-chart-tracker'),cv=$('builder-crosshair-v'),ch=$('builder-crosshair-h'),de=$('builder-dot-expiry'),ds=$('builder-dot-scenario');
+ if(tracker){
+  const onMove=e=>{
+   const svgNode=chartBox.querySelector('svg');if(!svgNode)return;
+   const r=svgNode.getBoundingClientRect(),cx=e.clientX??(e.touches&&e.touches[0]?.clientX),cy=e.clientY??(e.touches&&e.touches[0]?.clientY);
+   if(cx==null||cy==null)return;
+   const relX=cx-r.left,relY=cy-r.top;
+   const sx=Math.max(left,Math.min(W-right,(relX/r.width)*W)),sy=Math.max(top,Math.min(H-bottom,(relY/r.height)*H));
+   const price=lo+((sx-left)/(W-left-right))*(hi-lo);
+   const expVal=E.pnl(state,price,h,0),scenVal=E.pnl(state,price,s.elapsed,s.shift);
+   const yExp=yp(expVal),yScen=yp(scenVal);
+   if(cv){cv.setAttribute('x1',sx);cv.setAttribute('x2',sx);cv.style.display='block';}
+   if(ch){ch.setAttribute('y1',sy);ch.setAttribute('y2',sy);ch.style.display='block';}
+   if(de){de.setAttribute('cx',sx);de.setAttribute('cy',yExp);de.style.display='block';}
+   if(ds){ds.setAttribute('cx',sx);ds.setAttribute('cy',yScen);ds.style.display='block';}
+   tip.innerHTML=`<div style="font-weight:700;border-bottom:1px solid rgba(255,255,255,0.2);padding-bottom:3px;margin-bottom:4px;color:#fff;">Target: ₹${num(price,1)}</div><div style="display:flex;justify-content:space-between;gap:12px;"><span style="color:#75b3ff;">Expiry P&L:</span><span style="font-weight:700;color:${expVal>=0?'#4ade80':'#f87171'}">${money(expVal)}</span></div><div style="display:flex;justify-content:space-between;gap:12px;"><span style="color:#d0b1ff;">T+${s.elapsed} P&L:</span><span style="font-weight:700;color:${scenVal>=0?'#4ade80':'#f87171'}">${money(scenVal)}</span></div>`;
+   tip.style.display='block';
+   const cBoxR=chartBox.getBoundingClientRect();
+   tip.style.left=(cx-cBoxR.left)+'px';
+   tip.style.top=(cy-cBoxR.top-8)+'px';
+  };
+  const onLeave=()=>{if(cv)cv.style.display='none';if(ch)ch.style.display='none';if(de)de.style.display='none';if(ds)ds.style.display='none';if(tip)tip.style.display='none';};
+  tracker.addEventListener('mousemove',onMove);
+  tracker.addEventListener('mouseleave',onLeave);
+  tracker.addEventListener('touchmove',onMove,{passive:true});
+  tracker.addEventListener('touchend',onLeave);
+ }
+ $('chart-caption').textContent=`${state.symbol} · P&L in ${state.currency} · reference-price axis ${num(lo,0)}–${num(hi,0)}. Solid line: ${h} days elapsed; dashed line: ${s.elapsed} days elapsed.`;return rows;}
  function renderScenarioGrid(s){const spots=[-10,-5,-2,0,2,5,10],ivs=[-5,-2,0,2,5];$('scenario-grid').innerHTML=`<caption>Model P&L in ${esc(state.currency)} · ${s.elapsed} days elapsed. Columns change IV in percentage points; rows change the reference price. Fees and slippage excluded.</caption><thead><tr><th>Spot change / IV</th>${ivs.map(v=>`<th>${v>0?'+':''}${v} pp</th>`).join('')}</tr></thead><tbody>${spots.map(change=>`<tr><th scope="row">${change>0?'+':''}${change}%</th>${ivs.map(iv=>{const value=E.pnl(state,state.spot*(1+change/100),s.elapsed,iv);return `<td class="${value>=0?'gain':'loss'}" title="IV ${num(Math.max(.1,state.iv+iv))}%">${num(value,0)}</td>`;}).join('')}</tr>`).join('')}</tbody>`;}
  function renderPositionBreakdown(s){
   const body=$('position-breakdown');if(!body)return;

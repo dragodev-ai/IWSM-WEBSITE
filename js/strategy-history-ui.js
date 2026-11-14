@@ -160,7 +160,34 @@
     const stride=Math.max(1,Math.ceil(result.rows.length/(mobile?4:6)));result.rows.forEach((r,i)=>{if(i%stride===0||i===result.rows.length-1)svg+=`<text x="${x(i)}" y="${Ht-14}" text-anchor="${i===0?'start':i===result.rows.length-1?'end':'middle'}">${esc(mobile?r.date.slice(5):r.date)}</text>`;});
     svg+=`<line x1="${x(cursor)}" x2="${x(cursor)}" y1="${T}" y2="${Ht-B}" stroke="var(--chart)" stroke-dasharray="3 3"/>`;
     if(selected.net!=null)svg+=`<circle cx="${x(cursor)}" cy="${y(selected.net)}" r="5" fill="var(--chart)"/>`;
-    svg+=`<text x="${W-(mobile?140:200)}" y="${T+8}">Gross · dashed</text><text x="${W-(mobile?140:200)}" y="${T+25}">Net · solid</text></svg>`;$('history-chart').innerHTML=svg;
+    svg+=`<text x="${W-(mobile?140:200)}" y="${T+8}">Gross · dashed</text><text x="${W-(mobile?140:200)}" y="${T+25}">Net · solid</text></svg>`;
+    const chartBox=$('history-chart');chartBox.style.position='relative';chartBox.innerHTML=svg;
+    let tip=chartBox.querySelector('#history-chart-tooltip');
+    if(!tip){tip=document.createElement('div');tip.id='history-chart-tooltip';tip.style.cssText='display:none;position:absolute;pointer-events:none;z-index:30;background:rgba(18,32,53,0.96);color:#fff;padding:8px 12px;border-radius:6px;font-size:12px;box-shadow:0 6px 18px rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.2);transform:translate(-50%,-120%);white-space:nowrap;transition:opacity 0.08s ease;';chartBox.appendChild(tip);}
+    const svgNode=chartBox.querySelector('svg');
+    if(svgNode&&result.rows.length){
+      svgNode.style.cursor='crosshair';
+      svgNode.onmousemove=e=>{
+        const r=svgNode.getBoundingClientRect(),cx=e.clientX,cy=e.clientY,relX=cx-r.left;
+        const svgX=(relX/r.width)*W,stepIdx=Math.round(((svgX-L)/(W-L-R))*(result.rows.length-1));
+        if(stepIdx>=0&&stepIdx<result.rows.length){
+          cursor=stepIdx;$('history-cursor').value=cursor;
+          const curRow=result.rows[cursor];
+          $('history-cursor-label').textContent=`${curRow.date} · net ${money(curRow.net)}`;
+          $('history-rows').querySelectorAll('tr').forEach((row,i)=>row.classList.toggle('history-row-selected',i===cursor));
+          const cursorLine=svgNode.querySelector('line[stroke-dasharray="3 3"][stroke="var(--chart)"]');
+          if(cursorLine){cursorLine.setAttribute('x1',x(cursor));cursorLine.setAttribute('x2',x(cursor));}
+          const cursorCircle=svgNode.querySelector('circle[r="5"][fill="var(--chart)"]');
+          if(cursorCircle&&curRow.net!=null){cursorCircle.setAttribute('cx',x(cursor));cursorCircle.setAttribute('cy',y(curRow.net));}
+          tip.innerHTML=`<div style="font-weight:700;border-bottom:1px solid rgba(255,255,255,0.2);padding-bottom:3px;margin-bottom:4px;color:#fff;">${curRow.date}</div><div style="display:flex;justify-content:space-between;gap:12px;margin-bottom:2px;"><span style="color:#75b3ff;">Underlying:</span><span style="font-weight:700;color:#fff;">₹ ${num(curRow.underlying)}</span></div><div style="display:flex;justify-content:space-between;gap:12px;margin-bottom:2px;"><span style="color:#d0b1ff;">Gross P&L:</span><span style="font-weight:700;color:${curRow.gross>=0?'#4ade80':'#f87171'};">${money(curRow.gross)}</span></div><div style="display:flex;justify-content:space-between;gap:12px;"><span style="color:#75b3ff;">Net P&L:</span><span style="font-weight:700;color:${curRow.net>=0?'#4ade80':'#f87171'};">${money(curRow.net)}</span></div>`;
+          tip.style.display='block';
+          const cBoxR=chartBox.getBoundingClientRect();
+          tip.style.left=(cx-cBoxR.left)+'px';
+          tip.style.top=(cy-cBoxR.top-8)+'px';
+        }
+      };
+      svgNode.onmouseleave=()=>{if(tip)tip.style.display='none';};
+    }
   }
   $('history-cursor').oninput=()=>{pause();cursor=Number($('history-cursor').value);renderCursor();};
   $('history-prev').onclick=()=>{pause();cursor--;renderCursor();};$('history-next').onclick=()=>{pause();cursor++;renderCursor();};

@@ -1,0 +1,1168 @@
+/* Opstra Options Simulator Exact Reproduction Theme */
+#options-simulator {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: #212529;
+  background: #ffffff;
+  padding: 16px 20px;
+  box-sizing: border-box;
+  max-width: 100%;
+  border-radius: 4px;
+}
+
+/* Strict resets against global builder styles */
+#options-simulator button {
+  min-height: unset !important;
+  line-height: 1.2 !important;
+  width: auto !important;
+  margin: 0 !important;
+  box-sizing: border-box !important;
+  border-radius: 3px !important;
+  font-family: inherit !important;
+}
+
+#options-simulator input:not([type="checkbox"]),
+#options-simulator select {
+  min-height: unset !important;
+  line-height: 1.2 !important;
+  width: auto !important;
+  display: inline-block !important;
+  margin: 0 !important;
+  box-sizing: border-box !important;
+  font-family: inherit !important;
+}
+
+/* Top Header */
+.opstra-top-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+  border-bottom: 1px solid #f1f3f5;
+  padding-bottom: 10px;
+}
+
+.opstra-main-title {
+  font-size: 19px;
+  font-weight: 700;
+  color: #212529;
+  margin: 0;
+  letter-spacing: -0.2px;
+}
+
+.opstra-top-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.opstra-btn-navy {
+  background: #345a7c !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 3px !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  padding: 6px 14px !important;
+  cursor: pointer;
+  display: inline-flex !important;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s ease;
+}
+
+.opstra-btn-navy:hover {
+  background: #274561 !important;
+}
+
+/* Instrument & Date Strip */
+.opstra-meta-strip {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.opstra-symbol-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.opstra-symbol-select {
+  font-size: 18px !important;
+  font-weight: 700 !important;
+  color: #212529 !important;
+  border: none !important;
+  background: transparent !important;
+  cursor: pointer;
+  padding: 2px 4px 2px 0 !important;
+  outline: none;
+  width: auto !important;
+}
+
+.opstra-helper-text {
+  font-size: 10.5px;
+  color: #868e96;
+  font-weight: 400;
+}
+
+.opstra-badges-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 6px;
+}
+
+.opstra-badge {
+  font-size: 11.5px;
+  padding: 3px 8px;
+  border-radius: 3px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.opstra-badge-spot {
+  background: #d4edda;
+  border: 1px solid #c3e6cb;
+  color: #155724;
+}
+
+.opstra-badge-future {
+  background: #fce8e6;
+  border: 1px solid #fadbd8;
+  color: #c0392b;
+}
+
+.opstra-badge-lot {
+  background: #e9ecef;
+  border: 1px solid #dee2e6;
+  color: #495057;
+}
+
+.opstra-badge-iv {
+  background: #fff3cd;
+  border: 1px solid #ffeeba;
+  color: #856404;
+}
+
+.opstra-badge-btn {
+  background: #2a3b4c !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 3px !important;
+  padding: 4px 10px !important;
+  font-size: 11.5px !important;
+  font-weight: 500 !important;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.opstra-badge-btn:hover {
+  opacity: 0.9;
+}
+
+.opstra-dates-block {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.opstra-date-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.opstra-date-top-label {
+  font-size: 10px;
+  color: #868e96;
+  text-transform: capitalize;
+}
+
+.opstra-date-input {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: #212529 !important;
+  border: none !important;
+  border-bottom: 1px solid #ced4da !important;
+  padding: 2px 0 4px 0 !important;
+  background: transparent !important;
+  outline: none;
+  min-width: 125px;
+  border-radius: 0 !important;
+}
+
+/* Expiry & Playback Toolbar */
+.opstra-controls-section {
+  background: #ffffff;
+  border: 1px solid #e9ecef;
+  border-radius: 4px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+}
+
+.opstra-expiry-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.opstra-expiry-select {
+  font-size: 14.5px !important;
+  font-weight: 700 !important;
+  color: #212529 !important;
+  border: none !important;
+  background: transparent !important;
+  cursor: pointer;
+  padding: 0 !important;
+  outline: none;
+}
+
+.opstra-btn-record {
+  background: #ffffff !important;
+  border: 1px solid #ced4da !important;
+  border-radius: 3px !important;
+  font-size: 10.5px !important;
+  font-weight: 600 !important;
+  color: #343a40 !important;
+  padding: 4px 10px !important;
+  cursor: pointer;
+  display: inline-flex !important;
+  align-items: center;
+  gap: 6px;
+}
+
+.opstra-btn-record.recording {
+  border-color: #e53935 !important;
+  color: #e53935 !important;
+  background: #ffebee !important;
+}
+
+.opstra-dot-red {
+  color: #e53935;
+  font-size: 12px;
+}
+
+.opstra-playback-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.opstra-playback-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.opstra-btn-step-back {
+  background: #f1f3f5 !important;
+  border: 1px solid #ced4da !important;
+  border-radius: 3px !important;
+  font-size: 10.5px !important;
+  font-weight: 600 !important;
+  color: #495057 !important;
+  padding: 5px 8px !important;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.opstra-btn-step-back:hover {
+  background: #e9ecef !important;
+}
+
+.opstra-select-with-sub {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+
+.opstra-select-with-sub select {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: #212529 !important;
+  border: 1px solid #ced4da !important;
+  border-radius: 3px !important;
+  padding: 4px 6px !important;
+  background: #ffffff !important;
+  outline: none;
+}
+
+.opstra-select-with-sub small {
+  font-size: 9.5px;
+  color: #868e96;
+}
+
+.opstra-btn-play {
+  background: #00a8cc !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 3px !important;
+  font-size: 11.5px !important;
+  font-weight: 700 !important;
+  padding: 6px 16px !important;
+  cursor: pointer;
+  display: inline-flex !important;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.opstra-btn-play:hover {
+  background: #0093b3 !important;
+}
+
+.opstra-btn-step-fwd {
+  border: none !important;
+  border-radius: 3px !important;
+  font-size: 10.5px !important;
+  font-weight: 600 !important;
+  color: #ffffff !important;
+  padding: 5px 9px !important;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.15s;
+}
+
+.opstra-btn-step-fwd:hover {
+  opacity: 0.9;
+}
+
+.opstra-step-terracotta {
+  background: #b35d38 !important;
+}
+
+.opstra-step-slate {
+  background: #54829e !important;
+}
+
+.opstra-step-mednavy {
+  background: #2c5777 !important;
+}
+
+.opstra-step-darknavy {
+  background: #1b3b54 !important;
+}
+
+.opstra-clock-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+  padding-top: 6px;
+}
+
+.opstra-sim-clock {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: #212529;
+  text-align: center;
+  flex: 1;
+}
+
+.opstra-clock-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* Strategy Positions & Payoff Section */
+.opstra-middle-section {
+  display: grid;
+  grid-template-columns: 310px 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+@media (max-width: 950px) {
+  .opstra-middle-section {
+    grid-template-columns: 1fr;
+  }
+}
+
+.opstra-positions-card {
+  border: 1px solid #e9ecef;
+  border-radius: 4px;
+  padding: 12px;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.opstra-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #f1f3f5;
+  padding-bottom: 8px;
+  margin-bottom: 10px;
+}
+
+.opstra-card-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #212529;
+}
+
+.opstra-btn-reset {
+  background: #ffffff !important;
+  border: 1px solid #ced4da !important;
+  border-radius: 3px !important;
+  font-size: 10.5px !important;
+  font-weight: 600 !important;
+  color: #495057 !important;
+  padding: 2px 8px !important;
+  cursor: pointer;
+}
+
+.opstra-btn-reset:hover {
+  background: #f8f9fa !important;
+}
+
+.opstra-positions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+  min-height: 48px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.opstra-position-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 8px;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 3px;
+  font-size: 11.5px;
+}
+
+.opstra-pos-name {
+  font-weight: 600;
+  color: #212529;
+  word-break: break-all;
+}
+
+.opstra-pos-buy {
+  color: #2e7d32;
+}
+
+.opstra-pos-sell {
+  color: #c62828;
+}
+
+.opstra-pos-actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.opstra-icon-btn {
+  background: transparent !important;
+  border: none !important;
+  cursor: pointer;
+  padding: 2px !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: #495057;
+}
+
+.opstra-dot-green {
+  color: #2e7d32;
+  font-size: 13px;
+}
+
+.opstra-metrics-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin-top: auto;
+}
+
+.opstra-metrics-table td {
+  padding: 6px 4px;
+  border-top: 1px solid #f1f3f5;
+  color: #495057;
+}
+
+.opstra-metrics-table td:last-child {
+  text-align: right;
+  font-weight: 700;
+  color: #212529;
+}
+
+.opstra-val-gain {
+  color: #2e7d32 !important;
+}
+
+.opstra-val-loss {
+  color: #c62828 !important;
+}
+
+/* Payoff Card */
+.opstra-payoff-card {
+  border: 1px solid #e9ecef;
+  border-radius: 4px;
+  padding: 12px;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+}
+
+.opstra-payoff-tabs-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #f1f3f5;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+}
+
+.opstra-payoff-tabs {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.opstra-tab-btn {
+  background: transparent !important;
+  border: none !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: #6c757d !important;
+  padding: 4px 2px !important;
+  cursor: pointer;
+  display: inline-flex !important;
+  align-items: center;
+  gap: 5px;
+  position: relative;
+}
+
+.opstra-tab-btn.active {
+  color: #345a7c !important;
+}
+
+.opstra-tab-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: -9px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #345a7c;
+}
+
+.opstra-payoff-tools {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.opstra-toggle-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #495057;
+}
+
+.opstra-switch {
+  position: relative;
+  display: inline-block;
+  width: 32px;
+  height: 18px;
+}
+
+.opstra-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.opstra-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #2e7d32;
+  transition: .3s;
+  border-radius: 18px;
+}
+
+.opstra-slider:before {
+  position: absolute;
+  content: "";
+  height: 12px;
+  width: 12px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .3s;
+  border-radius: 50%;
+}
+
+.opstra-switch input:not(:checked) + .opstra-slider {
+  background-color: #adb5bd;
+}
+
+.opstra-switch input:not(:checked) + .opstra-slider:before {
+  transform: translateX(14px);
+}
+
+.opstra-chart-title {
+  text-align: center;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #212529;
+  margin: 4px 0 2px 0;
+}
+
+.opstra-chart-container {
+  width: 100%;
+  height: 270px;
+  position: relative;
+}
+
+.opstra-chart-container svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.opstra-chart-tooltip {
+  position: absolute;
+  background: rgba(33, 37, 41, 0.92);
+  color: #ffffff;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  pointer-events: none;
+  z-index: 10;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.opstra-greeks-strip {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-top: 8px;
+  border-top: 1px solid #f1f3f5;
+  font-size: 11.5px;
+  color: #495057;
+  margin-top: 6px;
+}
+
+.opstra-greeks-strip strong {
+  color: #212529;
+}
+
+.opstra-right-pnl {
+  margin-left: auto;
+}
+
+/* Option Chain */
+.opstra-chain-section {
+  background: #ffffff;
+  border: 1px solid #e9ecef;
+  border-radius: 4px;
+  padding: 12px;
+}
+
+.opstra-chain-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  position: relative;
+}
+
+.opstra-chain-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #212529;
+  margin: 0;
+  text-align: center;
+  flex: 1;
+}
+
+.opstra-chain-right-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.opstra-chain-futures-quote {
+  font-size: 12px;
+  color: #495057;
+}
+
+.opstra-chain-futures-quote strong {
+  color: #212529;
+}
+
+.opstra-stepper {
+  display: inline-flex;
+  border: 1px solid #ced4da;
+  border-radius: 3px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.opstra-stepper button {
+  background: #f8f9fa !important;
+  border: none !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  color: #495057 !important;
+  padding: 3px 8px !important;
+  cursor: pointer;
+}
+
+.opstra-stepper button:hover {
+  background: #e9ecef !important;
+}
+
+.opstra-stepper input {
+  width: 32px !important;
+  border: none !important;
+  border-inline: 1px solid #ced4da !important;
+  text-align: center !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  outline: none;
+  border-radius: 0 !important;
+  padding: 2px !important;
+}
+
+.opstra-btn-fut-sell {
+  background: #f07a75 !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 3px !important;
+  font-size: 11.5px !important;
+  font-weight: 700 !important;
+  padding: 4px 12px !important;
+  cursor: pointer;
+}
+
+.opstra-btn-fut-buy {
+  background: #5cb85c !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 3px !important;
+  font-size: 11.5px !important;
+  font-weight: 700 !important;
+  padding: 4px 12px !important;
+  cursor: pointer;
+}
+
+/* Chain Table */
+.opstra-table-container {
+  overflow-x: auto;
+  border: 1px solid #dee2e6;
+  border-radius: 3px;
+  max-height: 580px;
+}
+
+.opstra-chain-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11.5px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.opstra-chain-table th,
+.opstra-chain-table td {
+  padding: 6px 10px;
+  border-bottom: 1px solid #f1f3f5;
+  vertical-align: middle;
+}
+
+.opstra-chain-table thead th {
+  background: #f8f9fa;
+  color: #495057;
+  font-weight: 600;
+  border-bottom: 2px solid #dee2e6;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  text-align: right;
+}
+
+.opstra-chain-table thead th.opstra-th-strike {
+  text-align: center;
+  background: #e9ecef;
+  color: #212529;
+}
+
+.opstra-chain-table thead th:first-child,
+.opstra-chain-table thead th:last-child {
+  text-align: center;
+}
+
+.opstra-chain-table tbody td.opstra-td-strike {
+  text-align: center;
+  font-weight: 700;
+  color: #212529;
+  background: #fcfcfc;
+}
+
+.opstra-row-atm {
+  background: #fffde7 !important;
+}
+
+.opstra-row-atm td.opstra-td-strike {
+  background: #fff9c4 !important;
+  color: #b78103;
+}
+
+.opstra-chain-btn {
+  border-radius: 3px !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  padding: 3px 8px !important;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.opstra-chain-btn-call {
+  background: #f0f7fb !important;
+  border: 1px solid #b8d5e5 !important;
+  color: #1976d2 !important;
+}
+
+.opstra-chain-btn-call:hover {
+  background: #e1f0fa !important;
+}
+
+.opstra-chain-btn-put {
+  background: #fdf2f2 !important;
+  border: 1px solid #f5c6cb !important;
+  color: #d32f2f !important;
+}
+
+.opstra-chain-btn-put:hover {
+  background: #fde8e8 !important;
+}
+
+/* Modal Dialogs */
+.opstra-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.opstra-modal {
+  background: #ffffff;
+  border-radius: 6px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+  width: 90%;
+  max-width: 600px;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 20px 24px;
+  position: relative;
+}
+
+.opstra-modal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #e9ecef;
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+}
+
+.opstra-modal-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #212529;
+  margin: 0;
+}
+
+.opstra-modal-close {
+  background: transparent !important;
+  border: none !important;
+  font-size: 20px !important;
+  font-weight: 700 !important;
+  color: #868e96 !important;
+  cursor: pointer;
+}
+
+.opstra-strategy-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.opstra-strat-btn {
+  background: #f8f9fa !important;
+  border: 1px solid #dee2e6 !important;
+  border-radius: 4px !important;
+  padding: 10px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: #345a7c !important;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s;
+}
+
+.opstra-strat-btn:hover {
+  background: #345a7c !important;
+  color: #ffffff !important;
+  border-color: #345a7c !important;
+}
+
+/* ============================================================
+   Theme-aware overrides (UI/UX Pro Max design skill)
+   Remap the simulator's hardcoded light surfaces/text/borders to
+   the site's theme tokens so the page matches BOTH
+   [data-theme=light] and [data-theme=dark].
+   Semantic accents (navy/teal buttons, badges, call/put chips,
+   gain/loss colors, ATM highlight) are intentionally preserved.
+   ============================================================ */
+#options-simulator {
+  /* Prefer the site's theme tokens (defined in strategy-brand-theme.css
+     for both light & dark). Fallbacks keep the override working even if
+     that token provider is unavailable. */
+  --op-surface: var(--surface, #ffffff);
+  --op-ink: var(--ink, #152a22);
+  --op-muted: var(--muted, #354e43);
+  --op-border: var(--border, #bad6c7);
+  --op-soft: var(--soft, #edf6f0);
+  --op-control: var(--control-soft, #e7f3eb);
+  --op-control-ink: var(--control-soft-ink, #174a34);
+  --op-control-hover: var(--control-hover, #d4e9dc);
+}
+/* Self-contained dark palette (scoped to the simulator only). Guarantees
+   a correct dark theme even if the site-level token provider is missing,
+   without altering the rest of the Strategy Lab's global tokens. */
+html[data-theme=dark] #options-simulator {
+  --op-surface: #0b1628;
+  --op-ink: #eef5ff;
+  --op-muted: #b4c5dc;
+  --op-border: #34506f;
+  --op-soft: #172a45;
+  --op-control: #172a45;
+  --op-control-ink: #e5efff;
+  --op-control-hover: #254365;
+}
+
+/* Container */
+#options-simulator {
+  background: var(--op-surface) !important;
+  color: var(--op-ink) !important;
+}
+.opstra-main-title {
+  color: var(--op-ink);
+}
+
+/* Inputs / selects / helper text */
+.opstra-symbol-select,
+.opstra-date-input,
+.opstra-expiry-select,
+.opstra-select-with-sub select {
+  color: var(--op-ink) !important;
+}
+.opstra-helper-text,
+.opstra-date-top-label,
+.opstra-select-with-sub small {
+  color: var(--op-muted);
+}
+
+/* Panels / cards */
+.opstra-controls-section,
+.opstra-payoff-card,
+.opstra-positions-card,
+.opstra-chain-section,
+.opstra-modal {
+  background: var(--op-surface);
+  border-color: var(--op-border);
+}
+.opstra-position-row {
+  background: var(--op-soft);
+  border-color: var(--op-border);
+}
+.opstra-stepper {
+  background: var(--op-surface);
+  border-color: var(--op-border);
+}
+.opstra-stepper button {
+  background: var(--op-control) !important;
+  color: var(--op-control-ink) !important;
+}
+.opstra-stepper button:hover {
+  background: var(--op-control-hover) !important;
+}
+.opstra-strat-btn {
+  background: var(--op-control) !important;
+  color: var(--action) !important;
+  border-color: var(--op-border) !important;
+}
+.opstra-btn-reset {
+  background: var(--op-surface) !important;
+  color: var(--op-ink) !important;
+  border-color: var(--op-border) !important;
+}
+.opstra-btn-reset:hover {
+  background: var(--op-control) !important;
+}
+.opstra-btn-record {
+  background: var(--op-surface) !important;
+  color: var(--op-ink) !important;
+  border-color: var(--op-border) !important;
+}
+.opstra-btn-step-back {
+  background: var(--op-control) !important;
+  color: var(--op-muted) !important;
+  border-color: var(--op-border) !important;
+}
+.opstra-btn-step-back:hover {
+  background: var(--op-control-hover) !important;
+}
+.opstra-btn-step-fwd {
+  color: var(--op-ink) !important;
+}
+
+/* Chain table */
+.opstra-table-container {
+  border-color: var(--op-border);
+}
+.opstra-chain-table thead th {
+  background: var(--op-soft);
+  color: var(--op-muted);
+}
+.opstra-chain-table thead th.opstra-th-strike {
+  background: var(--op-control);
+  color: var(--op-ink);
+}
+.opstra-chain-table tbody td.opstra-td-strike {
+  background: var(--op-soft);
+  color: var(--op-ink);
+}
+
+/* Text / metadata */
+.opstra-sim-clock,
+.opstra-card-title,
+.opstra-chart-title,
+.opstra-chain-title,
+.opstra-modal-title,
+.opstra-pos-name,
+.opstra-chain-futures-quote strong,
+.opstra-greeks-strip strong,
+.opstra-metrics-table td:last-child {
+  color: var(--op-ink);
+}
+.opstra-metrics-table td,
+.opstra-greeks-strip,
+.opstra-chain-futures-quote,
+.opstra-icon-btn {
+  color: var(--op-muted);
+}
+.opstra-pos-buy,
+.opstra-val-gain {
+  color: var(--gain) !important;
+}
+.opstra-pos-sell,
+.opstra-val-loss {
+  color: var(--loss) !important;
+}
+
+/* Modal */
+.opstra-modal-close {
+  color: var(--op-muted) !important;
+}
+/* Data-driven replay additions, scoped to Strategy Lab. */
+#options-simulator{background:var(--surface);color:var(--ink);min-width:0}
+#opstra-simulator-root{min-width:0;--op-ink:var(--ink);--op-muted:var(--muted);--op-border:var(--border);--op-surface:var(--surface);--op-soft:var(--soft);--op-control:var(--control-soft)}
+#options-simulator .opstra-status{font-size:12px;color:var(--accent);margin:8px 0;min-height:18px}
+#options-simulator .opstra-source-note{font-size:11px;color:var(--muted);margin:6px 0 12px;border-left:3px solid var(--accent);padding:4px 10px;line-height:1.55}
+#options-simulator :is(.opstra-clock-row,.opstra-top-actions,.opstra-chain-right-controls){flex-wrap:wrap;gap:8px}
+#options-simulator .opstra-clock-row>div:first-child{display:flex;gap:10px;flex-wrap:wrap;min-width:0}
+#options-simulator label{color:var(--muted);font-size:12px}
+#options-simulator :is(input,select){background:var(--surface);color:var(--ink);border:1px solid var(--border);padding:5px 8px;max-width:100%}
+#options-simulator :is(button,input,select):focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+#options-simulator button:disabled{opacity:.4;cursor:not-allowed}
+#options-simulator .opstra-middle-section{grid-template-columns:minmax(240px,1fr) minmax(0,2fr);align-items:start}
+#options-simulator :is(.opstra-payoff-card,.opstra-positions-card,.opstra-chart-container){min-width:0;background:var(--surface);color:var(--ink)}
+#options-simulator .opstra-chart-container{height:auto!important;min-height:320px;overflow:visible;padding:12px 8px}
+#options-simulator .opstra-chart-container svg{height:auto!important;max-height:none}
+#options-simulator .opstra-chart-container .pp-inspector input{width:100%!important}
+#options-simulator :is(.opstra-table-container,.opstra-history-tools){min-width:0;max-width:100%;overflow-x:auto;overscroll-behavior-inline:contain}
+#options-simulator .opstra-chain-section>.opstra-table-container{max-height:600px;overflow:auto}
+#options-simulator .opstra-chain-table th{position:sticky;top:0;z-index:1;background:var(--soft);color:var(--ink)}
+#options-simulator .opstra-chain-table td{color:var(--ink);border-color:var(--border);font-variant-numeric:tabular-nums}
+#options-simulator .opstra-position-row{align-items:start;flex-wrap:wrap;gap:7px;padding:10px 4px;border-bottom:1px solid var(--border)}
+#options-simulator .opstra-position-row small{display:block;color:var(--muted);line-height:1.6;font-size:11px;margin-top:4px}
+#options-simulator :is(.opstra-pos-actions,.opstra-data-actions){display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+#options-simulator .opstra-pos-actions button,#options-simulator .opstra-history-tools button{background:var(--control-soft);color:var(--control-soft-ink);border:1px solid var(--border);padding:6px 10px;font-size:12px}
+#options-simulator .opstra-empty{font-size:13px;color:var(--muted);padding:18px 12px;line-height:1.6}
+#options-simulator .opstra-history-tools{margin:20px 0;border-top:1px solid var(--border);padding:14px 0;font-size:12px}
+#options-simulator .opstra-history-tools summary{font-weight:600;cursor:pointer;color:var(--ink);padding:8px 0}
+#options-simulator .opstra-data-actions{margin:14px 0}
+#options-simulator dialog.opstra-dialog{color:var(--ink);background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:0;width:min(720px,calc(100vw - 32px));max-width:calc(100vw - 32px);max-height:85dvh;overflow:auto;box-shadow:0 20px 70px #0005;font-family:inherit}
+#options-simulator dialog.opstra-dialog::backdrop{background:#020a16a8}
+#options-simulator .opstra-dialog>header{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--border);gap:16px}
+#options-simulator .opstra-dialog h2{font:700 19px/1.3 Inter,Arial,sans-serif;margin:0;color:var(--ink)}
+#options-simulator .opstra-dialog>header button{background:transparent;color:var(--ink);border:1px solid var(--border);padding:8px 13px;font-size:20px}
+#options-simulator .opstra-dialog-body{padding:20px;color:var(--muted);font-size:13px;line-height:1.6}
+#options-simulator .opstra-dialog-body button{background:var(--action);color:var(--accent-ink);border:1px solid var(--action-border);padding:9px 14px;font-size:12px}
+#options-simulator .opstra-dialog-body>button{display:block;margin:8px 0!important;width:100%!important;text-align:left}
+#options-simulator .opstra-dialog-body details{padding:12px 0;border-bottom:1px solid var(--border)}
+#options-simulator .opstra-dialog-body summary{cursor:pointer;color:var(--ink);font-weight:600}
+#options-simulator .opstra-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:14px 0}
+#options-simulator .opstra-fields label{display:flex;flex-direction:column;gap:5px;color:var(--muted);font-size:12px}
+#options-simulator .opstra-fields :is(input,select){width:100%!important;min-height:36px!important}
+#options-simulator .opstra-fields input[type=checkbox]{width:22px!important;height:22px;min-height:0!important}
+#options-simulator .opstra-metrics-table tr:first-child td:first-child::after,#options-simulator .opstra-metrics-table tr:nth-child(2) td:first-child::after{content:' (gross)';font-size:10px;color:var(--muted)}
+#options-simulator .opstra-btn-step-fwd,#options-simulator .opstra-btn-play,#options-simulator .opstra-btn-navy{background:var(--action)!important;color:var(--accent-ink)!important;border-color:var(--action-border)!important}
+#options-simulator .opstra-btn-step-back{color:var(--control-soft-ink)!important}
+@media(max-width:900px){#options-simulator .opstra-middle-section{grid-template-columns:minmax(0,1fr)}#options-simulator .opstra-playback-bar{justify-content:flex-start;gap:12px;flex-wrap:wrap}#options-simulator .opstra-meta-strip{flex-wrap:wrap;gap:18px}#options-simulator .opstra-dates-block{flex-wrap:wrap}#options-simulator .opstra-clock-row{display:flex;justify-content:space-between}}
+@media(max-width:600px){#options-simulator{padding:12px 8px}#options-simulator :is(button,input:not([type=checkbox]),select){min-height:44px!important;font-size:14px!important}#options-simulator .opstra-top-header{align-items:flex-start;gap:14px;flex-direction:column}#options-simulator .opstra-top-actions{display:flex;width:100%}#options-simulator .opstra-playback-group{max-width:100%;overflow-x:auto;gap:8px;padding:3px 0}#options-simulator .opstra-playback-group button{flex-shrink:0}#options-simulator .opstra-chart-container{padding:8px 0}#options-simulator .opstra-payoff-tabs-row{flex-wrap:wrap;gap:12px}#options-simulator .opstra-fields{grid-template-columns:minmax(0,1fr)}#options-simulator .opstra-dialog-body{padding:14px}#options-simulator .opstra-chain-table{min-width:880px}#options-simulator .opstra-badges-row{flex-wrap:wrap}#options-simulator .opstra-dates-block{gap:14px;max-width:100%}#options-simulator .opstra-sim-clock{font-size:14px}}
+#options-simulator :is(input:not([type=checkbox]),select),#options-simulator select option{background-color:var(--surface)!important;color:var(--ink)!important}
+#options-simulator .opstra-switch:focus-within .opstra-slider{outline:3px solid var(--focus);outline-offset:3px}
+#options-simulator .opstra-tab-btn{color:var(--muted)!important}
+#options-simulator .opstra-tab-btn.active{color:var(--accent)!important}
+#options-simulator .opstra-tab-btn.active::after{background:var(--accent)}
+#options-simulator .opstra-toggle-group{color:var(--muted)}
+#options-simulator .opstra-switch input:not(:checked)+.opstra-slider{background:var(--control-hover)}
+#options-simulator .opstra-switch input:not(:checked)+.opstra-slider:before{transform:none}
+#options-simulator .opstra-switch input:checked+.opstra-slider{background:var(--action)}
+#options-simulator .opstra-switch input:checked+.opstra-slider:before{transform:translateX(14px)}
+#options-simulator .opstra-positions-list{max-height:360px}
+@media(prefers-reduced-motion:reduce){#options-simulator .opstra-slider,#options-simulator .opstra-slider:before{transition:none}}

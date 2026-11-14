@@ -26,3 +26,6 @@
 @media(max-width:900px){.featured-logos{gap:12px 14px}.featured-art{width:145px}.featured-art img{max-height:54px}.featured-name{font-size:10px}.featured-mark{padding-inline:4px}}
 @media(max-width:640px){.featured-strip{padding:32px 0}.featured-strip-heading{font-size:11px;letter-spacing:.14em;margin-bottom:20px}.featured-logos{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px}.featured-mark{min-height:100px}.featured-art{width:150px;height:60px}.featured-art img{max-height:60px}.featured-name{font-size:11px}}
 @media(prefers-reduced-motion:reduce){.featured-art,.featured-name,.featured-mark::before{transition:none!important}.featured-mark:is(:hover,:focus-visible) .featured-art{transform:none}}
+
+/* Centre the three new marks on desktop; retain the two-column mobile grid. */
+@media(min-width:641px){.featured-logos>li:nth-child(11){grid-column:2}.featured-logos>li:nth-child(12){grid-column:3}.featured-logos>li:nth-child(13){grid-column:4}}
