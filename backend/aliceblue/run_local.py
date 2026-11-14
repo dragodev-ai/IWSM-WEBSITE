@@ -19,8 +19,13 @@ import uvicorn
 
 from alice_service import PREFIX, create_app, ensure_session_key, settings
 
+ROOT = HERE.parent.parent
 folder = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local")) / "IWSM"
-config = settings(folder / "aliceblue.env")
+config = settings([
+    folder / "aliceblue.env",
+    ROOT / ".env",
+    HERE / ".env",
+])
 config.setdefault("ALICEBLUE_APP_CODE", "")
 config.setdefault("ALICEBLUE_API_SECRET", "")
 config.setdefault(
@@ -31,8 +36,9 @@ app = create_app(
     config,
     str(folder / "aliceblue-sessions.sqlite3"),
     local_owner_mode=True,
-    env_path=str(folder / "aliceblue.env"),
+    env_path=str(HERE / ".env"),
 )
+app.state.enable_prewarm = True
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=4180, access_log=False, log_level="warning")

@@ -91,7 +91,7 @@ module.exports = async (req, res, url) => {
     await backend.ensure();
   } catch {
     res.writeHead(503, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', ...cors });
-    return res.end(JSON.stringify({ detail: 'The local data backend could not start. Check the Alice Blue Python environment.' }));
+    return res.end(JSON.stringify({ detail: 'The local market-data backend could not start. Check the Python environment.' }));
   }
 
   const reqHeaders = {

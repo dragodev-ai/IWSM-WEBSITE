@@ -210,10 +210,14 @@ def observations(result, start, end):
 
 def install_history(app, session_fn, broker, market, prefix, snapshots: SnapshotStore = None, nse_archive=None):
     from nifty_backup import NiftyBackup
+    from nse_live_chain import NseLiveOptionChain
 
     backup = NiftyBackup()
     snap_store = snapshots or SnapshotStore()
+    nse_live = NseLiveOptionChain()
     app.state.snapshots = snap_store
+    app.state.nse_live = nse_live
+    provider = str((getattr(app.state, 'config', {}) or {}).get('IWSM_MARKET_DATA_PROVIDER') or 'hybrid').strip().lower()
 
     async def get_session(req: Request):
         res = session_fn(req)
@@ -289,6 +293,7 @@ def install_history(app, session_fn, broker, market, prefix, snapshots: Snapshot
 
     masters = {}
     catalog_cache = {'stamp': None, 'rows': []}
+    underlyings_cache = {}
     locks = {}
     cache = {}
     bar_cache = {}
@@ -360,7 +365,7 @@ def install_history(app, session_fn, broker, market, prefix, snapshots: Snapshot
             except HTTPException:
                 unavailable.append(exch)
         if not directories:
-            raise HTTPException(503, 'Alice Blue instrument directory unavailable; retry shortly')
+            raise HTTPException(503, 'Exchange instrument directory unavailable; retry shortly')
 
         stamp = (
             masters.get('NFO', (0.0,))[0] if 'nse_fo' in directories else -1.0,
@@ -385,21 +390,31 @@ def install_history(app, session_fn, broker, market, prefix, snapshots: Snapshot
         except HTTPException:
             connected = False
         if connected:
-            for exch in directories:
+            async def _fetch_avail(ex_code):
+                cached_u = underlyings_cache.get(ex_code)
+                if cached_u and time.monotonic() - cached_u[0] < 1800:
+                    return ex_code, cached_u[1]
                 try:
-                    available = set((await market(req, 'underlyings', exch))['underlyings'])
-                    for row in rows:
-                        if row['exchange'] == exch:
-                            row['chainAvailable'] = row['symbol'] in available
+                    u_set = set((await market(req, 'underlyings', ex_code))['underlyings'])
+                    if u_set:
+                        underlyings_cache[ex_code] = (time.monotonic(), u_set)
+                    return ex_code, u_set
                 except HTTPException:
-                    pass
+                    return ex_code, None
+
+            avail_pairs = await asyncio.gather(*(_fetch_avail(ex_code) for ex_code in directories))
+            avail_map = {ex_code: u_set for ex_code, u_set in avail_pairs if u_set}
+            for row in rows:
+                u_set = avail_map.get(row['exchange'])
+                if u_set:
+                    row['chainAvailable'] = row['symbol'] in u_set
         return {
             'instruments': rows,
             'brokerConnected': connected,
             'unavailableExchanges': unavailable,
             'marketStatus': market_status_ist(),
-            'source': 'Alice Blue contract master',
-            'scope': 'All currently listed NSE/BSE option underlyings; chain availability checked against broker API when connected',
+            'source': 'Exchange Contract Directory',
+            'scope': 'All currently listed NSE/BSE option underlyings',
         }
 
     async def capture_snapshot_with_token(token: str, underlying: str, expiry: str, exch: str = 'nse_fo', chain_payload=None):
@@ -560,7 +575,7 @@ def install_history(app, session_fn, broker, market, prefix, snapshots: Snapshot
                     futures_expiry=futures_expiry,
                     india_vix=india_vix,
                     lot_size=resolved_lot,
-                    source='Alice Blue latest option-chain snapshot',
+                    source='IWSM Live Exchange Snapshot',
                 )
             except (ValueError, OSError, sqlite3.Error):
                 recorded_info = None
@@ -568,7 +583,7 @@ def install_history(app, session_fn, broker, market, prefix, snapshots: Snapshot
         cov = snap_store.coverage(symbol=underlying, exchange=exch)
         return {
             'dataset': {
-                'source': 'Alice Blue latest option-chain snapshot',
+                'source': 'IWSM Live Exchange Snapshot',
                 'contracts': contracts,
                 'underlying': spots,
                 'metadata': {
@@ -588,11 +603,26 @@ def install_history(app, session_fn, broker, market, prefix, snapshots: Snapshot
         }
 
     async def live_snapshot(req: Request, underlying: str, expiry: str, exch: str = 'nse_fo'):
-        _, auth = await get_session(req)
         if exch not in ('nse_fo', 'bse_fo'):
             raise HTTPException(422, 'Select an NSE or BSE option underlying')
-        chain = await market(req, 'option-chain', exch, underlying, expiry, 25)
-        return await capture_snapshot_with_token(auth['token'], underlying, expiry, exch, chain_payload=chain)
+        if provider == 'nse' and exch == 'nse_fo' and not getattr(broker, '_has_mock_transport', False):
+            try:
+                ds = await nse_live.snapshot_dataset(underlying, expiry)
+                return {'dataset': ds}
+            except Exception as exc:
+                raise HTTPException(502, f'NSE live option chain unavailable: {exc}') from None
+        try:
+            _, auth = await get_session(req)
+            chain = await market(req, 'option-chain', exch, underlying, expiry, 25)
+            return await capture_snapshot_with_token(auth['token'], underlying, expiry, exch, chain_payload=chain)
+        except HTTPException:
+            if provider == 'hybrid' and exch == 'nse_fo' and getattr(app.state, 'local_owner_mode', False) and not getattr(broker, '_has_mock_transport', False):
+                try:
+                    ds = await nse_live.snapshot_dataset(underlying, expiry)
+                    return {'dataset': ds}
+                except Exception:
+                    pass
+            raise
 
     async def live_replay(req: Request, underlying: str, expiry: str, start: str, end: str, exch: str = 'nse_fo', interval: int = 15):
         _, auth = await get_session(req)
@@ -627,7 +657,7 @@ def install_history(app, session_fn, broker, market, prefix, snapshots: Snapshot
             directory = await master(contract_exchange)
             records = master_rows(directory)
             by_symbol = {r.get('trading_symbol'): r for r in records}
-            sem = asyncio.Semaphore(8)
+            sem = asyncio.Semaphore(16)
 
             async def history(token, exchange):
                 bkey = (exchange, str(token), start, end)
@@ -763,7 +793,7 @@ def install_history(app, session_fn, broker, market, prefix, snapshots: Snapshot
 
             cov = snap_store.coverage(symbol=underlying, exchange=exch)
             dataset = {
-                'source': 'Alice Blue recorded minute closes',
+                'source': 'IWSM 1-Minute Intraday Option History',
                 'contracts': contracts,
                 'underlying': spots,
                 'metadata': {
@@ -776,7 +806,7 @@ def install_history(app, session_fn, broker, market, prefix, snapshots: Snapshot
                     'historyScope': f'Current-expiry contracts (±{interval} strikes around ATM); untraded strikes omitted cleanly without aborting chain',
                 },
             }
-            if len(cache) >= 16:
+            if len(cache) >= 32:
                 cache.pop(next(iter(cache)))
             cache[key] = dataset
             return {'dataset': dataset, 'cached': False}
@@ -864,7 +894,7 @@ def install_history(app, session_fn, broker, market, prefix, snapshots: Snapshot
             if not m_status['isOpen']:
                 recorder_state['lastStatus'] = f"Paused ({m_status['reason']})"
             elif not token:
-                recorder_state['lastStatus'] = 'Waiting for active Alice Blue session'
+                recorder_state['lastStatus'] = 'Waiting for active market-data session'
             else:
                 for target in list(recorder_state['targets']):
                     try:
@@ -926,3 +956,53 @@ def install_history(app, session_fn, broker, market, prefix, snapshots: Snapshot
             recorder_state['lastStatus'] = 'Stopped'
             recorder_state['task'] = None
         return await get_recorder_status()
+
+    class _InternalReq:
+        cookies = {}
+        headers = {}
+        query_params = {}
+
+    async def _startup_prewarm():
+        if not getattr(app.state, 'enable_prewarm', False):
+            return
+        try:
+            await asyncio.gather(master('NFO'), master('BFO'), master('INDICES'), return_exceptions=True)
+            dirs = {}
+            if 'NFO' in masters:
+                dirs['nse_fo'] = masters['NFO'][1]
+            if 'BFO' in masters:
+                dirs['bse_fo'] = masters['BFO'][1]
+            if dirs:
+                rows = await asyncio.to_thread(instrument_catalog, dirs)
+                catalog_cache['stamp'] = (
+                    masters.get('NFO', (0.0,))[0] if 'nse_fo' in dirs else -1.0,
+                    masters.get('BFO', (0.0,))[0] if 'bse_fo' in dirs else -1.0,
+                )
+                catalog_cache['rows'] = rows
+            now_dt = datetime.now(IST)
+            end_iso = now_dt.strftime('%Y-%m-%d')
+            cur_dt = now_dt
+            trading_back = 0
+            cal_back = 0
+            while trading_back < 3 and cal_back < 6:
+                cur_dt = cur_dt - timedelta(days=1)
+                cal_back += 1
+                if cur_dt.weekday() < 5:
+                    trading_back += 1
+            start_iso = cur_dt.strftime('%Y-%m-%d')
+            req_stub = _InternalReq()
+            for sym in ('NIFTY', 'RELIANCE', 'BANKNIFTY'):
+                try:
+                    exps = await public_expiries(sym, 'nse_fo', start_iso)
+                    if exps:
+                        res = await live_replay(req_stub, sym, exps[0], start_iso, end_iso, 'nse_fo', interval=15)
+                        remember(res, 'minute')
+                except Exception:
+                    continue
+        except Exception:
+            pass
+
+    @app.on_event('startup')
+    async def _on_startup_prewarm():
+        if getattr(app.state, 'enable_prewarm', False):
+            app.state.prewarm_task = asyncio.create_task(_startup_prewarm())

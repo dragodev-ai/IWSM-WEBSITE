@@ -222,7 +222,7 @@ class SnapshotStore:
         futures_expiry: str = '',
         india_vix=None,
         lot_size: int = 1,
-        source: str = 'Alice Blue live option-chain snapshot',
+        source: str = 'IWSM Live Exchange Snapshot',
     ):
         symbol = str(symbol or '').strip().upper()
         exchange = str(exchange or 'nse_fo').strip().lower()

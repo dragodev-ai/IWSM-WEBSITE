@@ -1,4 +1,4 @@
-/* IWSM Options Simulator Controller — Live Alice Blue Chains, Recorded Snapshot Store, Multi-Leg Strategy Builder, BSM Greeks & Deterministic Playback. */
+/* IWSM Options Simulator Controller — Live Exchange Option Chains, Recorded Snapshot Store, Multi-Leg Strategy Builder, BSM Greeks & Deterministic Playback. */
 (function (root) {
   'use strict';
 
@@ -54,7 +54,7 @@
 
       const playbackHelp = document.createElement('div');
       playbackHelp.className = 'opstra-playback-help';
-      playbackHelp.innerHTML = '<p id="opstra-playback-explanation" role="status"></p><button type="button" id="opstra-load-replay">Load minute / snapshot history</button>';
+      playbackHelp.innerHTML = '<p id="opstra-playback-explanation" role="status"></p>';
       host.querySelector('.opstra-clock-row').after(playbackHelp);
 
       const browse = document.createElement('div');
@@ -374,36 +374,26 @@
         return j;
       }
 
-      function updateBrokerAuthBadge() {
-        const btn = el('btn-broker-auth');
-        if (!btn) return;
-        const isConn = Boolean(brokerAuth?.connected);
-        btn.classList.toggle('is-connected', isConn);
-        btn.innerHTML = isConn
-          ? '<span class="opstra-dot-green">●</span> ALICE BLUE LIVE'
-          : '🔑 CONNECT ALICE BLUE';
-        btn.title = isConn
-          ? 'Alice Blue API connected & verified' + (brokerAuth.clientIdHint ? ' (' + brokerAuth.clientIdHint + ')' : '')
-          : 'Click to connect Alice Blue via Direct API Key or Vendor SSO';
-      }
-
       async function refreshBrokerAuthStatus() {
         try {
           const j = await brokerApi('auth/status');
           brokerAuth = j || { connected: false };
           if (j?.marketStatus) serverMarketStatus = j.marketStatus;
-          updateBrokerAuthBadge();
           updateMarketBadges();
           return brokerAuth;
         } catch {
-          updateBrokerAuthBadge();
           return brokerAuth;
         }
       }
 
+      function fnoExch(raw = d?.metadata?.exchange) {
+        const x = String(raw || '').toLowerCase();
+        return x === 'bse_fo' || x === 'bse' || x === 'bfo' ? 'bse_fo' : 'nse_fo';
+      }
+
       async function refreshMarketAndCoverage(sym = '') {
         try {
-          const exch = d?.metadata?.exchange || 'nse_fo';
+          const exch = fnoExch();
           const j = await brokerApi('market-status?' + new URLSearchParams({ underlying: sym || s?.symbol || 'NIFTY', exch }));
           serverMarketStatus = j.marketStatus || null;
           snapshotCoverage = j.snapshotCoverage || null;
@@ -761,7 +751,7 @@
 
       function render() {
         if (!s || !d) return;
-        const exch = d.metadata?.exchange || 'nse_fo';
+        const exch = fnoExch();
         const all = d.byFrame.get(s.symbol + '|' + s.cursor) || [];
         const expiries = [...new Set(d.contracts.filter(q => q.symbol === s.symbol && q.type !== 'FUT').map(q => q.expiry))].sort();
         if (!expiries.includes(viewExpiry)) viewExpiry = expiries[0] || '';
@@ -781,7 +771,6 @@
         el('symbol-select').innerHTML = instrumentOptions(s.symbol, exch, symbolSearchQuery);
         el('symbol-select').disabled = loading;
         renderSearchMatches();
-        updateBrokerAuthBadge();
         const instMeta = activeInstrumentMeta(s.symbol, exch);
         const strikeDiffs = (() => {
           const st = [...new Set(chainRows.filter(q => q.type !== 'FUT').map(q => q.strike))].sort((x, y) => x - y);
@@ -840,9 +829,7 @@
         // Playback state & timeframe buttons
         const playback = root.IWSMSimulatorPlayback.describe({ kind: d.kind, frames, cursor: s.cursor, exchange: exch, base });
         el('playback-explanation').textContent = playback.notice;
-        el('load-replay').textContent = playback.action;
-        el('load-replay').hidden = !playback.single && d.kind !== 'daily';
-        el('resolution-note').textContent = d.kind === 'daily' ? 'Daily source: intraday 1m–60m steps require minute candles or recorded snapshots.' : 'Intraday replay active (' + frames.length + ' timestamps).';
+        el('resolution-note').textContent = d.kind === 'daily' ? 'Daily archive loaded (1D steps).' : 'Intraday replay active (' + frames.length + ' timestamps).';
 
         const supported = playback.supported, oldTf = +el('timeframe').value;
         el('timeframe').innerHTML = playback.single
@@ -878,7 +865,7 @@
           : d.metadata?.backup
           ? 'LOCAL HISTORICAL BACKUP'
           : isSnap
-          ? 'LIVE BROKER SNAPSHOT'
+          ? 'LIVE EXCHANGE SNAPSHOT'
           : 'GENUINE RECORDED OBSERVATIONS';
         const warnText = (d.metadata?.warnings || []).concat(d.warnings || []).filter(Boolean).join(' · ');
         source.hidden = false;
@@ -1253,103 +1240,13 @@
         });
       }
 
-      async function openBrokerConnectModal(reasonText = '') {
-        const st = await refreshBrokerAuthStatus();
-        const isConn = Boolean(st?.connected);
-        const dom = dialog(
-          'Alice Blue API Connection & Auto-Renewal',
-          (reasonText ? '<p class="opstra-dialog-status">' + esc(reasonText) + '</p>' : '') +
-            '<div class="opstra-stat-grid">' +
-            '<div class="opstra-stat-box"><small>Session Status</small><strong style="color:' + (isConn ? '#15803d' : '#b45309') + '">' + esc(isConn ? 'Connected & Verified' : 'Disconnected / Daily Token Expired') + '</strong></div>' +
-            '<div class="opstra-stat-box"><small>Vendor App Code</small><strong>' + esc(st?.appConfigured ? 'Configured ✓' : 'Optional (use Direct API Key)') + '</strong></div>' +
-            '<div class="opstra-stat-box"><small>Saved Client ID</small><strong>' + esc(st?.clientIdConfigured ? (st.clientIdHint || 'Configured ✓') : 'Enter once below') + '</strong></div>' +
-            '<div class="opstra-stat-box"><small>24/7 Auto-Renew API Key</small><strong>' + esc(st?.apiKeyConfigured ? 'Saved ✓' : 'Not saved yet') + '</strong></div>' +
-            '</div>' +
-            '<div class="opstra-auth-card">' +
-            '<h3>Option 1 (Recommended): Direct Alice Blue API Key — Zero Daily Redirects</h3>' +
-            '<p>Paste your Alice Blue <strong>Client ID</strong> and <strong>API Key</strong> (from <em>ANT Web → Apps → API Key</em>). IWSM stores it encrypted locally in <code>%LOCALAPPDATA%\\IWSM\\aliceblue.env</code> and automatically renews your daily session token without browser popups.</p>' +
-            '<form id="opstra-apikey-form">' +
-            '<div class="opstra-fields">' +
-            '<label>Alice Blue Client ID<input name="clientId" placeholder="e.g. AB123456" autocomplete="username" required></label>' +
-            '<label>Direct API Key<input name="apiKey" type="password" placeholder="Paste API Key from ANT Web → Apps → API Key" autocomplete="off" required></label>' +
-            '</div>' +
-            '<button type="submit">Verify &amp; Save Direct API Key</button>' +
-            '</form>' +
-            '</div>' +
-            '<div class="opstra-auth-card">' +
-            '<h3>Option 2: Alice Blue Vendor SSO Login (' + esc(st?.appConfigured ? 'App Code Ready' : 'Requires App Code') + ')</h3>' +
-            '<p>Authenticate once via Alice Blue ANT portal. Entering your Client ID once ensures callback verification succeeds even when Alice Blue omits OAuth state.</p>' +
-            '<form id="opstra-sso-form">' +
-            '<div class="opstra-fields">' +
-            '<label>Alice Blue Client ID ' + (st?.clientIdConfigured ? '(already saved — optional)' : '(required once)') + '<input name="clientId" placeholder="e.g. AB123456" autocomplete="username" ' + (st?.clientIdConfigured ? '' : 'required') + '></label>' +
-            '</div>' +
-            '<button type="submit" ' + (st?.appConfigured === false ? 'disabled' : '') + '>Continue to Alice Blue SSO Login ↗</button>' +
-            '</form>' +
-            '</div>' +
-            '<p class="opstra-dialog-status" id="opstra-auth-modal-msg" role="status"></p>' +
-            (isConn
-              ? '<div class="opstra-data-actions">' +
-                '<button type="button" id="opstra-auth-test-live">⚡ Load Live Chain Now</button>' +
-                '<button type="button" id="opstra-auth-logout">Disconnect Session</button>' +
-                '</div>'
-              : ''),
-          true
-        );
-
-        const modalMsg = dom.querySelector('#opstra-auth-modal-msg');
-
-        dom.querySelector('#opstra-apikey-form').onsubmit = guard(async e => {
-          e.preventDefault();
-          const fd = Object.fromEntries(new FormData(e.target));
-          modalMsg.textContent = 'Verifying Client ID & API Key with Alice Blue…';
-          await brokerApi('auth/apikey', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ clientId: fd.clientId.trim(), apiKey: fd.apiKey.trim(), persist: true }),
-          });
-          await refreshBrokerAuthStatus();
-          close();
-          msg('Alice Blue Direct API Key verified & saved! Loading live / 1-minute market data…');
-          await fetchLiveSnapshotNow(false);
-        });
-
-        dom.querySelector('#opstra-sso-form').onsubmit = guard(async e => {
-          e.preventDefault();
-          const fd = Object.fromEntries(new FormData(e.target));
-          modalMsg.textContent = 'Preparing secure Alice Blue SSO redirect…';
-          const j = await brokerApi('auth/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ clientId: (fd.clientId || '').trim() }),
-          });
-          root.location.assign(j.loginUrl);
-        });
-
-        const liveBtn = dom.querySelector('#opstra-auth-test-live');
-        if (liveBtn) {
-          liveBtn.onclick = guard(async () => {
-            close();
-            await fetchLiveSnapshotNow(false);
-          });
-        }
-        const logoutBtn = dom.querySelector('#opstra-auth-logout');
-        if (logoutBtn) {
-          logoutBtn.onclick = guard(async () => {
-            await brokerApi('auth/logout', { method: 'POST' });
-            await refreshBrokerAuthStatus();
-            close();
-            msg('Alice Blue session disconnected.');
-          });
-        }
-      }
-
       async function fetchLiveSnapshotNow(silent = false) {
         if (refreshInFlight || !s) return;
         refreshInFlight = true;
         const btn = el('btn-live-refresh');
         if (btn) btn.textContent = '↻ Loading…';
         try {
-          const exch = d?.metadata?.exchange || 'nse_fo';
+          const exch = fnoExch();
           const expRes = await brokerApi('expiries?' + new URLSearchParams({ underlying: s.symbol, exch }));
           if (Array.isArray(expRes.expiryDetails)) {
             for (const item of expRes.expiryDetails) if (item.iso) brokerExpiryDetails[item.iso] = item;
@@ -1367,11 +1264,7 @@
         } catch (err) {
           stopAutoRefresh();
           if (!silent) {
-            if (/connect|account|authentication|session/i.test(err.message)) {
-              await openBrokerConnectModal(err.message);
-            } else {
-              msg(err.message);
-            }
+            msg(err.message);
           }
         } finally {
           refreshInFlight = false;
@@ -1396,14 +1289,14 @@
 
         const dom = dialog(
           'Historical Option-Chain Snapshot Store & Recorder',
-          '<p><strong>Historical Data Integrity:</strong> Alice Blue API provides 1-minute historical OHLCV bars for active option tokens, while historical OI, Change in OI, Bid/Ask, IV &amp; Greeks are preserved by IWSM\'s local SQLite <code>SnapshotStore</code> from the moment live recording is enabled. Historical option prices are never fabricated.</p>' +
+          '<p><strong>Historical Data Integrity:</strong> Live exchange feeds provide 1-minute historical OHLCV bars for active option contracts, while historical OI, Change in OI, Bid/Ask, IV &amp; Greeks are preserved by IWSM\'s local SQLite <code>SnapshotStore</code> from the moment live recording is enabled. Historical option prices are never fabricated.</p>' +
             '<div class="opstra-stat-grid">' +
             '<div class="opstra-stat-box"><small>Earliest Recorded Date</small><strong>' + esc(snapshotCoverage?.earliestDate || 'None recorded yet') + '</strong></div>' +
             '<div class="opstra-stat-box"><small>Total Recorded Frames</small><strong>' + esc(String(snapshotCoverage?.frameCount || 0)) + '</strong></div>' +
             '<div class="opstra-stat-box"><small>Contract Rows Stored</small><strong>' + esc(String(snapshotCoverage?.contractRowCount || 0)) + '</strong></div>' +
             '<div class="opstra-stat-box"><small>Background Recorder</small><strong>' + esc(statusData.enabled ? 'Active (' + statusData.intervalSeconds + 's)' : 'Stopped') + '</strong></div>' +
             '</div>' +
-            (symRows.length ? table(['Symbol', 'Frames', 'Earliest IST', 'Latest IST', 'Expiries', 'Action'], symRows) : '<p class="opstra-empty">No live option-chain snapshots recorded yet. Connect Alice Blue during market hours (09:15–15:30 IST) and click Record Snapshot Now or enable Background Recording below.</p>') +
+            (symRows.length ? table(['Symbol', 'Frames', 'Earliest IST', 'Latest IST', 'Expiries', 'Action'], symRows) : '<p class="opstra-empty">No live option-chain snapshots recorded yet. During market hours (09:15–15:30 IST), click Record Snapshot Now or enable Background Recording below.</p>') +
             '<form id="opstra-recorder-form">' +
             '<div class="opstra-fields">' +
             '<label>Target Symbol<input name="underlying" value="' + esc(s?.symbol || 'NIFTY') + '" required></label>' +
@@ -1444,7 +1337,7 @@
 
         dom.querySelector('#opstra-rec-once').onclick = guard(async () => {
           const fd = Object.fromEntries(new FormData(form));
-          recMsg.textContent = 'Capturing live snapshot from Alice Blue…';
+          recMsg.textContent = 'Capturing live exchange option-chain snapshot…';
           const j = await brokerApi('snapshots/record', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1662,7 +1555,7 @@
         generation++;
         pause();
         stopAutoRefresh();
-        const selected = instrumentChoice(preferred || (d?.metadata.exchange || 'nse_fo') + '|' + (s?.symbol || 'NIFTY'));
+        const selected = instrumentChoice(preferred || fnoExch() + '|' + (s?.symbol || 'NIFTY'));
         const now = todayIST();
         const day = defaultMinuteStartIST(now);
 
@@ -1671,37 +1564,26 @@
           '<form>' +
             '<div class="opstra-fields">' +
             '<label>Index / Stock F&amp;O<select name="symbol" required>' + instrumentOptions(selected.symbol, selected.exchange) + '</select></label>' +
-            '<label>Data Source<select name="data">' +
-            '<option value="minute">Alice Blue 1-Minute Intraday History</option>' +
-            '<option value="snapshot">Alice Blue Live Option-Chain Snapshot</option>' +
-            '<option value="recorded_snapshots">IWSM Recorded Historical Chain Snapshots</option>' +
-            '<option value="daily">Historical Daily Archive (NSE / 5-Yr SQLite)</option>' +
-            '</select></label>' +
             '<label class="history-date">Start Date (IST)<input name="start" type="date" value="' + day + '" max="' + now + '" required></label>' +
             '<label class="history-date">End Date (IST)<input name="end" type="date" value="' + now + '" max="' + now + '" required></label>' +
             '<label class="broker-expiry">Contract Expiry<select name="expiry"></select></label>' +
             '</div>' +
             '<p class="opstra-dialog-status" role="status"></p>' +
             '<div class="opstra-data-actions">' +
-            '<button type="button" class="connect-broker" hidden>Connect Alice Blue API</button>' +
             '<button type="submit">Start Simulation</button>' +
             '</div>' +
             '</form>'
         );
-        const f = dom.querySelector('form'), note = dom.querySelector('[role=status]'), connect = dom.querySelector('.connect-broker');
-        let request = 0;
-
-        connect.onclick = guard(async () => {
-          await openBrokerConnectModal();
-        });
+        const f = dom.querySelector('form'), note = dom.querySelector('[role=status]');
+        let request = 0, archiveFallbackOnly = false;
 
         function clampModalDates() {
-          const mode = f.elements.data.value;
           const sVal = f.elements.start.value;
           let eVal = f.elements.end.value;
-          if (!sVal || mode === 'snapshot') return;
+          if (!sVal) return;
           if (!eVal || eVal < sVal) eVal = sVal;
-          const maxSpan = mode === 'minute' ? 6 : mode === 'daily' ? 30 : 30;
+          const daysAgo = (Date.parse(now) - Date.parse(sVal)) / 86400000;
+          const maxSpan = daysAgo <= 6 ? 6 : 30;
           if ((Date.parse(eVal) - Date.parse(sVal)) / 86400000 > maxSpan) {
             const clamped = addCalendarDays(sVal, maxSpan);
             eVal = clamped > now ? now : clamped;
@@ -1711,44 +1593,15 @@
 
         async function loadModalExpiries() {
           clampModalDates();
-          const n = ++request, choice = instrumentChoice(f.elements.symbol.value), mode = f.elements.data.value;
+          const n = ++request, choice = instrumentChoice(f.elements.symbol.value);
           const startVal = f.elements.start.value, endVal = f.elements.end.value;
-          f.querySelector('.broker-expiry').hidden = mode === 'daily';
-          f.querySelectorAll('.history-date').forEach(x => { x.hidden = mode === 'snapshot'; });
-          connect.hidden = true;
+          archiveFallbackOnly = false;
+          f.querySelector('.broker-expiry').hidden = false;
           f.elements.expiry.innerHTML = '';
           f.querySelector('[type=submit]').disabled = true;
 
-          if (mode !== 'snapshot' && (startVal > now || endVal > now || startVal > endVal)) {
+          if (!startVal || !endVal || startVal > now || endVal > now || startVal > endVal) {
             note.textContent = 'Invalid date selection: Start Date must be ≤ End Date and cannot be in the future (' + now + ' IST).';
-            return;
-          }
-
-          if (mode === 'daily') {
-            note.textContent =
-              choice.exchange === 'bse_fo'
-                ? 'BSE daily EOD archives are not connected locally. Select Live Snapshot, 1-Minute History, or Recorded Snapshots.'
-                : 'Historical daily EOD archive selected. Supports multi-year daily simulation across all 224 NSE F&O stocks & indices.';
-            f.querySelector('[type=submit]').disabled = choice.exchange === 'bse_fo';
-            return;
-          }
-
-          if (mode === 'recorded_snapshots') {
-            note.textContent = 'Checking locally recorded option-chain snapshots for ' + choice.symbol + '…';
-            try {
-              const cov = await brokerApi('snapshots/coverage?' + new URLSearchParams({ underlying: choice.symbol, exch: choice.exchange }));
-              if (n !== request || !f.isConnected) return;
-              const symEntry = (cov.symbols || [])[0];
-              if (!cov.hasSnapshots || !symEntry) {
-                note.textContent = 'No recorded option-chain snapshots stored yet for ' + choice.symbol + '. Connect Alice Blue during live sessions to capture timestamped full chains.';
-                return;
-              }
-              f.elements.expiry.innerHTML = symEntry.expiries.map(e => '<option value="' + esc(e) + '">' + esc(e + ' (' + isoToBrokerCode(e) + ')') + '</option>').join('');
-              note.textContent = 'Earliest recorded snapshot for ' + choice.symbol + ': ' + cov.earliestTimestamp + ' IST (' + cov.frameCount + ' frames).';
-              f.querySelector('[type=submit]').disabled = !symEntry.expiries.length;
-            } catch (e) {
-              if (n === request) note.textContent = e.message;
-            }
             return;
           }
 
@@ -1759,7 +1612,8 @@
                 new URLSearchParams({
                   underlying: choice.symbol,
                   exch: choice.exchange,
-                  ...(mode !== 'snapshot' ? { start: startVal, end: endVal } : {}),
+                  start: startVal,
+                  end: endVal,
                 })
             );
             if (n !== request || !f.isConnected) return;
@@ -1772,41 +1626,46 @@
               f.elements.expiry.innerHTML = options(j.expiries || [], (j.expiries || [])[0]);
             }
             if (!j.expiries?.length) {
-              if (choice.exchange === 'nse_fo' && mode !== 'snapshot') {
+              if (choice.exchange === 'nse_fo') {
                 const win = resolveArchiveWindow(choice.symbol, startVal, endVal);
-                note.textContent = 'No observations on ' + startVal + ' (weekend/holiday). Adjusted to nearest trading session (' + win.start + ' to ' + win.end + ').';
                 if (win.start !== startVal || win.end !== endVal) {
+                  note.textContent = 'Adjusted weekend/holiday date to nearest trading session (' + win.start + ' to ' + win.end + ').';
                   f.elements.start.value = win.start;
                   f.elements.end.value = win.end;
                   return loadModalExpiries();
                 }
+                archiveFallbackOnly = true;
+                f.querySelector('.broker-expiry').hidden = true;
+                note.textContent = 'Historical option chain archive ready (' + win.start + ' to ' + win.end + ').';
+                f.querySelector('[type=submit]').disabled = false;
+                return;
               }
               note.textContent = 'No option contracts found for ' + choice.symbol + ' in ' + startVal + ' – ' + endVal + '.';
               return;
             }
+            if (j.historicalOnly && choice.exchange === 'nse_fo') {
+              archiveFallbackOnly = true;
+            }
             note.textContent = j.historicalOnly || j.backup
-              ? 'Historical contracts resolved (' + (j.source || 'verified local archive') + '). Loads recorded minute bars when available or verified daily option chain.'
-              : j.publicMaster && !brokerAuth?.connected
-              ? 'Expiries loaded from Alice Blue contract master. Connect Alice Blue API for live / 1-minute quotes, or Start Simulation to use local verified backup.'
-              : mode === 'snapshot'
-              ? 'Alice Blue Live Option-Chain Snapshot · Captures Spot, Futures, VIX, OI & Greeks and persists to Snapshot Store.'
-              : 'Alice Blue 1-Minute Intraday History · Up to 7 calendar days · Current-expiry contracts (±15 strikes around ATM).';
-            if (j.publicMaster && !brokerAuth?.connected) connect.hidden = false;
+              ? 'Historical contracts resolved (' + (j.source || 'verified local archive') + '). Automatically loads best available intraday or daily chain.'
+              : '1-Minute Intraday Option History ready · Automatically loads observed 1m option-chain bars.';
             f.querySelector('[type=submit]').disabled = !j.expiries.length;
           } catch (e) {
             if (n !== request) return;
+            if (choice.exchange === 'nse_fo') {
+              archiveFallbackOnly = true;
+              f.querySelector('.broker-expiry').hidden = true;
+              note.textContent = 'Historical option chain archive ready for ' + choice.symbol + '.';
+              f.querySelector('[type=submit]').disabled = false;
+              return;
+            }
             note.textContent = e.message;
-            connect.hidden = !/connect|account|session|authentication/i.test(e.message);
           }
         }
 
         f.elements.symbol.onchange = loadModalExpiries;
-        f.elements.data.onchange = loadModalExpiries;
         f.elements.start.onchange = loadModalExpiries;
         f.elements.end.onchange = loadModalExpiries;
-        if (brokerInstruments.length && !brokerInstruments.some(x => x.symbol === selected.symbol && x.exchange === selected.exchange)) {
-          f.elements.data.value = 'daily';
-        }
         loadModalExpiries();
 
         refreshInstruments()
@@ -1820,23 +1679,18 @@
         f.onsubmit = guard(async e => {
           e.preventDefault();
           const values = Object.fromEntries(new FormData(f)), choice = instrumentChoice(values.symbol);
-          if (values.data === 'daily') {
+          const spanDays = (Date.parse(values.end) - Date.parse(values.start)) / 86400000;
+          if (archiveFallbackOnly || (spanDays > 6 && choice.exchange === 'nse_fo')) {
             const win = resolveArchiveWindow(choice.symbol, values.start, values.end);
             await loadRecorded(choice.symbol, win.start, win.end);
             return;
           }
           const n = ++generation;
           f.querySelector('[type=submit]').disabled = true;
-          note.textContent = 'Loading verified ' + choice.symbol + ' market data…';
+          note.textContent = 'Loading ' + choice.symbol + ' option chain…';
           try {
-            const endpoint =
-              values.data === 'snapshot'
-                ? 'snapshot?'
-                : values.data === 'recorded_snapshots'
-                ? 'snapshots/replay?'
-                : 'replay?';
             const j = await brokerApi(
-              endpoint +
+              'replay?' +
                 new URLSearchParams({
                   underlying: choice.symbol,
                   expiry: values.expiry,
@@ -1850,25 +1704,19 @@
             close();
             refreshMarketAndCoverage(choice.symbol);
             msg(
-              (j.notice ||
-                (values.data === 'snapshot'
-                  ? 'Live Alice Blue option-chain snapshot loaded & saved to Snapshot Store.'
-                  : values.data === 'recorded_snapshots'
-                  ? 'Recorded historical option-chain snapshots loaded · ' + s.cursor.replace('T', ' ') + ' IST.'
-                  : 'Intraday 1-minute prices loaded · ' + s.cursor.replace('T', ' ') + ' IST.')) +
+              (j.notice || ('Intraday 1-minute ' + choice.symbol + ' option chain loaded · ' + s.cursor.replace('T', ' ') + ' IST.')) +
                 (j.dataset.metadata?.warnings?.length ? ' ' + j.dataset.metadata.warnings.join(' ') : '')
             );
           } catch (err) {
-            if (values.data === 'minute' && choice.exchange === 'nse_fo' && /connect|account|session|authentication|broker|no backup|unavailable/i.test(err.message)) {
+            if (choice.exchange === 'nse_fo') {
               try {
                 const win = resolveArchiveWindow(choice.symbol, values.start, values.end);
                 await loadRecorded(choice.symbol, win.start, win.end);
-                msg('Loaded verified ' + choice.symbol + ' historical option chain (' + s.cursor.slice(0, 10) + '). Connect Alice Blue API for live 1-minute intraday bars.');
+                msg('Loaded verified ' + choice.symbol + ' historical option chain (' + s.cursor.slice(0, 10) + ').');
                 return;
               } catch {}
             }
             note.textContent = err.message;
-            connect.hidden = !/connect|account|session|authentication/i.test(err.message);
             msg(err.message);
           } finally {
             if (f.isConnected) f.querySelector('[type=submit]').disabled = false;
@@ -1877,7 +1725,6 @@
       }
 
       // Wire top header & toolbar actions
-      if (el('btn-broker-auth')) el('btn-broker-auth').onclick = guard(() => openBrokerConnectModal());
       el('btn-new').onclick = () => newSimulation();
       el('btn-live-chain').onclick = guard(() => fetchLiveSnapshotNow(false));
       el('btn-live-refresh').onclick = guard(() => fetchLiveSnapshotNow(false));
@@ -1898,7 +1745,7 @@
       el('symbol-search').oninput = e => {
         symbolSearchQuery = e.target.value || '';
         if (s && d) {
-          el('symbol-select').innerHTML = instrumentOptions(s.symbol, d.metadata?.exchange || 'nse_fo', symbolSearchQuery);
+          el('symbol-select').innerHTML = instrumentOptions(s.symbol, fnoExch(), symbolSearchQuery);
         }
         renderSearchMatches();
       };
@@ -1953,8 +1800,8 @@
       el('btn-liquidity').onclick = () =>
         dialog(
           'Execution, Data Integrity & Liquidity Guidelines',
-          '<p><strong>Simulation Only — Zero Real Orders:</strong> All leg entries, edits, flips, exits, and playback steps execute strictly inside IWSM\'s isolated paper ledger. No broker order API is ever imported or called.</p>' +
-            '<p><strong>Market Data Honesty:</strong> Live quotes originate from Alice Blue REST/contract-master services. Historical replay uses genuinely recorded IWSM option-chain snapshots, Alice Blue 1-minute contract bars, or verified NSE historical archives. Missing fields (e.g. historical bid/ask on EOD archives) are displayed as <code>—</code> rather than fabricated.</p>' +
+          '<p><strong>Simulation Only — Zero Real Orders:</strong> All leg entries, edits, flips, exits, and playback steps execute strictly inside IWSM\'s isolated paper ledger. No live order API is ever imported or called.</p>' +
+            '<p><strong>Market Data Honesty:</strong> Live quotes originate from verified exchange market-data feeds. Historical replay uses genuinely recorded IWSM option-chain snapshots, 1-minute intraday contract bars, or verified NSE historical archives. Missing fields (e.g. historical bid/ask on EOD archives) are displayed as <code>—</code> rather than fabricated.</p>' +
             '<p><strong>Deterministic Execution:</strong> Orders fill at recorded closes (or user-specified custom entry premiums when explicitly edited). Zero-volume bars block market execution; stop-loss and target rules evaluate chronologically without lookahead bias.</p>'
         );
 
@@ -2135,8 +1982,6 @@
         });
       });
 
-      el('load-replay').onclick = () => newSimulation((d.metadata.exchange || 'nse_fo') + '|' + s.symbol);
-
       el('btn-play').onclick = () => {
         if (timer) {
           pause();
@@ -2272,7 +2117,7 @@
           return;
         }
 
-        const exch = d?.metadata?.exchange || 'nse_fo';
+        const exch = fnoExch();
         const clampedEnd = addCalendarDays(day, 6) > now ? now : addCalendarDays(day, 6);
         const reqGen = ++generation;
         pause();
@@ -2327,27 +2172,32 @@
         }
       });
 
+      let switchSeq = 0;
       async function switchInstrument(value) {
-        if (loading || !s || !d) return;
+        if (!s || !d) return;
         stopAutoRefresh();
         const choice = instrumentChoice(value), cursor = s.cursor, start = s.start, end = s.end;
-        const mode = d.kind === 'daily' ? 'daily' : d.metadata.quoteTiming?.startsWith('Snapshot') ? 'snapshot' : 'minute';
+        const mode = d.metadata?.quoteTiming?.startsWith('Snapshot') ? 'snapshot' : 'minute';
+        const mySwitch = ++switchSeq;
         loading = true;
         el('symbol-select').disabled = true;
         pause();
-        msg('Loading ' + choice.symbol + ' (' + choice.exchange + ') ' + (mode === 'daily' ? 'historical archive' : mode === 'snapshot' ? 'live option chain' : 'intraday replay') + '…');
-        let request = null;
+        msg('Loading ' + choice.symbol + ' (' + choice.exchange + ') ' + (mode === 'snapshot' ? 'live option chain' : '1-minute option chain') + '…');
+        const request = ++generation;
         try {
-          if (mode === 'daily' && choice.exchange === 'nse_fo') {
-            const win = resolveArchiveWindow(choice.symbol, start, end);
-            await loadRecorded(choice.symbol, win.start, win.end);
-            return;
-          }
-          request = ++generation;
           const now = todayIST();
+          const defaultStart = defaultMinuteStartIST(now);
+          const isDifferentSymbol = choice.symbol !== s.symbol || choice.exchange !== fnoExch();
           let reqStart = start, reqEnd = end;
-          if (!reqStart || !reqEnd || (Date.parse(reqEnd) - Date.parse(reqStart)) / 86400000 > 6) {
-            reqStart = defaultMinuteStartIST(now);
+          if (
+            !reqStart ||
+            !reqEnd ||
+            d.kind === 'daily' ||
+            (Date.parse(now) - Date.parse(reqEnd)) / 86400000 > 6 ||
+            (Date.parse(reqEnd) - Date.parse(reqStart)) / 86400000 > 6 ||
+            isDifferentSymbol
+          ) {
+            reqStart = defaultStart;
             reqEnd = now;
           }
           const exp = await brokerApi(
@@ -2358,35 +2208,50 @@
                 ...(mode !== 'snapshot' ? { start: reqStart, end: reqEnd } : {}),
               })
           );
-          if (request !== generation) return;
+          if (mySwitch !== switchSeq || request !== generation) return;
           if (Array.isArray(exp.expiryDetails)) {
             for (const item of exp.expiryDetails) if (item.iso) brokerExpiryDetails[item.iso] = item;
           }
           const selected = exp.expiries.find(x => brokerCodeToIso(x) === viewExpiry) || exp.expiries[0];
           if (!selected) throw Error('No available expiry for ' + choice.symbol);
-          const j = await brokerApi(
-            (mode === 'snapshot' ? 'snapshot?' : 'replay?') +
-              new URLSearchParams({
-                underlying: choice.symbol,
-                exch: choice.exchange,
-                expiry: selected,
-                start: reqStart,
-                end: reqEnd,
-              })
-          );
-          if (request !== generation) return;
+          let j;
+          try {
+            j = await brokerApi(
+              (mode === 'snapshot' ? 'snapshot?' : 'replay?') +
+                new URLSearchParams({
+                  underlying: choice.symbol,
+                  exch: choice.exchange,
+                  expiry: selected,
+                  start: reqStart,
+                  end: reqEnd,
+                })
+            );
+          } catch (firstErr) {
+            if (mode === 'snapshot' || (reqStart === defaultStart && reqEnd === now)) throw firstErr;
+            j = await brokerApi(
+              'replay?' +
+                new URLSearchParams({
+                  underlying: choice.symbol,
+                  exch: choice.exchange,
+                  expiry: selected,
+                  start: defaultStart,
+                  end: now,
+                })
+            );
+          }
+          if (mySwitch !== switchSeq || request !== generation) return;
           adopt(j.dataset);
           const at = P.frames(d, s).find(t => t >= cursor && Number.isFinite(d.spots.get(s.symbol + '|' + t)));
           if (at && at !== s.cursor) change(P.advance(d, s, at));
           refreshMarketAndCoverage(choice.symbol);
-          msg(j.notice || (choice.symbol + ' ' + (mode === 'snapshot' ? 'option chain' : 'minute replay') + ' loaded · ' + s.cursor.replace('T', ' ') + ' IST.'));
+          msg(j.notice || (choice.symbol + ' ' + (mode === 'snapshot' ? 'option chain' : '1-minute option chain') + ' loaded · ' + s.cursor.replace('T', ' ') + ' IST.'));
         } catch (e) {
-          if (request !== null && request !== generation) return;
+          if (mySwitch !== switchSeq || request !== generation) return;
           if (choice.exchange === 'nse_fo') {
             try {
               const win = resolveArchiveWindow(choice.symbol, start, end);
               await loadRecorded(choice.symbol, win.start, win.end);
-              msg('Loaded verified ' + choice.symbol + ' option chain (' + s.cursor.slice(0, 10) + '). Connect Alice Blue API for live & 1-minute intraday quotes.');
+              msg('Loaded verified ' + choice.symbol + ' option chain (' + s.cursor.slice(0, 10) + ').');
               return;
             } catch {}
           }
@@ -2395,8 +2260,10 @@
           const note = modal?.querySelector('[role=status]');
           if (note) note.textContent = choice.symbol + ': ' + e.message;
         } finally {
-          loading = false;
-          el('symbol-select').disabled = false;
+          if (mySwitch === switchSeq) {
+            loading = false;
+            el('symbol-select').disabled = false;
+          }
         }
       }
 
@@ -2462,19 +2329,23 @@
         onError: e => msg(e.message + ' · Included recorded data remains available.'),
       })
         .then(async () => {
-          if (restoredFromStorage || generation !== seedGeneration || !s || P.valuation(d, s).positions.length > 0) return;
+          if (!s || P.valuation(d, s).positions.length > 0) return;
+          if (restoredFromStorage && d.kind !== 'daily') return;
+          const postInitGen = generation;
+          const targetSym = s.symbol || 'NIFTY';
+          const targetExch = fnoExch();
           try {
             const now = todayIST();
             const start = defaultMinuteStartIST(now);
-            const exp = await brokerApi('expiries?' + new URLSearchParams({ underlying: 'NIFTY', exch: 'nse_fo', start, end: now }));
-            if (generation !== seedGeneration || !exp.expiries?.length) return;
+            const exp = await brokerApi('expiries?' + new URLSearchParams({ underlying: targetSym, exch: targetExch, start, end: now }));
+            if (generation !== postInitGen || !exp.expiries?.length) return;
             if (Array.isArray(exp.expiryDetails)) {
               for (const item of exp.expiryDetails) if (item.iso) brokerExpiryDetails[item.iso] = item;
             }
-            const j = await brokerApi('replay?' + new URLSearchParams({ underlying: 'NIFTY', exch: 'nse_fo', expiry: exp.expiries[0], start, end: now }));
-            if (generation !== seedGeneration) return;
+            const j = await brokerApi('replay?' + new URLSearchParams({ underlying: targetSym, exch: targetExch, expiry: exp.expiries[0], start, end: now }));
+            if (generation !== postInitGen) return;
             adopt(j.dataset);
-            msg(j.notice || ('Intraday 1-minute NIFTY option chain loaded (' + s.cursor.replace('T', ' ') + ' IST).'));
+            msg(j.notice || ('Intraday 1-minute ' + targetSym + ' option chain loaded (' + s.cursor.replace('T', ' ') + ' IST).'));
           } catch {}
         })
         .catch(e => msg(e.message));

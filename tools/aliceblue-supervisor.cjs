@@ -11,7 +11,8 @@ function health() {
       });
       res.on('end', () => {
         try {
-          resolve(res.statusCode === 200 && JSON.parse(text).service === 'aliceblue-read-only');
+          const svc = JSON.parse(text).service;
+          resolve(res.statusCode === 200 && (svc === 'iwsm-market-data' || svc === 'aliceblue-read-only'));
         } catch {
           resolve(false);
         }
@@ -25,7 +26,7 @@ function health() {
 function launch() {
   const folder = path.resolve(__dirname, '../backend/aliceblue');
   const python = path.join(folder, '.venv/Scripts/python.exe');
-  if (!fs.existsSync(python)) throw Error('Alice Blue local Python environment is unavailable');
+  if (!fs.existsSync(python)) throw Error('Market-data local Python environment is unavailable');
   const child = spawn(python, [path.join(folder, 'run_local.py')], {
     cwd: folder,
     windowsHide: true,
@@ -51,29 +52,29 @@ function createSupervisor({
       if (pending) return pending;
       pending = (async () => {
         if (await check()) {
-          healthyUntil = Date.now() + 5000;
+          healthyUntil = Date.now() + 15000;
           return;
         }
         if (Date.now() - lastLaunch < 8000) {
           for (let i = 0; i < 20; i++) {
             await delay(250);
             if (await check()) {
-              healthyUntil = Date.now() + 5000;
+              healthyUntil = Date.now() + 15000;
               return;
             }
           }
-          throw Error('Alice Blue backend unavailable; retry shortly');
+          throw Error('Market-data backend unavailable; retry shortly');
         }
         lastLaunch = Date.now();
         start();
         for (let i = 0; i < attempts; i++) {
           await delay(250);
           if (await check()) {
-            healthyUntil = Date.now() + 5000;
+            healthyUntil = Date.now() + 15000;
             return;
           }
         }
-        throw Error('Alice Blue backend unavailable; check the local Python environment');
+        throw Error('Market-data backend unavailable; check the local Python environment');
       })().finally(() => {
         pending = null;
       });

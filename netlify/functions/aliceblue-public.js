@@ -118,7 +118,7 @@ exports.handler = async event => {
   const emptyCoverage = { hasSnapshots: false, earliestDate: null, earliestTimestamp: null, latestTimestamp: null, frameCount: 0, contractRowCount: 0, symbols: [] };
 
   if (route === 'health') {
-    return reply(200, { ok: true, service: 'aliceblue-serverless-public', execution: 'disabled', marketStatus, snapshotCoverage: emptyCoverage });
+    return reply(200, { ok: true, service: 'iwsm-serverless-public', execution: 'disabled', marketStatus, snapshotCoverage: emptyCoverage });
   }
   if (route === 'market-status') {
     return reply(200, { marketStatus, snapshotCoverage: emptyCoverage });
@@ -164,7 +164,7 @@ exports.handler = async event => {
         expiries: expiryDetails.map(d => d.expiry),
         expiryDetails,
         publicMaster: true,
-        source: 'Alice Blue public contract master',
+        source: 'Exchange Contract Directory',
       });
     } catch {
       return reply(502, { detail: 'Public contract master temporarily unavailable.' });
@@ -172,6 +172,6 @@ exports.handler = async event => {
   }
 
   return reply(503, {
-    detail: 'Live authenticated Alice Blue minute/snapshot quotes run through the local IWSM backend (node tools/local-preview.cjs on http://127.0.0.1:4174).',
+    detail: 'Live intraday market feed runs through the local IWSM backend (node tools/local-preview.cjs on http://127.0.0.1:4174).',
   });
 };

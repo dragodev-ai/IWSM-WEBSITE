@@ -15,9 +15,8 @@
             <span class="opstra-market-pill" id="opstra-market-status" role="status">Checking IST session…</span>
           </div>
           <div class="opstra-top-actions">
-            <button type="button" class="opstra-btn-navy opstra-btn-broker" id="opstra-btn-broker-auth" title="Connect or verify Alice Blue API session">🔑 ALICE BLUE API</button>
             <button type="button" class="opstra-btn-navy" id="opstra-btn-new">+ NEW SIMULATION</button>
-            <button type="button" class="opstra-btn-navy" id="opstra-btn-live-chain" title="Fetch live Alice Blue option chain">⚡ LIVE CHAIN</button>
+            <button type="button" class="opstra-btn-navy" id="opstra-btn-live-chain" title="Fetch live exchange option-chain snapshot">⚡ LIVE CHAIN</button>
             <button type="button" class="opstra-btn-navy" id="opstra-btn-recorder" title="Historical option-chain snapshot recorder & coverage">🗄 SNAPSHOT STORE</button>
             <button type="button" class="opstra-btn-navy" id="opstra-btn-simulations">↻ SIMULATIONS</button>
             <button type="button" class="opstra-btn-navy" id="opstra-btn-liquidity">LIQUIDITY GUIDELINES</button>
@@ -51,7 +50,7 @@
               <span class="opstra-badge opstra-badge-lot" title="At-the-money strike">ATM: <strong id="opstra-val-atm">—</strong></span>
               <span class="opstra-badge opstra-badge-lot" title="Verified contract lot size">Lot Size: <strong id="opstra-val-lot">—</strong></span>
               <span class="opstra-badge opstra-badge-iv" title="ATM Implied Volatility (calculated via BSM/Black-76 when not exchange-supplied)">ATM IV: <strong id="opstra-val-iv">—</strong></span>
-              <span class="opstra-badge opstra-badge-vix" title="India VIX volatility index (when available from NSE/Alice Blue)">India VIX: <strong id="opstra-val-vix">—</strong></span>
+              <span class="opstra-badge opstra-badge-vix" title="India VIX volatility index">India VIX: <strong id="opstra-val-vix">—</strong></span>
               <button type="button" class="opstra-badge-btn" id="opstra-btn-iv-chart">NIFTY IV &amp; Skew Chart</button>
             </div>
           </div>
@@ -82,7 +81,7 @@
               </div>
               <div class="opstra-live-bar">
                 <button type="button" class="opstra-btn-soft" id="opstra-btn-live-refresh" title="Refresh live option chain snapshot">↻ Refresh</button>
-                <label class="opstra-inline-toggle" title="Auto-refresh live Alice Blue option chain">
+                <label class="opstra-inline-toggle" title="Auto-refresh live option chain">
                   <input type="checkbox" id="opstra-auto-refresh">
                   <span>Auto (10s)</span>
                 </label>

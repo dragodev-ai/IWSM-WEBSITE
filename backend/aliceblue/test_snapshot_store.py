@@ -316,6 +316,64 @@ class SnapshotEndpointsIntegrationTests(unittest.IsolatedAsyncioTestCase):
             self.assertIn('http://localhost:4174/strategy-builder.html', r_cb.headers['location'])
         await app.state.broker.http.aclose()
 
+    async def test_env_session_token_autoseed_and_nse_live_chain(self):
+        from cryptography.fernet import Fernet
+        from nse_live_chain import NseLiveOptionChain
+
+        def nse_mock(req: httpx.Request):
+            u = str(req.url)
+            if 'option-chain-contract-info' in u:
+                return httpx.Response(200, json={'expiryDates': ['24-Nov-2099', '30-Dec-2099']})
+            if 'option-chain-v3' in u:
+                return httpx.Response(
+                    200,
+                    json={
+                        'records': {
+                            'underlyingValue': 1425.5,
+                            'data': [
+                                {
+                                    'strikePrice': 1420,
+                                    'CE': {'lastPrice': 28.5, 'buyPrice1': 28.4, 'sellPrice1': 28.6, 'openInterest': 1200, 'changeinOpenInterest': 80, 'totalTradedVolume': 450, 'impliedVolatility': 18.4},
+                                    'PE': {'lastPrice': 22.1, 'buyPrice1': 22.0, 'sellPrice1': 22.2, 'openInterest': 980, 'changeinOpenInterest': -30, 'totalTradedVolume': 390, 'impliedVolatility': 19.1},
+                                }
+                            ],
+                        }
+                    },
+                )
+            return httpx.Response(200, text='<html>ok</html>')
+
+        nse_client = NseLiveOptionChain(transport=httpx.MockTransport(nse_mock))
+        exps = await nse_client.fetch_expiries('RELIANCE')
+        self.assertEqual(exps, ['24NOV99', '30DEC99'])
+        ds = await nse_client.snapshot_dataset('RELIANCE', '24NOV99')
+        self.assertEqual(ds['source'], 'IWSM Live Exchange Snapshot')
+        self.assertEqual(len(ds['contracts']), 2)
+        self.assertEqual(ds['contracts'][0]['lotSize'], 500)
+        self.assertNotIn('Alice Blue', ds['source'])
+        await nse_client.aclose()
+
+        def broker_ok(req: httpx.Request):
+            if req.url.path.endswith('/getUnderlying'):
+                return httpx.Response(200, json={'stat': 'Ok', 'result': [{'list_underlying': ['NIFTY', 'RELIANCE']}]})
+            return httpx.Response(200, json={'stat': 'Ok'})
+
+        app = create_app(
+            {
+                'ALICEBLUE_SESSION_TOKEN': 'A' * 36,
+                'ALICEBLUE_REDIRECT_URL': 'http://127.0.0.1:4174' + PREFIX + '/auth/callback',
+                'ALICEBLUE_SESSION_ENCRYPTION_KEY': Fernet.generate_key().decode(),
+            },
+            str(Path(self.tmp.name) / 'autoseed.db'),
+            httpx.MockTransport(broker_ok),
+            local_owner_mode=True,
+        )
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url='http://127.0.0.1:4174') as cl:
+            st = await cl.get(PREFIX + '/auth/status')
+            self.assertEqual(st.status_code, 200)
+            self.assertTrue(st.json()['connected'])
+            self.assertTrue(st.json()['verified'])
+        await app.state.broker.http.aclose()
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -82,18 +82,23 @@ def session_seconds(token, now=None):
 
 def settings(file):
     values = {}
-    try:
-        lines = Path(file).read_text(encoding='utf-8-sig').splitlines()
-    except OSError:
-        lines = []
-    for line in lines:
-        if '=' in line and not line.lstrip().startswith('#'):
-            k, v = line.split('=', 1)
-            values[k.strip()] = v.strip().strip('"\'')
+    files = file if isinstance(file, (list, tuple)) else [file]
+    for f in files:
+        try:
+            lines = Path(f).read_text(encoding='utf-8-sig').splitlines()
+        except OSError:
+            continue
+        for line in lines:
+            if '=' in line and not line.lstrip().startswith('#'):
+                k, v = line.split('=', 1)
+                val = v.strip().strip('"\'')
+                if val or k.strip() not in values:
+                    values[k.strip()] = val
     for env_k in (
         'ALICEBLUE_APP_CODE',
         'ALICEBLUE_API_SECRET',
         'ALICEBLUE_API_KEY',
+        'ALICEBLUE_SESSION_TOKEN',
         'ALICEBLUE_USER_ID',
         'ALICEBLUE_REDIRECT_URL',
         'ALICEBLUE_CLIENT_ID',
@@ -102,6 +107,7 @@ def settings(file):
         'ALICEBLUE_DEFAULT_EXCHANGE',
         'ALICEBLUE_REFRESH_SECONDS',
         'ALICEBLUE_SNAPSHOT_DB_PATH',
+        'IWSM_MARKET_DATA_PROVIDER',
     ):
         if os.getenv(env_k):
             values[env_k] = os.environ[env_k]
@@ -263,26 +269,29 @@ class Store:
 
 class Broker:
     def __init__(self, transport=None, base_url=BASE):
+        self._has_mock_transport = transport is not None
         self.http = httpx.AsyncClient(
             base_url=base_url or BASE,
             timeout=httpx.Timeout(18),
             follow_redirects=False,
             transport=transport,
-            limits=httpx.Limits(max_connections=20, max_keepalive_connections=12),
+            limits=httpx.Limits(max_connections=32, max_keepalive_connections=20),
         )
         self.calls = deque()
         self.lock = asyncio.Lock()
         self.pause = 0
 
     async def post(self, path, body, token=None, allow_not_ok: bool = False):
-        min_gap = 0.06 if '/chart/history' in path else 0.18
+        is_history = '/chart/history' in path
+        min_gap = 0.0 if is_history else 0.18
+        per_min_limit = 1800 if is_history else 650
         async with self.lock:
             now = time.monotonic()
             while self.calls and now - self.calls[0] > 3600:
                 self.calls.popleft()
-            if now < self.pause or len(self.calls) >= 6000 or sum(now - x < 60 for x in self.calls) >= 650:
+            if now < self.pause or len(self.calls) >= 12000 or sum(now - x < 60 for x in self.calls) >= per_min_limit:
                 raise HTTPException(429, 'Market-data request limit reached; wait before refreshing')
-            if self.calls and now - self.calls[-1] < min_gap:
+            if min_gap > 0 and self.calls and now - self.calls[-1] < min_gap:
                 await asyncio.sleep(min_gap - (now - self.calls[-1]))
             self.calls.append(time.monotonic())
 
@@ -410,12 +419,23 @@ def create_app(config, db, transport=None, snapshot_db=None, local_owner_mode: b
     snapshots = SnapshotStore(snap_path)
     nse_archive = LocalNseArchive(allow_sync=local_owner_mode)
 
+    # Automatically seed any server-configured .env session token so live & 1m chains load with zero UI prompts
+    env_seed_token = (config.get('ALICEBLUE_SESSION_TOKEN') or '').strip()
+    if local_owner_mode and env_seed_token:
+        seed_ttl = session_seconds(env_seed_token)
+        if seed_ttl > 0:
+            store.put('owner-vault', {'ownerRecoveryToken': env_seed_token}, max(3600, seed_ttl))
+            store.put('local-owner-active', {'token': env_seed_token}, seed_ttl)
+
     def session(req):
         sid = req.cookies.get(COOKIE)
         data = store.get(sid)
         if data and data.get('token'):
             return sid, data
         if local_owner_mode:
+            env_tok = (config.get('ALICEBLUE_SESSION_TOKEN') or '').strip()
+            if env_tok and session_seconds(env_tok) > 0:
+                return sid or 'local-owner-active', {'token': env_tok}
             tok = store.latest_token()
             if tok:
                 auto_sid = sid or 'local-owner-active'
@@ -423,7 +443,7 @@ def create_app(config, db, transport=None, snapshot_db=None, local_owner_mode: b
                 if ttl > 0:
                     store.put(auto_sid, {'token': tok}, ttl)
                     return auto_sid, {'token': tok}
-        raise HTTPException(401, 'Connect your Alice Blue account')
+        raise HTTPException(401, 'Market data session unavailable')
 
     async def ensure_session_async(req):
         try:
@@ -494,11 +514,13 @@ def create_app(config, db, transport=None, snapshot_db=None, local_owner_mode: b
     @app.get(PREFIX + '/health')
     async def health():
         return {
-            'service': 'aliceblue-read-only',
+            'service': 'iwsm-market-data',
             'ready': bool(
-                (config.get('ALICEBLUE_APP_CODE') and config.get('ALICEBLUE_API_SECRET'))
+                config.get('ALICEBLUE_SESSION_TOKEN')
+                or (config.get('ALICEBLUE_APP_CODE') and config.get('ALICEBLUE_API_SECRET'))
                 or (config.get('ALICEBLUE_API_KEY') and (config.get('ALICEBLUE_CLIENT_ID') or config.get('ALICEBLUE_USER_ID')))
             ),
+            'provider': config.get('IWSM_MARKET_DATA_PROVIDER') or 'hybrid',
             'websocket': 'not connected',
             'marketStatus': market_status_ist(),
         }
@@ -689,7 +711,8 @@ def create_app(config, db, transport=None, snapshot_db=None, local_owner_mode: b
             raise HTTPException(429, 'Too many selections; reconnect later')
         async with locks.setdefault(key, asyncio.Lock()):
             old = cache.get(key)
-            if old and time.monotonic() - old[0] < refresh:
+            ttl_sec = 1800 if kind in ('underlyings', 'expiries') else refresh
+            if old and time.monotonic() - old[0] < ttl_sec:
                 return {**old[1], 'cached': True}
             if kind != 'underlyings':
                 available = await market(req, 'underlyings', exch)
@@ -710,15 +733,18 @@ def create_app(config, db, transport=None, snapshot_db=None, local_owner_mode: b
                 if e.status_code == 401:
                     if sid:
                         store.delete(sid)
+                    store.delete('local-owner-active')
+                    store.delete('owner-vault')
+                    config['ALICEBLUE_SESSION_TOKEN'] = ''
                 raise
             groups = result.get('result')
             if not isinstance(groups, list):
-                raise HTTPException(502, 'Invalid broker result format')
+                raise HTTPException(502, 'Invalid market-data result format')
             out = {
                 'success': True,
                 'receivedAt': datetime.now(timezone.utc).isoformat(),
                 'marketStatus': market_status_ist(),
-                'source': 'Alice Blue REST snapshot',
+                'source': 'IWSM Live Exchange Snapshot',
                 'refreshSeconds': refresh,
                 'cached': False,
             }
@@ -796,6 +822,20 @@ def create_app(config, db, transport=None, snapshot_db=None, local_owner_mode: b
                 'source': src_label,
             }
 
+        if str(config.get('IWSM_MARKET_DATA_PROVIDER') or 'hybrid').strip().lower() == 'nse' and exch == 'nse_fo' and hasattr(app.state, 'nse_live'):
+            try:
+                nse_live_exps = await app.state.nse_live.fetch_expiries(underlying)
+                if nse_live_exps:
+                    merged_nse = list(dict.fromkeys([*nse_live_exps, *combined_local])) if (start and start < today_ist and combined_local) else nse_live_exps
+                    return {
+                        'expiries': merged_nse,
+                        'expiryDetails': classify_expiries(merged_nse, start),
+                        'marketStatus': market_status_ist(),
+                        'source': 'NSE Live Option Chain',
+                    }
+            except HTTPException:
+                pass
+
         try:
             result = await market(req, 'expiries', exch, underlying)
             live_list = result.get('expiries', [])
@@ -816,7 +856,7 @@ def create_app(config, db, transport=None, snapshot_db=None, local_owner_mode: b
                         'publicMaster': bool(pub_exps),
                         'marketStatus': market_status_ist(),
                         'source': (
-                            'Alice Blue public contract master'
+                            'Exchange Contract Directory'
                             if pub_exps
                             else ('Recorded snapshots & local archive' if snap_exps else f'Local verified NSE archive ({underlying})')
                         ),
@@ -829,15 +869,17 @@ def create_app(config, db, transport=None, snapshot_db=None, local_owner_mode: b
 
     app.state.store = store
     app.state.broker = broker
+    app.state.config = config
     app.state.nse_archive = nse_archive
     app.state.local_owner_mode = local_owner_mode
     install_history(app, ensure_session_async, broker, market, PREFIX, snapshots=snapshots, nse_archive=nse_archive)
     log_event(
         'info',
-        'aliceblue_service_initialized',
+        'market_data_service_initialized',
         appConfigured=bool(config.get('ALICEBLUE_APP_CODE') and config.get('ALICEBLUE_API_SECRET')),
         clientIdConfigured=bool(config.get('ALICEBLUE_CLIENT_ID') or config.get('ALICEBLUE_USER_ID')),
         apiKeyConfigured=bool(config.get('ALICEBLUE_API_KEY')),
+        sessionTokenConfigured=bool(config.get('ALICEBLUE_SESSION_TOKEN')),
         localOwnerMode=local_owner_mode,
         redirectOrigin=origin,
         refreshSeconds=refresh,
@@ -863,20 +905,24 @@ def ensure_session_key(folder, config):
 
 
 def build():
+    here = Path(__file__).resolve().parent
+    root = here.parent.parent
     folder = Path(os.environ['LOCALAPPDATA']) / 'IWSM'
     folder.mkdir(parents=True, exist_ok=True)
-    env_file = folder / 'aliceblue.env'
-    config = settings(env_file)
+    env_file = here / '.env'
+    config = settings([folder / 'aliceblue.env', root / '.env', env_file])
     config['ALICEBLUE_SESSION_ENCRYPTION_KEY'] = ensure_session_key(folder, config)
     if not config.get('ALICEBLUE_REDIRECT_URL'):
         config['ALICEBLUE_REDIRECT_URL'] = 'http://127.0.0.1:4174' + PREFIX + '/auth/callback'
-    return create_app(
+    app = create_app(
         config,
         str(folder / 'aliceblue-sessions.sqlite3'),
         snapshot_db=config.get('ALICEBLUE_SNAPSHOT_DB_PATH') or str(folder / 'option-snapshots.sqlite3'),
         local_owner_mode=True,
         env_path=str(env_file),
     )
+    app.state.enable_prewarm = True
+    return app
 
 
 if __name__ == '__main__':

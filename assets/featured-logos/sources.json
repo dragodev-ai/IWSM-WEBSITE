@@ -67,14 +67,6 @@
       "shape": "wide"
     },
     {
-      "id": "aliceblue",
-      "name": "Alice Blue",
-      "file": "aliceblue.svg",
-      "website": "https://aliceblueonline.com/",
-      "source": "https://aliceblueonline.com/Alice-blue-logo.svg",
-      "shape": "wide"
-    },
-    {
       "id": "sharekhan",
       "name": "Sharekhan",
       "file": "sharekhan.svg",
