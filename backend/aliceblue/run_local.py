@@ -27,7 +27,12 @@ config.setdefault(
     "ALICEBLUE_REDIRECT_URL", "http://127.0.0.1:4174" + PREFIX + "/auth/callback"
 )
 config["ALICEBLUE_SESSION_ENCRYPTION_KEY"] = ensure_session_key(folder, config)
-app = create_app(config, str(folder / "aliceblue-sessions.sqlite3"))
+app = create_app(
+    config,
+    str(folder / "aliceblue-sessions.sqlite3"),
+    local_owner_mode=True,
+    env_path=str(folder / "aliceblue.env"),
+)
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=4180, access_log=False, log_level="warning")

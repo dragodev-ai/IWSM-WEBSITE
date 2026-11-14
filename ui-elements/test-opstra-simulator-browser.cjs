@@ -291,9 +291,104 @@ const BASE_URL = process.env.IWSM_TEST_URL || 'http://127.0.0.1:4174';
       assert.equal(await page.locator('#opstra-sim-clock').innerText(), clock0, '⏮ RESET rewound intraday cursor after Auto-PLAY');
       console.log('PASS 6: Multi-day 1d step + Intraday 1m/5m/15m/30m/60m steps, 0.5s Auto-Play/Pause, Study Restore & ⏮ RESET verified.');
 
+      // 9. Regression Checks for User-Reported Bugs (RELIANCE search+Enter, 2026-02-02 date back, Live Backend 1m Chain, Auth Modal)
+      await page.locator('#opstra-btn-reset').click();
+
+      // 9A. Search "reliance" + Enter -> loads RELIANCE option chain directly without modal error
+      await page.locator('#opstra-symbol-search').fill('reliance');
+      await page.locator('#opstra-search-matches .opstra-match-pill').first().waitFor({ state: 'visible' });
+      await page.locator('#opstra-symbol-search').press('Enter');
+      await page.waitForFunction(
+        () => (document.getElementById('opstra-chart-title')?.textContent || '').includes('RELIANCE') && document.querySelectorAll('#opstra-chain-body tr').length > 5,
+        { timeout: 15000 }
+      );
+      const relSpotTxt = await page.locator('#opstra-val-spot').innerText();
+      assert.notEqual(relSpotTxt, 'Unavailable', `RELIANCE spot loaded (${relSpotTxt})`);
+
+      // 9B. Screenshot 1 exact scenario: New Options Simulation -> NIFTY -> 1-Minute Intraday History -> 2026-02-02 to 2026-02-02
+      await page.locator('#opstra-btn-new').click();
+      await page.locator('dialog.opstra-dialog[open] select[name="symbol"]').selectOption('nse_fo|NIFTY');
+      await page.locator('dialog.opstra-dialog[open] select[name="data"]').selectOption('minute');
+      await page.locator('dialog.opstra-dialog[open] input[name="start"]').fill('2026-02-02');
+      await page.locator('dialog.opstra-dialog[open] input[name="start"]').dispatchEvent('change');
+      await page.locator('dialog.opstra-dialog[open] input[name="end"]').fill('2026-02-02');
+      await page.locator('dialog.opstra-dialog[open] input[name="end"]').dispatchEvent('change');
+      await page.waitForFunction(
+        () => {
+          const dlg = document.querySelector('dialog.opstra-dialog[open]');
+          const expSel = dlg?.querySelector('select[name="expiry"]');
+          const btn = dlg?.querySelector('button[type="submit"]');
+          return expSel && expSel.options.length > 0 && btn && !btn.disabled;
+        },
+        { timeout: 15000 }
+      );
+      const modalStatusFeb = await page.locator('dialog.opstra-dialog[open] [role="status"]').innerText();
+      assert.doesNotMatch(modalStatusFeb, /Failed to fetch/i, '2026-02-02 modal status must never show Failed to fetch');
+      await page.locator('dialog.opstra-dialog[open] button[type="submit"]').click();
+      await page.waitForFunction(
+        () => document.querySelector('dialog.opstra-dialog[open]') === null && (document.getElementById('opstra-sim-clock')?.textContent || '').startsWith('2026-02-02'),
+        { timeout: 15000 }
+      );
+
+      // 9C. Load genuine backend 1-minute NIFTY option-chain history (2026-11-11..2026-11-14) & step 1m/5m in Option Chain
+      await page.locator('#opstra-btn-new').click();
+      await page.locator('dialog.opstra-dialog[open] select[name="symbol"]').selectOption('nse_fo|NIFTY');
+      await page.locator('dialog.opstra-dialog[open] select[name="data"]').selectOption('minute');
+      await page.locator('dialog.opstra-dialog[open] input[name="start"]').fill('2026-11-11');
+      await page.locator('dialog.opstra-dialog[open] input[name="start"]').dispatchEvent('change');
+      await page.locator('dialog.opstra-dialog[open] input[name="end"]').fill('2026-11-14');
+      await page.locator('dialog.opstra-dialog[open] input[name="end"]').dispatchEvent('change');
+      await page.waitForFunction(
+        () => {
+          const dlg = document.querySelector('dialog.opstra-dialog[open]');
+          const expSel = dlg?.querySelector('select[name="expiry"]');
+          const btn = dlg?.querySelector('button[type="submit"]');
+          return expSel && expSel.options.length > 0 && btn && !btn.disabled;
+        },
+        { timeout: 15000 }
+      );
+      await page.locator('dialog.opstra-dialog[open] button[type="submit"]').click();
+      await page.waitForFunction(
+        () => document.querySelector('dialog.opstra-dialog[open]') === null && (document.getElementById('opstra-sim-clock')?.textContent || '').includes('2026-11-11 09:15'),
+        { timeout: 15000 }
+      );
+      const minBtnDisabled = await page.locator('button[data-mins="1"]').isDisabled();
+      assert.equal(minBtnDisabled, false, '1 MIN step button enabled on backend 1-minute NIFTY option chain');
+      await page.locator('button[data-mins="1"]').click();
+      assert.match(await page.locator('#opstra-sim-clock').innerText(), /09:16/, '1 MIN step advanced backend 1m option chain to 09:16 IST');
+      await page.locator('button[data-mins="5"]').click();
+      assert.match(await page.locator('#opstra-sim-clock').innerText(), /09:21/, '5 MIN step advanced backend 1m option chain to 09:21 IST');
+
+      // 9D. Verify Alice Blue API Connection modal (#opstra-btn-broker-auth) exposes Direct API Key + SSO forms
+      await page.locator('#opstra-btn-broker-auth').click();
+      await page.locator('dialog.opstra-dialog[open] #opstra-apikey-form').waitFor({ state: 'visible' });
+      await page.locator('dialog.opstra-dialog[open] #opstra-sso-form').waitFor({ state: 'visible' });
+      await page.locator('dialog.opstra-dialog[open] > header button').click();
+      console.log('PASS 7: RELIANCE search+Enter, 2026-02-02 historical simulation, backend 1-minute NIFTY option chain & Alice Blue API modal verified.');
+
       assert.deepEqual(pageErrors, [], 'Zero uncaught page errors during full E2E workflow');
       assert.deepEqual(consoleErrors, [], 'Zero console errors during full E2E workflow');
       await ctx.close();
+    }
+
+    // Verify fresh session auto-loads 1-minute NIFTY option chain & localhost:4174 works cleanly
+    {
+      const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, timezoneId: 'Asia/Kolkata' });
+      const page = await ctx.newPage();
+      const errs = [];
+      page.on('pageerror', e => errs.push(e.message));
+      await page.goto('http://localhost:4174/strategy-builder.html#options-simulator', { waitUntil: 'domcontentloaded' });
+      await page.waitForFunction(
+        () => {
+          const btn1m = document.querySelector('#options-simulator button[data-mins="1"]');
+          const rows = document.querySelectorAll('#opstra-chain-body tr');
+          return btn1m && !btn1m.disabled && rows.length >= 8;
+        },
+        { timeout: 25000 }
+      );
+      assert.deepEqual(errs, [], 'Zero errors on localhost:4174 fresh 1-minute auto-load');
+      await ctx.close();
+      console.log('PASS Fresh Load (http://localhost:4174): Auto-loaded 1-minute NIFTY option chain with 1m step active.');
     }
 
     // -------------------------------------------------------------------------

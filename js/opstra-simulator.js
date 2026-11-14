@@ -15,6 +15,7 @@
             <span class="opstra-market-pill" id="opstra-market-status" role="status">Checking IST session…</span>
           </div>
           <div class="opstra-top-actions">
+            <button type="button" class="opstra-btn-navy opstra-btn-broker" id="opstra-btn-broker-auth" title="Connect or verify Alice Blue API session">🔑 ALICE BLUE API</button>
             <button type="button" class="opstra-btn-navy" id="opstra-btn-new">+ NEW SIMULATION</button>
             <button type="button" class="opstra-btn-navy" id="opstra-btn-live-chain" title="Fetch live Alice Blue option chain">⚡ LIVE CHAIN</button>
             <button type="button" class="opstra-btn-navy" id="opstra-btn-recorder" title="Historical option-chain snapshot recorder & coverage">🗄 SNAPSHOT STORE</button>
@@ -41,6 +42,7 @@
                 <option value="nse_fo|NIFTY" selected>NIFTY</option>
               </select>
             </div>
+            <div id="opstra-search-matches" class="opstra-search-matches" role="listbox" aria-label="Matching F&amp;O instruments" hidden></div>
             <span class="opstra-helper-text" id="opstra-instrument-meta">Select Index/Stock · Loading F&amp;O contract directory…</span>
 
             <div class="opstra-badges-row" aria-label="Underlying and volatility summary">

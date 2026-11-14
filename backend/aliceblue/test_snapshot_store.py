@@ -180,6 +180,142 @@ class SnapshotEndpointsIntegrationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(body['dataset']['source'], 'IWSM recorded option-chain snapshots')
         self.assertTrue(any(c['symbol'] == 'RELIANCE' and c['lotSize'] == 500 for c in body['dataset']['contracts']))
 
+    async def test_minute_replay_ignores_untraded_strikes_without_502(self):
+        import json as _json
+        from unittest.mock import patch
+        from alice_service import COOKIE
+
+        def broker_mixed(req):
+            body = _json.loads(req.content) if req.content else {}
+            p = req.url.path
+            if p.endswith('getUnderlying'):
+                return httpx.Response(200, json={'stat': 'Ok', 'result': [{'list_underlying': ['RELIANCE']}]})
+            if p.endswith('getUnderlyingExp'):
+                return httpx.Response(200, json={'stat': 'Ok', 'result': [{'underlying': 'RELIANCE', 'underlying_expiry': ['26NOV26']}]})
+            if p.endswith('getOptionChain'):
+                return httpx.Response(200, json={
+                    'stat': 'Ok',
+                    'result': [{
+                        'data': [
+                            {
+                                'CE': {'tradingsymbol': 'RELIANCE26NOV26C1300', 'ltp': 28.5},
+                                'PE': {'tradingsymbol': 'RELIANCE26NOV26P1300', 'ltp': 21.0},
+                            },
+                            {
+                                'CE': {'tradingsymbol': 'RELIANCE26NOV26C1450', 'ltp': 1.2},
+                                'PE': {'tradingsymbol': 'RELIANCE26NOV26P1450', 'ltp': 152.0},
+                            },
+                        ]
+                    }],
+                })
+            if p.endswith('/history'):
+                tk = str(body.get('token'))
+                # Token 201/202 simulate illiquid strikes returning Not_Ok ("No Data Available")
+                if tk in ('201', '202'):
+                    return httpx.Response(200, json={'stat': 'Not_Ok', 'emsg': 'No Data Available', 'result': None})
+                price = 1304.0 if tk == '9999' else 25.0
+                return httpx.Response(200, json={
+                    'stat': 'Ok',
+                    'result': [
+                        {'time': '2026-11-13 09:15:59', 'close': price, 'volume': 500},
+                        {'time': '2026-11-13 09:16:59', 'close': price + 1.5, 'volume': 500},
+                    ],
+                })
+            return httpx.Response(404, json={'stat': 'Not_Ok'})
+
+        class DirectoryMock:
+            def __init__(self, *a, **kw): pass
+            async def __aenter__(self): return self
+            async def __aexit__(self, *a): pass
+            async def get(self, url):
+                name = url.rsplit('/', 1)[-1]
+                if name == 'NFO':
+                    data = [
+                        {'symbol': 'RELIANCE', 'trading_symbol': 'RELIANCE26NOV26C1300', 'token': '101', 'lot_size': 500, 'instrument_type': 'OPTSTK'},
+                        {'symbol': 'RELIANCE', 'trading_symbol': 'RELIANCE26NOV26P1300', 'token': '102', 'lot_size': 500, 'instrument_type': 'OPTSTK'},
+                        {'symbol': 'RELIANCE', 'trading_symbol': 'RELIANCE26NOV26C1450', 'token': '201', 'lot_size': 500, 'instrument_type': 'OPTSTK'},
+                        {'symbol': 'RELIANCE', 'trading_symbol': 'RELIANCE26NOV26P1450', 'token': '202', 'lot_size': 500, 'instrument_type': 'OPTSTK'},
+                    ]
+                elif name == 'INDICES':
+                    data = {'NSE': []}
+                else:
+                    data = [{'symbol': 'RELIANCE', 'token': '9999', 'group_name': 'EQ', 'instrument_type': 'EQ'}]
+                return httpx.Response(200, json=data, request=httpx.Request('GET', url))
+
+        app = create_app(
+            {
+                'ALICEBLUE_APP_CODE': 'TESTAPP',
+                'ALICEBLUE_API_SECRET': 'TESTSECRET',
+                'ALICEBLUE_REDIRECT_URL': 'http://127.0.0.1:4174' + PREFIX + '/auth/callback',
+                'ALICEBLUE_SESSION_ENCRYPTION_KEY': Fernet.generate_key().decode(),
+            },
+            str(Path(self.tmp.name) / 'mixed.db'),
+            httpx.MockTransport(broker_mixed),
+        )
+        app.state.store.put('sid-mixed', {'token': 'VALID-TOKEN'}, 3600)
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url='http://127.0.0.1:4174', cookies={COOKIE: 'sid-mixed'}) as cl:
+            with patch('alice_history.httpx.AsyncClient', DirectoryMock):
+                r = await cl.get(PREFIX + '/replay', params={'underlying': 'RELIANCE', 'expiry': '26NOV26', 'start': '2026-11-13', 'end': '2026-11-13'})
+        await app.state.broker.http.aclose()
+        self.assertEqual(r.status_code, 200, r.text)
+        contracts = r.json()['dataset']['contracts']
+        self.assertEqual(len(contracts), 4)
+        self.assertEqual({c['strike'] for c in contracts}, {1300.0})
+
+    async def test_direct_apikey_and_clientid_sso_auth(self):
+        import hashlib as _hashlib, json as _json
+
+        def broker_auth(req):
+            body = _json.loads(req.content) if req.content else {}
+            p = req.url.path
+            if p.endswith('getEncKey'):
+                return httpx.Response(200, json={'stat': 'Ok', 'encKey': 'ENC12345'})
+            if p.endswith('getUserSID'):
+                expected = _hashlib.sha256(b'AB999' + b'A' * 32 + b'ENC12345').hexdigest()
+                if body.get('userData') == expected:
+                    return httpx.Response(200, json={'stat': 'Ok', 'sessionID': 'APIKEY-SESSION-TOKEN'})
+                return httpx.Response(200, json={'stat': 'Not_Ok', 'emsg': 'Invalid checksum'})
+            if p.endswith('getUserDetails'):
+                return httpx.Response(200, json={'stat': 'Ok', 'clientId': 'AB999', 'userSession': 'SSO-SESSION-TOKEN'})
+            if p.endswith('getUnderlying'):
+                return httpx.Response(200, json={'stat': 'Ok', 'result': [{'list_underlying': ['NIFTY', 'RELIANCE']}]})
+            return httpx.Response(404, json={'stat': 'Not_Ok'})
+
+        env_file = Path(self.tmp.name) / 'test.env'
+        app = create_app(
+            {
+                'ALICEBLUE_APP_CODE': 'TESTAPP',
+                'ALICEBLUE_API_SECRET': 'TESTSECRET',
+                'ALICEBLUE_REDIRECT_URL': 'http://127.0.0.1:4174' + PREFIX + '/auth/callback',
+                'ALICEBLUE_SESSION_ENCRYPTION_KEY': Fernet.generate_key().decode(),
+            },
+            str(Path(self.tmp.name) / 'apikey.db'),
+            httpx.MockTransport(broker_auth),
+            local_owner_mode=True,
+            env_path=str(env_file),
+        )
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url='http://127.0.0.1:4174') as cl:
+            # 1. Direct API key login
+            r_key = await cl.post(
+                PREFIX + '/auth/apikey',
+                json={'clientId': 'ab999', 'apiKey': 'A' * 32},
+                headers={'origin': 'http://127.0.0.1:4174'},
+            )
+            self.assertEqual(r_key.status_code, 200, r_key.text)
+            self.assertTrue(r_key.json()['connected'])
+
+            # 2. SSO login where callback omits state, using submitted clientId
+            r_login = await cl.post(
+                PREFIX + '/auth/login',
+                json={'clientId': 'AB999'},
+                headers={'origin': 'http://localhost:4174'},
+            )
+            self.assertEqual(r_login.status_code, 200)
+            r_cb = await cl.get(PREFIX + '/auth/callback', params={'userId': 'AB999', 'authCode': 'CODE123'})
+            self.assertEqual(r_cb.status_code, 303)
+            self.assertIn('http://localhost:4174/strategy-builder.html', r_cb.headers['location'])
+        await app.state.broker.http.aclose()
+
 
 if __name__ == '__main__':
     unittest.main()

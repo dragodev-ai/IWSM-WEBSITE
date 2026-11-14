@@ -35,6 +35,7 @@
       let chainRows = [], symbols = ['NIFTY'], archiveDates = [], symbolDates = {}, loading = false;
       let symbolSearchQuery = '', chainSearchQuery = '', chainRangeCount = 25, showDetailCols = false, quickTrade = false;
       let serverMarketStatus = null, snapshotCoverage = null, brokerExpiryDetails = {};
+      let apiBase = '', apiProbePromise = null, brokerAuth = { connected: false };
 
       const settings = { initialBalance: 1000000, feePerOrder: 20, feeBps: 0, slippage: 0, marginRate: 0.2, rate: 6.5, dividend: 0 };
 
@@ -273,9 +274,90 @@
         msg('Simulation cursor: ' + s.cursor.replace('T', ' ') + ' IST' + (recording ? ' · Saved to browser study store.' : ''));
       }
 
+      function addCalendarDays(isoDate, deltaDays) {
+        const dt = new Date(isoDate + 'T00:00:00Z');
+        dt.setUTCDate(dt.getUTCDate() + deltaDays);
+        return dt.toISOString().slice(0, 10);
+      }
+
+      function defaultMinuteStartIST(nowIso = todayIST()) {
+        const dt = new Date(nowIso + 'T00:00:00Z');
+        let tradingBack = 0;
+        let calBack = 0;
+        while (tradingBack < 3 && calBack < 6) {
+          dt.setUTCDate(dt.getUTCDate() - 1);
+          calBack++;
+          if (dt.getUTCDay() !== 0 && dt.getUTCDay() !== 6) tradingBack++;
+        }
+        return dt.toISOString().slice(0, 10);
+      }
+
+      function friendlyFetchError(err) {
+        const raw = String(err?.message || err || '');
+        if (/failed to fetch|networkerror|load failed|fetch/i.test(raw)) {
+          return 'Local IWSM market-data server could not be reached. Ensure "node tools/local-preview.cjs" is running and open http://127.0.0.1:4174/strategy-builder.html#options-simulator.';
+        }
+        return raw || 'Market data request failed.';
+      }
+
+      async function probeLocalBackend() {
+        if (apiBase) return apiBase;
+        if (apiProbePromise) return apiProbePromise;
+        const isFile = root.location?.protocol === 'file:';
+        apiProbePromise = (async () => {
+          for (const candidate of ['http://127.0.0.1:4174', 'http://localhost:4174']) {
+            try {
+              if (root.location?.origin === candidate) continue;
+              const r = await fetch(candidate + '/api/aliceblue/health', {
+                credentials: isFile ? 'omit' : 'include',
+                signal: AbortSignal.timeout(3500),
+              });
+              if (r.ok && (r.headers.get('content-type') || '').includes('application/json')) {
+                apiBase = candidate;
+                return apiBase;
+              }
+            } catch {}
+          }
+          return '';
+        })().finally(() => {
+          apiProbePromise = null;
+        });
+        return apiProbePromise;
+      }
+
+      async function apiFetch(urlPath, initOpts = {}) {
+        const isFile = root.location?.protocol === 'file:';
+        if (isFile && !apiBase) await probeLocalBackend();
+        const buildOpts = base => ({
+          credentials: isFile ? 'omit' : base ? 'include' : 'same-origin',
+          signal: AbortSignal.timeout(120000),
+          ...initOpts,
+        });
+        try {
+          const r = await fetch((apiBase || '') + urlPath, buildOpts(apiBase));
+          if (!apiBase && (r.status === 404 || r.status === 405 || !(r.headers.get('content-type') || '').includes('application/json'))) {
+            const discovered = await probeLocalBackend();
+            if (discovered) return await fetch(discovered + urlPath, buildOpts(discovered));
+          }
+          return r;
+        } catch (err) {
+          if (!apiBase) {
+            const discovered = await probeLocalBackend();
+            if (discovered) {
+              try {
+                return await fetch(discovered + urlPath, buildOpts(discovered));
+              } catch (retryErr) {
+                throw Error(friendlyFetchError(retryErr));
+              }
+            }
+          }
+          throw Error(friendlyFetchError(err));
+        }
+      }
+
       async function jsonResponse(r) {
         if (!(r.headers.get('content-type') || '').includes('application/json')) {
-          throw Error('Local preview backend required for this endpoint.');
+          throw Error('Local preview backend required for this endpoint (http://127.0.0.1:4174).');
         }
         const j = await r.json();
         if (!r.ok || j.success === false) throw Error(j.error || j.detail || 'Data could not be loaded.');
@@ -283,17 +365,40 @@
       }
 
       async function brokerApi(path, initOpts = {}) {
-        const r = await fetch('/api/aliceblue/' + path, {
-          credentials: 'same-origin',
-          signal: AbortSignal.timeout(120000),
-          ...initOpts,
-        });
+        const r = await apiFetch('/api/aliceblue/' + path, initOpts);
         if (!(r.headers.get('content-type') || '').includes('application/json')) {
-          throw Error('Live broker service requires the local data backend.');
+          throw Error('Live broker service requires the local data backend (http://127.0.0.1:4174).');
         }
         const j = await r.json();
         if (!r.ok) throw Error(j.detail || 'Broker data unavailable');
         return j;
+      }
+
+      function updateBrokerAuthBadge() {
+        const btn = el('btn-broker-auth');
+        if (!btn) return;
+        const isConn = Boolean(brokerAuth?.connected);
+        btn.classList.toggle('is-connected', isConn);
+        btn.innerHTML = isConn
+          ? '<span class="opstra-dot-green">●</span> ALICE BLUE LIVE'
+          : '🔑 CONNECT ALICE BLUE';
+        btn.title = isConn
+          ? 'Alice Blue API connected & verified' + (brokerAuth.clientIdHint ? ' (' + brokerAuth.clientIdHint + ')' : '')
+          : 'Click to connect Alice Blue via Direct API Key or Vendor SSO';
+      }
+
+      async function refreshBrokerAuthStatus() {
+        try {
+          const j = await brokerApi('auth/status');
+          brokerAuth = j || { connected: false };
+          if (j?.marketStatus) serverMarketStatus = j.marketStatus;
+          updateBrokerAuthBadge();
+          updateMarketBadges();
+          return brokerAuth;
+        } catch {
+          updateBrokerAuthBadge();
+          return brokerAuth;
+        }
       }
 
       async function refreshMarketAndCoverage(sym = '') {
@@ -331,13 +436,40 @@
         }
       }
 
+      function resolveArchiveWindow(symbol, preferredStart = '', preferredEnd = '') {
+        const sym = String(symbol || 'NIFTY').trim().toUpperCase();
+        const avail = (Array.isArray(symbolDates[sym]) && symbolDates[sym].length ? symbolDates[sym] : archiveDates) || [];
+        if (!avail.length) {
+          if (preferredStart && preferredEnd && preferredStart <= preferredEnd && (Date.parse(preferredEnd) - Date.parse(preferredStart)) / 86400000 <= 30) {
+            return { start: preferredStart, end: preferredEnd };
+          }
+          return { start: '2026-10-28', end: '2026-11-04' };
+        }
+        if (preferredStart && preferredEnd && preferredStart <= preferredEnd) {
+          const inWindow = avail.filter(dt => dt >= preferredStart && dt <= preferredEnd);
+          if (inWindow.length && (Date.parse(preferredEnd) - Date.parse(preferredStart)) / 86400000 <= 30) {
+            return { start: preferredStart, end: preferredEnd };
+          }
+          // If requested date is historical (before latest archive date), find nearest available trading days around preferredStart
+          if (preferredStart <= avail.at(-1)) {
+            const idx = avail.findIndex(dt => dt >= preferredStart);
+            if (idx >= 0) {
+              const slice = avail.slice(Math.max(0, idx - 1), Math.min(avail.length, idx + 5));
+              return { start: slice[0], end: slice.at(-1) };
+            }
+          }
+        }
+        const recent = avail.slice(-5);
+        return { start: recent[0], end: recent.at(-1) };
+      }
+
       async function loadRecorded(symbol, start, end) {
         pause();
         stopAutoRefresh();
         const request = ++generation;
         msg('Loading ' + symbol.toUpperCase() + ' historical archive (' + start + ' to ' + end + ')…');
         const q = new URLSearchParams({ mode: 'load', symbol: symbol.toUpperCase(), start, end });
-        const j = await jsonResponse(await fetch('/api/nse-library?' + q));
+        const j = await jsonResponse(await apiFetch('/api/nse-library?' + q));
         if (request !== generation) return;
         adopt(j.dataset || j.data || j);
         close();
@@ -515,8 +647,12 @@
       function instrumentOptions(symbol, exchange = 'nse_fo', filterText = '') {
         const selected = exchange + '|' + symbol;
         const q = String(filterText || '').trim().toUpperCase();
-        const matches = (sym, und = '') => !q || sym.toUpperCase().includes(q) || String(und).toUpperCase().includes(q) || (exchange + '|' + sym === selected);
+        const matches = (sym, und = '') => !q || sym.toUpperCase().includes(q) || String(und).toUpperCase().includes(q);
+        const currentMatches = matches(symbol, activeInstrumentMeta(symbol, exchange)?.underlying || '');
         let html = '';
+        if (q && !currentMatches) {
+          html += '<option value="' + esc(selected) + '" selected>Current: ' + esc(symbol) + ' — choose match below</option>';
+        }
         const seen = new Set();
         for (const [code, title, kind] of [
           ['nse_fo', 'NSE Indices (NFO)', 'index'],
@@ -545,6 +681,62 @@
             '</optgroup>';
         }
         return html || '<option value="' + esc(selected) + '" selected>' + esc(symbol) + '</option>';
+      }
+
+      function findMatchingInstruments(query) {
+        const q = String(query || '').trim().toUpperCase();
+        if (!q) return [];
+        const pool = [];
+        const seen = new Set();
+        for (const x of brokerInstruments) {
+          if (x.chainAvailable === false) continue;
+          const key = x.exchange + '|' + x.symbol;
+          if (seen.has(key)) continue;
+          if (x.symbol.toUpperCase().includes(q) || String(x.underlying || '').toUpperCase().includes(q)) {
+            seen.add(key);
+            pool.push(x);
+          }
+        }
+        for (const sym of symbols) {
+          const key = 'nse_fo|' + sym;
+          if (!seen.has(key) && sym.toUpperCase().includes(q)) {
+            seen.add(key);
+            pool.push({ symbol: sym, underlying: sym, exchange: 'nse_fo', kind: 'stock' });
+          }
+        }
+        return pool.sort((a, b) => {
+          const aExact = a.symbol.toUpperCase() === q ? 0 : a.symbol.toUpperCase().startsWith(q) ? 1 : 2;
+          const bExact = b.symbol.toUpperCase() === q ? 0 : b.symbol.toUpperCase().startsWith(q) ? 1 : 2;
+          if (aExact !== bExact) return aExact - bExact;
+          if (a.exchange !== b.exchange) return a.exchange === 'nse_fo' ? -1 : 1;
+          return a.symbol.localeCompare(b.symbol);
+        });
+      }
+
+      function renderSearchMatches() {
+        const box = el('search-matches');
+        if (!box) return;
+        const q = String(symbolSearchQuery || '').trim();
+        if (!q) {
+          box.hidden = true;
+          box.innerHTML = '';
+          return;
+        }
+        const matches = findMatchingInstruments(q).slice(0, 8);
+        if (!matches.length) {
+          box.hidden = false;
+          box.innerHTML = '<small class="opstra-helper-text">No F&amp;O contract matches "' + esc(q.toUpperCase()) + '".</small>';
+          return;
+        }
+        box.hidden = false;
+        box.innerHTML = matches
+          .map(x => {
+            const key = x.exchange + '|' + x.symbol;
+            const seg = x.exchange === 'bse_fo' ? 'BFO' : 'NFO';
+            const lot = x.lotSize ? ' · Lot ' + x.lotSize : '';
+            return '<button type="button" class="opstra-match-pill" data-pick-symbol="' + esc(key) + '">' + esc(x.symbol + ' (' + seg + lot + ')') + '</button>';
+          })
+          .join('');
       }
 
       async function refreshInstruments() {
@@ -588,6 +780,8 @@
         // Instrument selector & rich metadata line
         el('symbol-select').innerHTML = instrumentOptions(s.symbol, exch, symbolSearchQuery);
         el('symbol-select').disabled = loading;
+        renderSearchMatches();
+        updateBrokerAuthBadge();
         const instMeta = activeInstrumentMeta(s.symbol, exch);
         const strikeDiffs = (() => {
           const st = [...new Set(chainRows.filter(q => q.type !== 'FUT').map(q => q.strike))].sort((x, y) => x - y);
@@ -700,9 +894,12 @@
           (s.cursor < s.frontier ? ' · Review mode (edits auto-branch at cursor)' : '') +
           (warnText ? ' · Note: ' + warnText : '');
 
-        // Sync inline Multi-Leg Builder
-        const allStrikes = [...new Set(chainRows.filter(q => q.type !== 'FUT').map(q => q.strike))].sort((x, y) => x - y);
-        syncLegBuilder(expiries, allStrikes, future);
+        // Sync inline Multi-Leg Builder & keep Option Chain strike ladder continuous across 1-minute bars
+        const builderStrikes = [...new Set(chainRows.filter(q => q.type !== 'FUT').map(q => q.strike))].sort((x, y) => x - y);
+        const allStrikes = chainRows.some(q => q.type !== 'FUT')
+          ? [...new Set(d.contracts.filter(q => q.symbol === s.symbol && q.expiry === viewExpiry && q.type !== 'FUT').map(q => q.strike))].sort((x, y) => x - y)
+          : builderStrikes;
+        syncLegBuilder(expiries, builderStrikes, future);
 
         // Strategy Positions list with 5 Opstra-grade controls: Toggle, Edit, Flip, Exit/SL, Delete
         el('positions-list').innerHTML =
@@ -1056,6 +1253,96 @@
         });
       }
 
+      async function openBrokerConnectModal(reasonText = '') {
+        const st = await refreshBrokerAuthStatus();
+        const isConn = Boolean(st?.connected);
+        const dom = dialog(
+          'Alice Blue API Connection & Auto-Renewal',
+          (reasonText ? '<p class="opstra-dialog-status">' + esc(reasonText) + '</p>' : '') +
+            '<div class="opstra-stat-grid">' +
+            '<div class="opstra-stat-box"><small>Session Status</small><strong style="color:' + (isConn ? '#15803d' : '#b45309') + '">' + esc(isConn ? 'Connected & Verified' : 'Disconnected / Daily Token Expired') + '</strong></div>' +
+            '<div class="opstra-stat-box"><small>Vendor App Code</small><strong>' + esc(st?.appConfigured ? 'Configured ✓' : 'Optional (use Direct API Key)') + '</strong></div>' +
+            '<div class="opstra-stat-box"><small>Saved Client ID</small><strong>' + esc(st?.clientIdConfigured ? (st.clientIdHint || 'Configured ✓') : 'Enter once below') + '</strong></div>' +
+            '<div class="opstra-stat-box"><small>24/7 Auto-Renew API Key</small><strong>' + esc(st?.apiKeyConfigured ? 'Saved ✓' : 'Not saved yet') + '</strong></div>' +
+            '</div>' +
+            '<div class="opstra-auth-card">' +
+            '<h3>Option 1 (Recommended): Direct Alice Blue API Key — Zero Daily Redirects</h3>' +
+            '<p>Paste your Alice Blue <strong>Client ID</strong> and <strong>API Key</strong> (from <em>ANT Web → Apps → API Key</em>). IWSM stores it encrypted locally in <code>%LOCALAPPDATA%\\IWSM\\aliceblue.env</code> and automatically renews your daily session token without browser popups.</p>' +
+            '<form id="opstra-apikey-form">' +
+            '<div class="opstra-fields">' +
+            '<label>Alice Blue Client ID<input name="clientId" placeholder="e.g. AB123456" autocomplete="username" required></label>' +
+            '<label>Direct API Key<input name="apiKey" type="password" placeholder="Paste API Key from ANT Web → Apps → API Key" autocomplete="off" required></label>' +
+            '</div>' +
+            '<button type="submit">Verify &amp; Save Direct API Key</button>' +
+            '</form>' +
+            '</div>' +
+            '<div class="opstra-auth-card">' +
+            '<h3>Option 2: Alice Blue Vendor SSO Login (' + esc(st?.appConfigured ? 'App Code Ready' : 'Requires App Code') + ')</h3>' +
+            '<p>Authenticate once via Alice Blue ANT portal. Entering your Client ID once ensures callback verification succeeds even when Alice Blue omits OAuth state.</p>' +
+            '<form id="opstra-sso-form">' +
+            '<div class="opstra-fields">' +
+            '<label>Alice Blue Client ID ' + (st?.clientIdConfigured ? '(already saved — optional)' : '(required once)') + '<input name="clientId" placeholder="e.g. AB123456" autocomplete="username" ' + (st?.clientIdConfigured ? '' : 'required') + '></label>' +
+            '</div>' +
+            '<button type="submit" ' + (st?.appConfigured === false ? 'disabled' : '') + '>Continue to Alice Blue SSO Login ↗</button>' +
+            '</form>' +
+            '</div>' +
+            '<p class="opstra-dialog-status" id="opstra-auth-modal-msg" role="status"></p>' +
+            (isConn
+              ? '<div class="opstra-data-actions">' +
+                '<button type="button" id="opstra-auth-test-live">⚡ Load Live Chain Now</button>' +
+                '<button type="button" id="opstra-auth-logout">Disconnect Session</button>' +
+                '</div>'
+              : ''),
+          true
+        );
+
+        const modalMsg = dom.querySelector('#opstra-auth-modal-msg');
+
+        dom.querySelector('#opstra-apikey-form').onsubmit = guard(async e => {
+          e.preventDefault();
+          const fd = Object.fromEntries(new FormData(e.target));
+          modalMsg.textContent = 'Verifying Client ID & API Key with Alice Blue…';
+          await brokerApi('auth/apikey', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clientId: fd.clientId.trim(), apiKey: fd.apiKey.trim(), persist: true }),
+          });
+          await refreshBrokerAuthStatus();
+          close();
+          msg('Alice Blue Direct API Key verified & saved! Loading live / 1-minute market data…');
+          await fetchLiveSnapshotNow(false);
+        });
+
+        dom.querySelector('#opstra-sso-form').onsubmit = guard(async e => {
+          e.preventDefault();
+          const fd = Object.fromEntries(new FormData(e.target));
+          modalMsg.textContent = 'Preparing secure Alice Blue SSO redirect…';
+          const j = await brokerApi('auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clientId: (fd.clientId || '').trim() }),
+          });
+          root.location.assign(j.loginUrl);
+        });
+
+        const liveBtn = dom.querySelector('#opstra-auth-test-live');
+        if (liveBtn) {
+          liveBtn.onclick = guard(async () => {
+            close();
+            await fetchLiveSnapshotNow(false);
+          });
+        }
+        const logoutBtn = dom.querySelector('#opstra-auth-logout');
+        if (logoutBtn) {
+          logoutBtn.onclick = guard(async () => {
+            await brokerApi('auth/logout', { method: 'POST' });
+            await refreshBrokerAuthStatus();
+            close();
+            msg('Alice Blue session disconnected.');
+          });
+        }
+      }
+
       async function fetchLiveSnapshotNow(silent = false) {
         if (refreshInFlight || !s) return;
         refreshInFlight = true;
@@ -1072,6 +1359,7 @@
           if (!chosenExp) throw Error('No active option expiries returned for ' + s.symbol);
           const snap = await brokerApi('snapshot?' + new URLSearchParams({ underlying: s.symbol, expiry: chosenExp, exch }));
           adopt(snap.dataset);
+          await refreshBrokerAuthStatus();
           await refreshMarketAndCoverage(s.symbol);
           if (!silent) {
             msg(snap.notice || ('Live ' + s.symbol + ' (' + chosenExp + ') option-chain snapshot refreshed & recorded to Snapshot Store.'));
@@ -1079,19 +1367,8 @@
         } catch (err) {
           stopAutoRefresh();
           if (!silent) {
-            if (/connect|account|authentication/i.test(err.message)) {
-              const dom = dialog(
-                'Connect Alice Blue for Live Quotes',
-                '<p>' + esc(err.message) + '</p>' +
-                  '<p>Your Alice Blue credentials remain securely stored server-side. Connect once to establish an encrypted persistent session cookie without re-entering keys.</p>' +
-                  '<button type="button" id="opstra-connect-now">Connect Alice Blue Account</button>'
-              );
-              dom.querySelector('#opstra-connect-now').onclick = guard(async () => {
-                const r = await fetch('/api/aliceblue/auth/login', { method: 'POST', credentials: 'same-origin' });
-                const j = await r.json();
-                if (!r.ok) throw Error(j.detail || 'Broker login unavailable');
-                location.assign(j.loginUrl);
-              });
+            if (/connect|account|authentication|session/i.test(err.message)) {
+              await openBrokerConnectModal(err.message);
             } else {
               msg(err.message);
             }
@@ -1387,10 +1664,7 @@
         stopAutoRefresh();
         const selected = instrumentChoice(preferred || (d?.metadata.exchange || 'nse_fo') + '|' + (s?.symbol || 'NIFTY'));
         const now = todayIST();
-        const prior = new Date(now + 'T00:00Z');
-        prior.setUTCDate(prior.getUTCDate() - 1);
-        while (prior.getUTCDay() === 0 || prior.getUTCDay() === 6) prior.setUTCDate(prior.getUTCDate() - 1);
-        const day = prior.toISOString().slice(0, 10);
+        const day = defaultMinuteStartIST(now);
 
         const dom = dialog(
           'New Options Simulation',
@@ -1409,7 +1683,7 @@
             '</div>' +
             '<p class="opstra-dialog-status" role="status"></p>' +
             '<div class="opstra-data-actions">' +
-            '<button type="button" class="connect-broker" hidden>Connect Alice Blue</button>' +
+            '<button type="button" class="connect-broker" hidden>Connect Alice Blue API</button>' +
             '<button type="submit">Start Simulation</button>' +
             '</div>' +
             '</form>'
@@ -1418,13 +1692,25 @@
         let request = 0;
 
         connect.onclick = guard(async () => {
-          const r = await fetch('/api/aliceblue/auth/login', { method: 'POST', credentials: 'same-origin' });
-          const j = await r.json();
-          if (!r.ok) throw Error(j.detail || 'Connection unavailable');
-          location.assign(j.loginUrl);
+          await openBrokerConnectModal();
         });
 
+        function clampModalDates() {
+          const mode = f.elements.data.value;
+          const sVal = f.elements.start.value;
+          let eVal = f.elements.end.value;
+          if (!sVal || mode === 'snapshot') return;
+          if (!eVal || eVal < sVal) eVal = sVal;
+          const maxSpan = mode === 'minute' ? 6 : mode === 'daily' ? 30 : 30;
+          if ((Date.parse(eVal) - Date.parse(sVal)) / 86400000 > maxSpan) {
+            const clamped = addCalendarDays(sVal, maxSpan);
+            eVal = clamped > now ? now : clamped;
+          }
+          if (f.elements.end.value !== eVal) f.elements.end.value = eVal;
+        }
+
         async function loadModalExpiries() {
+          clampModalDates();
           const n = ++request, choice = instrumentChoice(f.elements.symbol.value), mode = f.elements.data.value;
           const startVal = f.elements.start.value, endVal = f.elements.end.value;
           f.querySelector('.broker-expiry').hidden = mode === 'daily';
@@ -1442,7 +1728,7 @@
             note.textContent =
               choice.exchange === 'bse_fo'
                 ? 'BSE daily EOD archives are not connected locally. Select Live Snapshot, 1-Minute History, or Recorded Snapshots.'
-                : 'Historical daily EOD archive selected. Supports multi-year daily simulation; use 1-Minute or Recorded Snapshots for intraday 1m/5m playback.';
+                : 'Historical daily EOD archive selected. Supports multi-year daily simulation across all 224 NSE F&O stocks & indices.';
             f.querySelector('[type=submit]').disabled = choice.exchange === 'bse_fo';
             return;
           }
@@ -1477,19 +1763,35 @@
                 })
             );
             if (n !== request || !f.isConnected) return;
-            if (Array.isArray(j.expiryDetails)) {
+            if (Array.isArray(j.expiryDetails) && j.expiryDetails.length) {
               for (const item of j.expiryDetails) if (item.iso) brokerExpiryDetails[item.iso] = item;
               f.elements.expiry.innerHTML = j.expiryDetails
                 .map(item => '<option value="' + esc(item.expiry) + '">' + esc(item.expiry + ' · ' + (item.cycle === 'monthly' ? 'Monthly' : 'Weekly') + ' (' + item.dte + 'd)') + '</option>')
                 .join('');
             } else {
-              f.elements.expiry.innerHTML = options(j.expiries, j.expiries[0]);
+              f.elements.expiry.innerHTML = options(j.expiries || [], (j.expiries || [])[0]);
             }
-            note.textContent = j.backup
-              ? 'Local historical backup expiries available (' + j.source + ').'
+            if (!j.expiries?.length) {
+              if (choice.exchange === 'nse_fo' && mode !== 'snapshot') {
+                const win = resolveArchiveWindow(choice.symbol, startVal, endVal);
+                note.textContent = 'No observations on ' + startVal + ' (weekend/holiday). Adjusted to nearest trading session (' + win.start + ' to ' + win.end + ').';
+                if (win.start !== startVal || win.end !== endVal) {
+                  f.elements.start.value = win.start;
+                  f.elements.end.value = win.end;
+                  return loadModalExpiries();
+                }
+              }
+              note.textContent = 'No option contracts found for ' + choice.symbol + ' in ' + startVal + ' – ' + endVal + '.';
+              return;
+            }
+            note.textContent = j.historicalOnly || j.backup
+              ? 'Historical contracts resolved (' + (j.source || 'verified local archive') + '). Loads recorded minute bars when available or verified daily option chain.'
+              : j.publicMaster && !brokerAuth?.connected
+              ? 'Expiries loaded from Alice Blue contract master. Connect Alice Blue API for live / 1-minute quotes, or Start Simulation to use local verified backup.'
               : mode === 'snapshot'
               ? 'Alice Blue Live Option-Chain Snapshot · Captures Spot, Futures, VIX, OI & Greeks and persists to Snapshot Store.'
               : 'Alice Blue 1-Minute Intraday History · Up to 7 calendar days · Current-expiry contracts (±15 strikes around ATM).';
+            if (j.publicMaster && !brokerAuth?.connected) connect.hidden = false;
             f.querySelector('[type=submit]').disabled = !j.expiries.length;
           } catch (e) {
             if (n !== request) return;
@@ -1519,7 +1821,8 @@
           e.preventDefault();
           const values = Object.fromEntries(new FormData(f)), choice = instrumentChoice(values.symbol);
           if (values.data === 'daily') {
-            await loadRecorded(choice.symbol, values.start, values.end);
+            const win = resolveArchiveWindow(choice.symbol, values.start, values.end);
+            await loadRecorded(choice.symbol, win.start, win.end);
             return;
           }
           const n = ++generation;
@@ -1556,7 +1859,16 @@
                 (j.dataset.metadata?.warnings?.length ? ' ' + j.dataset.metadata.warnings.join(' ') : '')
             );
           } catch (err) {
+            if (values.data === 'minute' && choice.exchange === 'nse_fo' && /connect|account|session|authentication|broker|no backup|unavailable/i.test(err.message)) {
+              try {
+                const win = resolveArchiveWindow(choice.symbol, values.start, values.end);
+                await loadRecorded(choice.symbol, win.start, win.end);
+                msg('Loaded verified ' + choice.symbol + ' historical option chain (' + s.cursor.slice(0, 10) + '). Connect Alice Blue API for live 1-minute intraday bars.');
+                return;
+              } catch {}
+            }
             note.textContent = err.message;
+            connect.hidden = !/connect|account|session|authentication/i.test(err.message);
             msg(err.message);
           } finally {
             if (f.isConnected) f.querySelector('[type=submit]').disabled = false;
@@ -1565,6 +1877,7 @@
       }
 
       // Wire top header & toolbar actions
+      if (el('btn-broker-auth')) el('btn-broker-auth').onclick = guard(() => openBrokerConnectModal());
       el('btn-new').onclick = () => newSimulation();
       el('btn-live-chain').onclick = guard(() => fetchLiveSnapshotNow(false));
       el('btn-live-refresh').onclick = guard(() => fetchLiveSnapshotNow(false));
@@ -1587,22 +1900,40 @@
         if (s && d) {
           el('symbol-select').innerHTML = instrumentOptions(s.symbol, d.metadata?.exchange || 'nse_fo', symbolSearchQuery);
         }
+        renderSearchMatches();
       };
-      el('symbol-search').onkeydown = e => {
+      if (el('search-matches')) {
+        el('search-matches').onclick = guard(async e => {
+          const btn = e.target.closest('[data-pick-symbol]');
+          if (!btn) return;
+          const picked = btn.dataset.pickSymbol;
+          symbolSearchQuery = '';
+          el('symbol-search').value = '';
+          renderSearchMatches();
+          await switchInstrument(picked);
+        });
+      }
+      el('symbol-search').onkeydown = guard(async e => {
         if (e.key === 'Enter') {
           e.preventDefault();
           const q = (el('symbol-search').value || '').trim().toUpperCase();
           if (!q) return;
-          const opts = [...el('symbol-select').options].filter(o => !o.disabled && o.value.toUpperCase().includes(q));
-          const exact = opts.find(o => o.value.split('|')[1]?.toUpperCase() === q) || opts[0];
-          if (exact && exact.value !== el('symbol-select').value) {
-            el('symbol-select').value = exact.value;
-            el('symbol-select').dispatchEvent(new Event('change'));
-          } else if (!opts.length) {
-            msg('No listed F&O derivative contract matches "' + q + '".');
+          let matches = findMatchingInstruments(q);
+          if (!matches.length) {
+            await refreshInstruments().catch(() => {});
+            matches = findMatchingInstruments(q);
           }
+          if (!matches.length) {
+            msg('No listed F&O derivative contract matches "' + q + '".');
+            return;
+          }
+          const picked = matches[0].exchange + '|' + matches[0].symbol;
+          symbolSearchQuery = '';
+          el('symbol-search').value = '';
+          renderSearchMatches();
+          await switchInstrument(picked);
         }
-      };
+      });
 
       el('btn-simulations').onclick = guard(async () => {
         generation++;
@@ -1926,23 +2257,61 @@
         change(P.advance(d, s, s.cursor.slice(0, 11) + el('observed-time').value));
       });
 
-      el('start-date').onchange = guard(() => {
+      el('start-date').onchange = guard(async () => {
         const day = el('start-date').value;
-        if (day > todayIST()) {
+        const now = todayIST();
+        if (!day) return;
+        if (day > now) {
           render();
-          throw Error('Cannot select a future historical Start Date (' + day + ' > ' + todayIST() + ' IST).');
+          throw Error('Cannot select a future historical Start Date (' + day + ' > ' + now + ' IST).');
         }
         const at = P.frames(d, s).find(t => t.startsWith(day));
         if (at) {
           change(P.advance(d, s, at));
           msg('Jumped simulation start cursor to ' + at.replace('T', ' ') + ' IST.');
-        } else {
-          newSimulation();
-          if (modal) {
-            modal.querySelector('[name=start]').value = day;
-            modal.querySelector('[name=end]').value = day;
-            modal.querySelector('[name=start]').dispatchEvent(new Event('change'));
+          return;
+        }
+
+        const exch = d?.metadata?.exchange || 'nse_fo';
+        const clampedEnd = addCalendarDays(day, 6) > now ? now : addCalendarDays(day, 6);
+        const reqGen = ++generation;
+        pause();
+        stopAutoRefresh();
+        msg('Loading ' + s.symbol + ' option chain for ' + day + '…');
+        try {
+          const exp = await brokerApi('expiries?' + new URLSearchParams({ underlying: s.symbol, exch, start: day, end: clampedEnd }));
+          if (reqGen !== generation) return;
+          if (Array.isArray(exp.expiryDetails)) {
+            for (const item of exp.expiryDetails) if (item.iso) brokerExpiryDetails[item.iso] = item;
           }
+          const chosenExp = exp.expiries?.find(x => brokerCodeToIso(x) === viewExpiry) || exp.expiries?.[0];
+          if (chosenExp) {
+            const j = await brokerApi('replay?' + new URLSearchParams({ underlying: s.symbol, exch, expiry: chosenExp, start: day, end: clampedEnd }));
+            if (reqGen !== generation) return;
+            adopt(j.dataset);
+            refreshMarketAndCoverage(s.symbol);
+            msg(j.notice || ('Loaded ' + s.symbol + ' (' + chosenExp + ') option chain starting ' + s.cursor.replace('T', ' ') + ' IST.'));
+            return;
+          }
+        } catch {}
+
+        if (exch === 'nse_fo') {
+          try {
+            const win = resolveArchiveWindow(s.symbol, day, clampedEnd);
+            await loadRecorded(s.symbol, win.start, win.end);
+            const jumpFrame = P.frames(d, s).find(t => t.slice(0, 10) >= day) || P.frames(d, s)[0];
+            if (jumpFrame && jumpFrame !== s.cursor) change(P.advance(d, s, jumpFrame));
+            msg('Loaded verified ' + s.symbol + ' historical option chain at ' + s.cursor.slice(0, 10) + '.');
+            return;
+          } catch {}
+        }
+
+        render();
+        newSimulation(exch + '|' + s.symbol);
+        if (modal) {
+          modal.querySelector('[name=start]').value = day;
+          modal.querySelector('[name=end]').value = day;
+          modal.querySelector('[name=start]').dispatchEvent(new Event('change'));
         }
       });
 
@@ -1958,15 +2327,10 @@
         }
       });
 
-      el('symbol-select').onchange = guard(async () => {
-        if (loading) return;
+      async function switchInstrument(value) {
+        if (loading || !s || !d) return;
         stopAutoRefresh();
-        const value = el('symbol-select').value, choice = instrumentChoice(value), cursor = s.cursor, start = s.start, end = s.end;
-        if (choice.exchange === 'bse_fo' && d.kind === 'daily') {
-          render();
-          newSimulation(value);
-          return;
-        }
+        const choice = instrumentChoice(value), cursor = s.cursor, start = s.start, end = s.end;
         const mode = d.kind === 'daily' ? 'daily' : d.metadata.quoteTiming?.startsWith('Snapshot') ? 'snapshot' : 'minute';
         loading = true;
         el('symbol-select').disabled = true;
@@ -1974,19 +2338,42 @@
         msg('Loading ' + choice.symbol + ' (' + choice.exchange + ') ' + (mode === 'daily' ? 'historical archive' : mode === 'snapshot' ? 'live option chain' : 'intraday replay') + '…');
         let request = null;
         try {
-          if (mode === 'daily') {
-            await loadRecorded(choice.symbol, start, end);
+          if (mode === 'daily' && choice.exchange === 'nse_fo') {
+            const win = resolveArchiveWindow(choice.symbol, start, end);
+            await loadRecorded(choice.symbol, win.start, win.end);
             return;
           }
           request = ++generation;
-          const exp = await brokerApi('expiries?' + new URLSearchParams({ underlying: choice.symbol, exch: choice.exchange, ...(mode === 'minute' ? { start, end } : {}) }));
+          const now = todayIST();
+          let reqStart = start, reqEnd = end;
+          if (!reqStart || !reqEnd || (Date.parse(reqEnd) - Date.parse(reqStart)) / 86400000 > 6) {
+            reqStart = defaultMinuteStartIST(now);
+            reqEnd = now;
+          }
+          const exp = await brokerApi(
+            'expiries?' +
+              new URLSearchParams({
+                underlying: choice.symbol,
+                exch: choice.exchange,
+                ...(mode !== 'snapshot' ? { start: reqStart, end: reqEnd } : {}),
+              })
+          );
           if (request !== generation) return;
           if (Array.isArray(exp.expiryDetails)) {
             for (const item of exp.expiryDetails) if (item.iso) brokerExpiryDetails[item.iso] = item;
           }
           const selected = exp.expiries.find(x => brokerCodeToIso(x) === viewExpiry) || exp.expiries[0];
           if (!selected) throw Error('No available expiry for ' + choice.symbol);
-          const j = await brokerApi((mode === 'snapshot' ? 'snapshot?' : 'replay?') + new URLSearchParams({ underlying: choice.symbol, exch: choice.exchange, expiry: selected, start, end }));
+          const j = await brokerApi(
+            (mode === 'snapshot' ? 'snapshot?' : 'replay?') +
+              new URLSearchParams({
+                underlying: choice.symbol,
+                exch: choice.exchange,
+                expiry: selected,
+                start: reqStart,
+                end: reqEnd,
+              })
+          );
           if (request !== generation) return;
           adopt(j.dataset);
           const at = P.frames(d, s).find(t => t >= cursor && Number.isFinite(d.spots.get(s.symbol + '|' + t)));
@@ -1995,6 +2382,14 @@
           msg(j.notice || (choice.symbol + ' ' + (mode === 'snapshot' ? 'option chain' : 'minute replay') + ' loaded · ' + s.cursor.replace('T', ' ') + ' IST.'));
         } catch (e) {
           if (request !== null && request !== generation) return;
+          if (choice.exchange === 'nse_fo') {
+            try {
+              const win = resolveArchiveWindow(choice.symbol, start, end);
+              await loadRecorded(choice.symbol, win.start, win.end);
+              msg('Loaded verified ' + choice.symbol + ' option chain (' + s.cursor.slice(0, 10) + '). Connect Alice Blue API for live & 1-minute intraday quotes.');
+              return;
+            } catch {}
+          }
           render();
           newSimulation(value);
           const note = modal?.querySelector('[role=status]');
@@ -2003,6 +2398,10 @@
           loading = false;
           el('symbol-select').disabled = false;
         }
+      }
+
+      el('symbol-select').onchange = guard(async () => {
+        await switchInstrument(el('symbol-select').value);
       });
 
       el('branch').onclick = guard(() => {
@@ -2012,7 +2411,7 @@
       });
       el('save-candles').onclick = guard(async () => {
         if (!bundle || bundle.synthetic) throw Error('Only genuine imported candles can be saved to the local library.');
-        const r = await fetch('/api/candle-library?mode=import', {
+        const r = await apiFetch('/api/candle-library?mode=import', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ...bundle, symbol: s.symbol, candles: bundle.candles.map(c => ({ ...c, timestamp: c.timestamp + ':00+05:30' })) }),
@@ -2041,22 +2440,46 @@
       msg('Opening your saved simulation…');
       host.querySelectorAll('[data-mins]').forEach(b => { b.disabled = true; });
 
+      let restoredFromStorage = false;
+      let seedGeneration = 0;
+
       root.IWSMSimulatorStartup.initialize({
         seed() {
           const raw = root.IWSMHistoryLab?.dataset() || root.IWSMNSEHistory;
           if (raw?.metadata?.synthetic || raw?.metadata?.modelled) throw Error('Load recorded data or explicitly choose a teaching example.');
           adopt(raw);
-          msg('Recorded window ready. Use New Simulation, Live Chain, or Snapshot Store for Alice Blue live & intraday replay.');
+          seedGeneration = generation;
+          msg('Recorded window ready. Loading 1-minute option-chain history…');
         },
         open: async () => { db = await Store.open(); },
         latest: () => db.latest(),
-        restore,
+        restore(savedStudy) {
+          restoredFromStorage = true;
+          restore(savedStudy);
+        },
         save: persist,
         revision: () => generation,
         onError: e => msg(e.message + ' · Included recorded data remains available.'),
-      }).catch(e => msg(e.message));
+      })
+        .then(async () => {
+          if (restoredFromStorage || generation !== seedGeneration || !s || P.valuation(d, s).positions.length > 0) return;
+          try {
+            const now = todayIST();
+            const start = defaultMinuteStartIST(now);
+            const exp = await brokerApi('expiries?' + new URLSearchParams({ underlying: 'NIFTY', exch: 'nse_fo', start, end: now }));
+            if (generation !== seedGeneration || !exp.expiries?.length) return;
+            if (Array.isArray(exp.expiryDetails)) {
+              for (const item of exp.expiryDetails) if (item.iso) brokerExpiryDetails[item.iso] = item;
+            }
+            const j = await brokerApi('replay?' + new URLSearchParams({ underlying: 'NIFTY', exch: 'nse_fo', expiry: exp.expiries[0], start, end: now }));
+            if (generation !== seedGeneration) return;
+            adopt(j.dataset);
+            msg(j.notice || ('Intraday 1-minute NIFTY option chain loaded (' + s.cursor.replace('T', ' ') + ' IST).'));
+          } catch {}
+        })
+        .catch(e => msg(e.message));
 
-      fetch('/api/nse-library?mode=catalog')
+      apiFetch('/api/nse-library?mode=catalog')
         .then(jsonResponse)
         .then(j => {
           symbols = (j.symbols || []).map(x => (typeof x === 'string' ? x : x.symbol));
@@ -2076,6 +2499,7 @@
         .then(() => { if (s) render(); })
         .catch(e => { msg(e.message + ' · Local & saved simulations remain available.'); });
 
+      refreshBrokerAuthStatus();
       refreshMarketAndCoverage();
 
       return { pause, stopAutoRefresh };

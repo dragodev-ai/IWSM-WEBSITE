@@ -82,6 +82,24 @@ def classify_expiries(expiries_list, as_of_iso: str = '') -> list:
     return details
 
 
+def _row_expiry_iso(row: dict) -> str:
+    raw = row.get('expiry_date')
+    if raw is None:
+        return ''
+    try:
+        val = float(raw)
+        if val > 1e11:
+            return datetime.fromtimestamp(val / 1000.0, timezone.utc).strftime('%Y-%m-%d')
+        if val > 1e8:
+            return datetime.fromtimestamp(val, timezone.utc).strftime('%Y-%m-%d')
+    except (TypeError, ValueError, OverflowError, OSError):
+        pass
+    try:
+        return normalize_expiry_iso(str(raw))
+    except ValueError:
+        return ''
+
+
 def front_future(records, underlying, as_of, target_expiry_iso=''):
     candidates = []
     for row in records:
@@ -89,11 +107,11 @@ def front_future(records, underlying, as_of, target_expiry_iso=''):
             str(row.get('instrument_type', '')).startswith('FUT') or row.get('instrument_type') in ('IF', 'SF')
         ):
             continue
+        expiry = _row_expiry_iso(row)
         try:
-            expiry = datetime.fromtimestamp(float(row.get('expiry_date', 0)) / 1000, timezone.utc).strftime('%Y-%m-%d')
-            if expiry >= as_of and int(row.get('lot_size') or 0) > 0:
+            if expiry and expiry >= as_of and int(float(row.get('lot_size') or 0)) > 0:
                 candidates.append({**row, 'expiryISO': expiry})
-        except (ValueError, TypeError, OverflowError, OSError):
+        except (ValueError, TypeError):
             continue
     if not candidates:
         return None
@@ -190,22 +208,31 @@ def observations(result, start, end):
     return [out[k] for k in sorted(out)]
 
 
-def install_history(app, session, broker, market, prefix, snapshots: SnapshotStore = None):
+def install_history(app, session_fn, broker, market, prefix, snapshots: SnapshotStore = None, nse_archive=None):
     from nifty_backup import NiftyBackup
 
     backup = NiftyBackup()
     snap_store = snapshots or SnapshotStore()
     app.state.snapshots = snap_store
 
+    async def get_session(req: Request):
+        res = session_fn(req)
+        return (await res) if asyncio.iscoroutine(res) else res
+
     def remember(result, kind):
         try:
             backup.remember(result['dataset'], kind)
         except (OSError, ValueError, sqlite3.Error):
             pass
+        if kind == 'minute':
+            try:
+                snap_store.remember_minute_replay(result['dataset'])
+            except (OSError, ValueError, sqlite3.Error):
+                pass
         return result
 
-    def fallback(error, underlying, exch, expiry, start='', end='', kind='minute'):
-        # 1. Check genuinely recorded SnapshotStore frames first (for ANY symbol/exchange!)
+    async def fallback(error, underlying, exch, expiry, start='', end='', kind='minute'):
+        # 1. Check genuinely recorded SnapshotStore frames first (for ANY symbol/exchange)
         if start and end:
             try:
                 snap_res = snap_store.load_replay(underlying, exch, expiry, start, end)
@@ -216,7 +243,18 @@ def install_history(app, session, broker, market, prefix, snapshots: SnapshotSto
                 return snap_res
             except (LookupError, ValueError, OSError, sqlite3.Error):
                 pass
-        # 2. Check local 5-year NIFTY SQLite backup
+            # 2. Check persisted 1-minute captures in SnapshotStore (works for RELIANCE, BANKNIFTY, SENSEX, NIFTY, etc.)
+            if kind == 'minute':
+                try:
+                    min_res = snap_store.load_minute_replay(underlying, exch, expiry, start, end)
+                    min_res['notice'] = (
+                        f"Broker live feed unavailable. Showing saved 1-minute recorded bars as of {min_res['asOf']}."
+                    )
+                    return min_res
+                except (LookupError, ValueError, OSError, sqlite3.Error):
+                    pass
+
+        # 3. Check local 5-year NIFTY SQLite backup (includes saved NIFTY minute captures + daily backup)
         if underlying == 'NIFTY' and exch == 'nse_fo' and error.status_code in (401, 403, 404, 422, 429, 500, 502, 503, 504):
             try:
                 result = backup.load(expiry, start, end, kind)
@@ -224,7 +262,20 @@ def install_history(app, session, broker, market, prefix, snapshots: SnapshotSto
                 return result
             except (ValueError, OSError, sqlite3.Error):
                 pass
-        # 3. Surface clear coverage diagnostics without fabricating data
+
+        # 4. Check local verified NSE derivatives archive (covers all 224+ NSE F&O stocks & indices, e.g. RELIANCE, BANKNIFTY, HDFCBANK)
+        if exch == 'nse_fo' and nse_archive and nse_archive.available() and error.status_code in (401, 403, 404, 422, 429, 500, 502, 503, 504):
+            try:
+                nse_res = await asyncio.to_thread(nse_archive.load, underlying, expiry, start, end)
+                nse_res['notice'] = (
+                    f"Live minute history unavailable for {underlying} ({expiry}). "
+                    f"Showing verified NSE official daily closes as of {nse_res['asOf']}."
+                )
+                return nse_res
+            except (ValueError, OSError, sqlite3.Error):
+                pass
+
+        # 5. Surface clear coverage diagnostics without fabricating data
         try:
             cov = snap_store.coverage(symbol=underlying, exchange=exch)
             if cov.get('earliestDate'):
@@ -237,8 +288,10 @@ def install_history(app, session, broker, market, prefix, snapshots: SnapshotSto
         raise error
 
     masters = {}
+    catalog_cache = {'stamp': None, 'rows': []}
     locks = {}
     cache = {}
+    bar_cache = {}
     gate = asyncio.Lock()
 
     async def master(name):
@@ -248,11 +301,32 @@ def install_history(app, session, broker, market, prefix, snapshots: SnapshotSto
                     async with httpx.AsyncClient(timeout=40, follow_redirects=False) as client:
                         r = await client.get(MASTER + name)
                         r.raise_for_status()
-                        j = r.json()
+                        content_bytes = getattr(r, 'content', b'') or b''
+                        j = (await asyncio.to_thread(r.json)) if len(content_bytes) > 250_000 else r.json()
                     masters[name] = (time.monotonic(), j)
                 except Exception:
                     raise HTTPException(502, 'Contract directory unavailable; retry shortly')
             return masters[name][1]
+
+    async def public_expiries(underlying: str, exch: str = 'nse_fo', as_of: str = '') -> list:
+        if exch not in ('nse_fo', 'bse_fo'):
+            return []
+        directory = await master('NFO' if exch == 'nse_fo' else 'BFO')
+        records = master_rows(directory)
+        min_iso = as_of if (as_of and re.fullmatch(r'\d{4}-\d{2}-\d{2}', as_of)) else datetime.now(IST).strftime('%Y-%m-%d')
+        exp_isos = set()
+        for row in records:
+            if row.get('symbol') != underlying:
+                continue
+            kind = str(row.get('instrument_type', ''))
+            if not (kind.startswith('OPT') or kind in ('IO', 'SO')):
+                continue
+            iso = _row_expiry_iso(row)
+            if iso and iso >= min_iso:
+                exp_isos.add(iso)
+        return [iso_to_broker_expiry(x) for x in sorted(exp_isos)]
+
+    app.state.public_expiries = public_expiries
 
     async def reference(underlying, exch):
         exchange = 'NSE' if exch == 'nse_fo' else 'BSE'
@@ -287,9 +361,26 @@ def install_history(app, session, broker, market, prefix, snapshots: SnapshotSto
                 unavailable.append(exch)
         if not directories:
             raise HTTPException(503, 'Alice Blue instrument directory unavailable; retry shortly')
-        rows = instrument_catalog(directories)
+
+        stamp = (
+            masters.get('NFO', (0.0,))[0] if 'nse_fo' in directories else -1.0,
+            masters.get('BFO', (0.0,))[0] if 'bse_fo' in directories else -1.0,
+        )
+        if catalog_cache['stamp'] == stamp and catalog_cache['rows']:
+            base_rows = catalog_cache['rows']
+        else:
+            total_len = sum(len(master_rows(v)) for v in directories.values())
+            base_rows = (
+                await asyncio.to_thread(instrument_catalog, directories)
+                if total_len > 2000
+                else instrument_catalog(directories)
+            )
+            catalog_cache['stamp'] = stamp
+            catalog_cache['rows'] = base_rows
+
+        rows = [dict(r) for r in base_rows]
         try:
-            session(req)
+            await get_session(req)
             connected = True
         except HTTPException:
             connected = False
@@ -399,7 +490,7 @@ def install_history(app, session, broker, market, prefix, snapshots: SnapshotSto
                 meta = by_symbol.get(leg['symbol']) if leg else None
                 if not meta or leg.get('ltp') is None:
                     continue
-                lot = int(meta.get('lot_size') or 0)
+                lot = int(float(meta.get('lot_size') or 0))
                 if lot <= 0:
                     continue
                 resolved_lot = resolved_lot or lot
@@ -436,11 +527,11 @@ def install_history(app, session, broker, market, prefix, snapshots: SnapshotSto
             contracts.append({
                 'timestamp': stamp,
                 'symbol': underlying,
-                'expiry': futures_expiry,
+                'expiry': future['expiryISO'],
                 'type': 'FUT',
                 'strike': 0,
+                'lotSize': int(float(future['lot_size'])),
                 'close': futures_price,
-                'lotSize': int(future['lot_size']),
                 'oi': None,
                 'volume': None,
             })
@@ -497,14 +588,14 @@ def install_history(app, session, broker, market, prefix, snapshots: SnapshotSto
         }
 
     async def live_snapshot(req: Request, underlying: str, expiry: str, exch: str = 'nse_fo'):
-        _, auth = session(req)
+        _, auth = await get_session(req)
         if exch not in ('nse_fo', 'bse_fo'):
             raise HTTPException(422, 'Select an NSE or BSE option underlying')
         chain = await market(req, 'option-chain', exch, underlying, expiry, 25)
         return await capture_snapshot_with_token(auth['token'], underlying, expiry, exch, chain_payload=chain)
 
     async def live_replay(req: Request, underlying: str, expiry: str, start: str, end: str, exch: str = 'nse_fo', interval: int = 15):
-        _, auth = session(req)
+        _, auth = await get_session(req)
         if exch not in ('nse_fo', 'bse_fo') or interval not in (5, 10, 15, 20, 25):
             raise HTTPException(422, 'Select a supported option exchange and strike interval')
         contract_exchange = 'NFO' if exch == 'nse_fo' else 'BFO'
@@ -522,14 +613,27 @@ def install_history(app, session, broker, market, prefix, snapshots: SnapshotSto
         async with locks.setdefault(key, asyncio.Lock()):
             if key in cache:
                 return {'dataset': cache[key], 'cached': True}
-            chain = await market(req, 'option-chain', exch, underlying, expiry, interval)
+
+            iso = normalize_expiry_iso(expiry)
+            chain_rows = []
+            try:
+                chain = await market(req, 'option-chain', exch, underlying, expiry, interval)
+                chain_rows = chain.get('rows', [])
+            except HTTPException as exc:
+                if exc.status_code == 401:
+                    raise
+                chain_rows = []
+
             directory = await master(contract_exchange)
             records = master_rows(directory)
             by_symbol = {r.get('trading_symbol'): r for r in records}
-            contracts = []
-            spots = []
+            sem = asyncio.Semaphore(8)
 
             async def history(token, exchange):
+                bkey = (exchange, str(token), start, end)
+                cached_bars = bar_cache.get(bkey)
+                if cached_bars and time.monotonic() - cached_bars[0] < 300:
+                    return cached_bars[1]
                 body = {
                     'token': str(token),
                     'resolution': '1',
@@ -537,34 +641,84 @@ def install_history(app, session, broker, market, prefix, snapshots: SnapshotSto
                     'to': str(int((hi + timedelta(hours=15, minutes=30)).timestamp() * 1000)),
                     'exchange': exchange,
                 }
-                j = await broker.post('/open-api/od/ChartAPIService/api/chart/history', body, auth['token'])
-                if not isinstance(j.get('result'), list):
-                    raise HTTPException(502, 'Broker did not return minute history')
-                return observations(j['result'], start, end)
+                async with sem:
+                    j = await broker.post(
+                        '/open-api/od/ChartAPIService/api/chart/history',
+                        body,
+                        auth['token'],
+                        allow_not_ok=True,
+                    )
+                # Untraded / illiquid strikes return stat="Not_Ok" ("No Data Available") or empty result:
+                # treat as zero bars for that strike rather than failing the entire option chain.
+                if j.get('stat', j.get('status')) != 'Ok' or not isinstance(j.get('result'), list) or not j['result']:
+                    return []
+                bars = observations(j['result'], start, end)
+                if len(bar_cache) >= 1024:
+                    bar_cache.pop(next(iter(bar_cache)))
+                bar_cache[bkey] = (time.monotonic(), bars)
+                return bars
 
-            iso = normalize_expiry_iso(expiry)
-            for row in chain['rows']:
+            # Build option leg tasks from getOptionChain, or fall back to contract master around observed spot on weekends/off-hours
+            leg_specs = []
+            for row in chain_rows:
                 for side in ('CE', 'PE'):
                     leg = row.get(side)
                     meta = by_symbol.get(leg['symbol']) if leg else None
                     if not meta:
                         continue
-                    lot = int(meta.get('lot_size') or 0)
+                    lot = int(float(meta.get('lot_size') or 0))
                     if lot < 1:
                         continue
-                    for bar in await history(meta['token'], contract_exchange):
-                        contracts.append({
-                            **bar,
-                            'symbol': underlying,
-                            'expiry': iso,
-                            'type': side,
-                            'strike': row['strike'],
-                            'lotSize': lot,
-                            'oi': None,
-                        })
+                    leg_specs.append((meta['token'], side, row['strike'], lot))
+
+            spot_bars_pre = None
+            if not leg_specs:
+                ref_pre, _, exch_pre = await reference(underlying, exch)
+                ref_spot = None
+                if ref_pre:
+                    spot_bars_pre = await history(ref_pre['token'], exch_pre)
+                    if spot_bars_pre:
+                        ref_spot = spot_bars_pre[-1]['close']
+                exp_opts = []
+                for r in records:
+                    if r.get('symbol') != underlying or _row_expiry_iso(r) != iso:
+                        continue
+                    opt_t = str(r.get('option_type') or '').upper()
+                    if opt_t not in ('CE', 'PE'):
+                        tsym = str(r.get('trading_symbol') or '')
+                        opt_t = 'CE' if tsym.endswith('CE') or 'C' in tsym[len(underlying):] else ('PE' if tsym.endswith('PE') or 'P' in tsym[len(underlying):] else '')
+                    try:
+                        st = float(r.get('strike_price') or 0)
+                        lot = int(float(r.get('lot_size') or 0))
+                    except (TypeError, ValueError):
+                        continue
+                    if opt_t in ('CE', 'PE') and st > 0 and lot > 0 and r.get('token'):
+                        exp_opts.append((st, opt_t, r['token'], lot))
+                if exp_opts:
+                    all_st = sorted({x[0] for x in exp_opts})
+                    center = ref_spot if (ref_spot and ref_spot > 0) else all_st[len(all_st) // 2]
+                    atm_idx = min(range(len(all_st)), key=lambda idx: abs(all_st[idx] - center))
+                    chosen_st = set(all_st[max(0, atm_idx - interval) : atm_idx + interval + 1])
+                    for st, opt_t, tk, lot in sorted(exp_opts):
+                        if st in chosen_st:
+                            leg_specs.append((tk, opt_t, st, lot))
+
+            bar_lists = await asyncio.gather(*[history(tk, contract_exchange) for tk, _, _, _ in leg_specs])
+            contracts = []
+            for (_, side, strike_val, lot), bars in zip(leg_specs, bar_lists):
+                for bar in bars:
+                    contracts.append({
+                        **bar,
+                        'symbol': underlying,
+                        'expiry': iso,
+                        'type': side,
+                        'strike': strike_val,
+                        'lotSize': lot,
+                        'oi': None,
+                    })
 
             future = front_future(records, underlying, end, target_expiry_iso=iso)
-            if future and int(future.get('lot_size') or 0) > 0:
+            if future and int(float(future.get('lot_size') or 0)) > 0:
                 for bar in await history(future['token'], contract_exchange):
                     contracts.append({
                         **bar,
@@ -572,7 +726,7 @@ def install_history(app, session, broker, market, prefix, snapshots: SnapshotSto
                         'expiry': future['expiryISO'],
                         'type': 'FUT',
                         'strike': 0,
-                        'lotSize': int(future['lot_size']),
+                        'lotSize': int(float(future['lot_size'])),
                         'oi': None,
                     })
 
@@ -594,14 +748,18 @@ def install_history(app, session, broker, market, prefix, snapshots: SnapshotSto
                 except HTTPException:
                     pass
 
-            ref, _, exchange = await reference(underlying, exch)
-            if ref:
-                for bar in await history(ref['token'], exchange):
-                    if bar['close'] > 0:
-                        u_row = {**bar, 'symbol': underlying}
-                        if bar['timestamp'] in vix_by_ts:
-                            u_row['indiaVix'] = vix_by_ts[bar['timestamp']]
-                        spots.append(u_row)
+            spots = []
+            if spot_bars_pre is not None:
+                spot_bars = spot_bars_pre
+            else:
+                ref, _, exchange = await reference(underlying, exch)
+                spot_bars = (await history(ref['token'], exchange)) if ref else []
+            for bar in spot_bars:
+                if bar['close'] > 0:
+                    u_row = {**bar, 'symbol': underlying}
+                    if bar['timestamp'] in vix_by_ts:
+                        u_row['indiaVix'] = vix_by_ts[bar['timestamp']]
+                    spots.append(u_row)
 
             cov = snap_store.coverage(symbol=underlying, exchange=exch)
             dataset = {
@@ -615,10 +773,10 @@ def install_history(app, session, broker, market, prefix, snapshots: SnapshotSto
                     'modelled': False,
                     'marketStatus': market_status_ist(),
                     'earliestRecordedSnapshotDate': cov.get('earliestDate'),
-                    'historyScope': f'Current-expiry contracts only; ±{interval} strikes around latest market reference (historical OI/bid-ask require recorded snapshots)',
+                    'historyScope': f'Current-expiry contracts (±{interval} strikes around ATM); untraded strikes omitted cleanly without aborting chain',
                 },
             }
-            if len(cache) >= 12:
+            if len(cache) >= 16:
                 cache.pop(next(iter(cache)))
             cache[key] = dataset
             return {'dataset': dataset, 'cached': False}
@@ -628,7 +786,7 @@ def install_history(app, session, broker, market, prefix, snapshots: SnapshotSto
         try:
             return remember(await live_snapshot(req, underlying, expiry, exch), 'snapshot')
         except HTTPException as e:
-            return fallback(e, underlying, exch, expiry, kind='snapshot')
+            return await fallback(e, underlying, exch, expiry, kind='snapshot')
 
     @app.get(prefix + '/replay')
     async def replay(
@@ -651,7 +809,7 @@ def install_history(app, session, broker, market, prefix, snapshots: SnapshotSto
         try:
             return remember(await live_replay(req, underlying, expiry, start, end, exch, interval=interval), 'minute')
         except HTTPException as e:
-            return fallback(e, underlying, exch, expiry, start, end)
+            return await fallback(e, underlying, exch, expiry, start, end)
 
     @app.get(prefix + '/snapshots/coverage')
     async def snapshots_coverage(underlying: str = '', exch: str = '', expiry: str = ''):
@@ -738,7 +896,7 @@ def install_history(app, session, broker, market, prefix, snapshots: SnapshotSto
 
     @app.post(prefix + '/recorder/configure')
     async def configure_recorder(req: Request):
-        session(req)  # Require authenticated broker session to configure background recorder
+        await get_session(req)
         try:
             body = await req.json()
         except Exception:

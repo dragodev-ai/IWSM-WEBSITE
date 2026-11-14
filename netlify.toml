@@ -9,6 +9,11 @@
   to = "/reviews.html"
   status = 200
 
+[[redirects]]
+  from = "/api/aliceblue/*"
+  to = "/.netlify/functions/aliceblue-public?route=:splat"
+  status = 200
+
 # Security & performance headers
 [[headers]]
   for = "/*"

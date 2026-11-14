@@ -17,6 +17,13 @@ ROUTES = {'underlyings': 'getUnderlying', 'expiries': 'getUnderlyingExp', 'optio
 COOKIE = 'iwsm_alice'
 PREFIX = '/api/aliceblue'
 SENSITIVE_KEY_RE = re.compile(r'(token|secret|auth|cookie|key|checksum|grant|session|password)', re.IGNORECASE)
+PUBLIC_GET_PATHS = {
+    PREFIX + '/health',
+    PREFIX + '/market-status',
+    PREFIX + '/instruments',
+    PREFIX + '/expiries',
+    PREFIX + '/snapshots/coverage',
+}
 
 logger = logging.getLogger('iwsm.aliceblue')
 if not logger.handlers:
@@ -61,12 +68,7 @@ def validate_config(config: dict):
 
 
 def session_seconds(token, now=None):
-    """Use provider expiry only as a cache upper bound, never as an auth claim.
-
-    Tokens originate in a validated TLS broker response. Every market request
-    is still authenticated by the broker, including revocation. Opaque tokens
-    retain the conservative fallback rather than assuming unlimited validity.
-    """
+    """Use provider expiry only as a cache upper bound, never as an auth claim."""
     now = time.time() if now is None else now
     try:
         part = token.split('.')[1]
@@ -91,6 +93,8 @@ def settings(file):
     for env_k in (
         'ALICEBLUE_APP_CODE',
         'ALICEBLUE_API_SECRET',
+        'ALICEBLUE_API_KEY',
+        'ALICEBLUE_USER_ID',
         'ALICEBLUE_REDIRECT_URL',
         'ALICEBLUE_CLIENT_ID',
         'ALICEBLUE_SESSION_ENCRYPTION_KEY',
@@ -105,6 +109,39 @@ def settings(file):
         if os.getenv(k):
             values[k] = os.environ[k]
     return values
+
+
+def persist_local_env(env_path, updates: dict):
+    """Persist verified non-empty configuration updates to the private local env file."""
+    if not env_path or not updates:
+        return
+    p = Path(env_path)
+    try:
+        lines = p.read_text(encoding='utf-8-sig').splitlines() if p.is_file() else []
+    except OSError:
+        lines = []
+    clean = {k: str(v).strip() for k, v in updates.items() if v is not None and str(v).strip()}
+    if not clean:
+        return
+    written = set()
+    out = []
+    for line in lines:
+        if '=' in line and not line.lstrip().startswith('#'):
+            k, _ = line.split('=', 1)
+            key = k.strip()
+            if key in clean:
+                out.append(f'{key}={clean[key]}')
+                written.add(key)
+                continue
+        out.append(line)
+    for key, val in clean.items():
+        if key not in written:
+            out.append(f'{key}={val}')
+    try:
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text('\n'.join(out) + '\n', encoding='utf-8')
+    except OSError:
+        pass
 
 
 def checksum(user, code, secret):
@@ -130,10 +167,8 @@ def normalize(payload, underlying, expiry, exchange='nse_fo'):
                 if not leg:
                     continue
                 symbol = str(leg.get('tradingsymbol', ''))
-                # Only the documented exact underlying+expiry+C/P+strike format.
                 m = re.fullmatch(re.escape(underlying + expiry) + ('C' if side == 'CE' else 'P') + r'(\d+(?:\.\d+)?)', symbol)
                 if not m and exchange == 'bse_fo':
-                    # Verified BSE weekly/monthly symbols; bind prefix to selected expiry.
                     try:
                         dt = datetime.strptime(expiry, '%d%b%y')
                         monthcode = '123456789OND'[dt.month - 1]
@@ -213,8 +248,8 @@ class Store:
         for _, blob in rows:
             try:
                 payload = json.loads(self.cipher.decrypt(blob))
-                tok = payload.get('token')
-                if isinstance(tok, str) and tok:
+                tok = payload.get('token') or payload.get('ownerRecoveryToken')
+                if isinstance(tok, str) and tok and session_seconds(tok, now) > 0:
                     return tok
             except InvalidToken:
                 continue
@@ -228,20 +263,27 @@ class Store:
 
 class Broker:
     def __init__(self, transport=None, base_url=BASE):
-        self.http = httpx.AsyncClient(base_url=base_url or BASE, timeout=httpx.Timeout(12), follow_redirects=False, transport=transport)
+        self.http = httpx.AsyncClient(
+            base_url=base_url or BASE,
+            timeout=httpx.Timeout(18),
+            follow_redirects=False,
+            transport=transport,
+            limits=httpx.Limits(max_connections=20, max_keepalive_connections=12),
+        )
         self.calls = deque()
         self.lock = asyncio.Lock()
         self.pause = 0
 
-    async def post(self, path, body, token=None):
+    async def post(self, path, body, token=None, allow_not_ok: bool = False):
+        min_gap = 0.06 if '/chart/history' in path else 0.18
         async with self.lock:
             now = time.monotonic()
             while self.calls and now - self.calls[0] > 3600:
                 self.calls.popleft()
-            if now < self.pause or len(self.calls) >= 2400 or sum(now - x < 60 for x in self.calls) >= 240:
+            if now < self.pause or len(self.calls) >= 6000 or sum(now - x < 60 for x in self.calls) >= 650:
                 raise HTTPException(429, 'Market-data request limit reached; wait before refreshing')
-            if self.calls and now - self.calls[-1] < 0.26:
-                await asyncio.sleep(0.26 - (now - self.calls[-1]))
+            if self.calls and now - self.calls[-1] < min_gap:
+                await asyncio.sleep(min_gap - (now - self.calls[-1]))
             self.calls.append(time.monotonic())
 
         r = None
@@ -275,11 +317,59 @@ class Broker:
         if not isinstance(data, dict):
             raise HTTPException(502, 'Invalid broker response')
         if data.get('stat', data.get('status')) != 'Ok':
+            emsg = str(data.get('emsg') or data.get('message') or '').strip()
+            low = emsg.lower()
+            if any(term in low for term in ('unauthorized', 'invalid session', 'session expired', 'invalid token', 'not logged')):
+                raise HTTPException(401, 'Broker authentication required')
+            if allow_not_ok:
+                return data
             raise HTTPException(502, 'Broker rejected the request; check session and API permissions')
         return data
 
 
-def create_app(config, db, transport=None, snapshot_db=None):
+async def exchange_direct_api_key(broker: Broker, user_id: str, api_key: str) -> str:
+    """Official Alice Blue Direct API Key two-step handshake (getEncKey -> getUserSID)."""
+    uid = str(user_id or '').strip().upper()
+    key = str(api_key or '').strip()
+    if not re.fullmatch(r'[A-Za-z0-9_-]{2,40}', uid) or len(key) < 16:
+        raise HTTPException(422, 'Provide a valid Alice Blue Client ID and API Key')
+
+    enc_key = None
+    for ep in ('/open-api/od/v1/kani/getEncKey', '/rest/AliceBlueAPIService/api/customer/getAPIEncpkey'):
+        try:
+            res = await broker.post(ep, {'userId': uid}, allow_not_ok=True)
+            cand = res.get('encKey') or (res.get('result') if isinstance(res.get('result'), str) else None)
+            if isinstance(cand, str) and cand.strip():
+                enc_key = cand.strip()
+                break
+        except HTTPException as exc:
+            if exc.status_code == 503:
+                raise
+            continue
+    if not enc_key:
+        raise HTTPException(401, 'Alice Blue did not issue an encryption key for this Client ID. Verify Client ID and API Key activation in ANT Web.')
+
+    user_data = hashlib.sha256((uid + key + enc_key).encode('utf-8')).hexdigest()
+    session_id = None
+    for ep in ('/open-api/od/v1/kani/getUserSID', '/rest/AliceBlueAPIService/api/customer/getUserSID'):
+        try:
+            res = await broker.post(ep, {'userId': uid, 'userData': user_data}, allow_not_ok=True)
+            cand = res.get('sessionID') or res.get('userSession')
+            if isinstance(cand, str) and cand.strip() and res.get('stat', res.get('status', 'Ok')) == 'Ok':
+                session_id = cand.strip()
+                break
+        except HTTPException as exc:
+            if exc.status_code == 503:
+                raise
+            continue
+    if not session_id:
+        raise HTTPException(401, 'Alice Blue rejected the API Key checksum. Use the Customer API Key from ANT Web -> Apps -> API Key, or connect via Alice Blue SSO.')
+
+    await broker.post('/obrest/optionChain/getUnderlying', {'exch': 'nse_fo'}, session_id)
+    return session_id
+
+
+def create_app(config, db, transport=None, snapshot_db=None, local_owner_mode: bool = False, env_path=None):
     validate_config(config)
     app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
     store = Store(db, config['ALICEBLUE_SESSION_ENCRYPTION_KEY'])
@@ -288,29 +378,94 @@ def create_app(config, db, transport=None, snapshot_db=None):
     parsed = urlsplit(redirect)
     origin = parsed.scheme + '://' + parsed.netloc
     secure = parsed.scheme == 'https'
+    allowed_origins = {origin}
+    if parsed.hostname in ('127.0.0.1', 'localhost'):
+        port_part = f':{parsed.port}' if parsed.port else ''
+        allowed_origins.update({
+            f'{parsed.scheme}://127.0.0.1{port_part}',
+            f'{parsed.scheme}://localhost{port_part}',
+            'http://127.0.0.1:4174',
+            'http://localhost:4174',
+            'http://127.0.0.1:4173',
+            'http://localhost:4173',
+            'http://127.0.0.1:5500',
+            'http://localhost:5500',
+            'http://127.0.0.1:3000',
+            'http://localhost:3000',
+            'http://127.0.0.1:8080',
+            'http://localhost:8080',
+        })
+
     cache = {}
     locks = {}
     login_calls = deque()
+    apikey_lock = asyncio.Lock()
     refresh = max(5, int(config.get('ALICEBLUE_REFRESH_SECONDS', '5')))
 
     from snapshot_store import SnapshotStore
     from alice_history import install_history, classify_expiries, market_status_ist
+    from nse_archive_fallback import LocalNseArchive
 
     snap_path = snapshot_db or config.get('ALICEBLUE_SNAPSHOT_DB_PATH') or str(Path(db).with_name('option-snapshots.sqlite3'))
     snapshots = SnapshotStore(snap_path)
+    nse_archive = LocalNseArchive(allow_sync=local_owner_mode)
 
     def session(req):
         sid = req.cookies.get(COOKIE)
         data = store.get(sid)
-        if not data or not data.get('token'):
-            raise HTTPException(401, 'Connect your Alice Blue account')
-        return sid, data
+        if data and data.get('token'):
+            return sid, data
+        if local_owner_mode:
+            tok = store.latest_token()
+            if tok:
+                auto_sid = sid or 'local-owner-active'
+                ttl = session_seconds(tok)
+                if ttl > 0:
+                    store.put(auto_sid, {'token': tok}, ttl)
+                    return auto_sid, {'token': tok}
+        raise HTTPException(401, 'Connect your Alice Blue account')
+
+    async def ensure_session_async(req):
+        try:
+            return session(req)
+        except HTTPException:
+            if not local_owner_mode:
+                raise
+            uid = config.get('ALICEBLUE_CLIENT_ID') or config.get('ALICEBLUE_USER_ID') or ''
+            api_key = config.get('ALICEBLUE_API_KEY') or ''
+            if not uid or not api_key:
+                raise
+            async with apikey_lock:
+                tok = store.latest_token()
+                if not tok:
+                    tok = await exchange_direct_api_key(broker, uid, api_key)
+                    ttl = session_seconds(tok)
+                    store.put('owner-vault', {'ownerRecoveryToken': tok}, max(3600, ttl))
+                ttl = max(60, session_seconds(tok))
+                auto_sid = req.cookies.get(COOKIE) or secrets.token_urlsafe(32)
+                store.put(auto_sid, {'token': tok}, ttl)
+                return auto_sid, {'token': tok}
 
     @app.middleware('http')
     async def security(req, call_next):
-        if req.headers.get('origin') not in (None, origin):
+        req_origin = req.headers.get('origin')
+        is_public_file_probe = bool(
+            local_owner_mode
+            and req.method in ('GET', 'OPTIONS')
+            and req_origin == 'null'
+            and req.url.path in PUBLIC_GET_PATHS
+        )
+        if req.method == 'OPTIONS' and (req_origin in allowed_origins or is_public_file_probe):
+            resp = JSONResponse({}, 204)
+            resp.headers['Access-Control-Allow-Origin'] = '*' if is_public_file_probe else req_origin
+            resp.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+            resp.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+            if not is_public_file_probe:
+                resp.headers['Access-Control-Allow-Credentials'] = 'true'
+            return resp
+        if req_origin not in (None, *allowed_origins) and not is_public_file_probe:
             return JSONResponse({'detail': 'Origin not allowed'}, 403)
-        if req.method == 'POST' and req.headers.get('origin') != origin:
+        if req.method == 'POST' and req_origin not in allowed_origins:
             return JSONResponse({'detail': 'Same-origin request required'}, 403)
         try:
             r = await call_next(req)
@@ -324,6 +479,12 @@ def create_app(config, db, transport=None, snapshot_db=None):
             'Content-Security-Policy': "default-src 'none'; frame-ancestors 'none'",
         }.items():
             r.headers[k] = v
+        if is_public_file_probe:
+            r.headers['Access-Control-Allow-Origin'] = '*'
+        elif req_origin in allowed_origins and req_origin != origin:
+            r.headers['Access-Control-Allow-Origin'] = req_origin
+            r.headers['Access-Control-Allow-Credentials'] = 'true'
+            r.headers['Vary'] = 'Origin'
         return r
 
     @app.exception_handler(RequestValidationError)
@@ -334,7 +495,10 @@ def create_app(config, db, transport=None, snapshot_db=None):
     async def health():
         return {
             'service': 'aliceblue-read-only',
-            'ready': bool(config.get('ALICEBLUE_APP_CODE') and config.get('ALICEBLUE_API_SECRET')),
+            'ready': bool(
+                (config.get('ALICEBLUE_APP_CODE') and config.get('ALICEBLUE_API_SECRET'))
+                or (config.get('ALICEBLUE_API_KEY') and (config.get('ALICEBLUE_CLIENT_ID') or config.get('ALICEBLUE_USER_ID')))
+            ),
             'websocket': 'not connected',
             'marketStatus': market_status_ist(),
         }
@@ -344,9 +508,16 @@ def create_app(config, db, transport=None, snapshot_db=None):
         sid = req.cookies.get(COOKIE)
         data = store.get(sid)
         connected = bool(data and data.get('token'))
+        if not connected and local_owner_mode:
+            try:
+                sid, data = await ensure_session_async(req)
+                connected = bool(data and data.get('token'))
+            except HTTPException:
+                connected = False
         ttl = session_seconds(data['token']) if connected else 0
         if connected and not ttl:
-            store.delete(sid)
+            if sid:
+                store.delete(sid)
             connected = False
         verified = False
         if connected:
@@ -355,19 +526,24 @@ def create_app(config, db, transport=None, snapshot_db=None):
                 verified = True
             except HTTPException as e:
                 if e.status_code in (401, 403):
-                    store.delete(sid)
+                    if sid:
+                        store.delete(sid)
                     connected = False
-        if connected:
+        if connected and sid:
             store.put(sid, data, ttl)
         r = JSONResponse({
             'connected': connected,
             'verified': verified,
             'refreshSeconds': refresh,
+            'appConfigured': bool(config.get('ALICEBLUE_APP_CODE') and config.get('ALICEBLUE_API_SECRET')),
+            'clientIdConfigured': bool(config.get('ALICEBLUE_CLIENT_ID') or config.get('ALICEBLUE_USER_ID')),
+            'apiKeyConfigured': bool(config.get('ALICEBLUE_API_KEY')),
+            'clientIdHint': (config.get('ALICEBLUE_CLIENT_ID') or config.get('ALICEBLUE_USER_ID') or '')[:2] + '***' if (config.get('ALICEBLUE_CLIENT_ID') or config.get('ALICEBLUE_USER_ID')) else '',
             'marketStatus': market_status_ist(),
         })
-        if connected:
+        if connected and sid:
             r.set_cookie(COOKIE, sid, max_age=ttl, httponly=True, secure=secure, samesite='lax', path=PREFIX)
-        elif sid:
+        elif req.cookies.get(COOKIE):
             r.delete_cookie(COOKIE, path=PREFIX)
         return r
 
@@ -387,7 +563,33 @@ def create_app(config, db, transport=None, snapshot_db=None):
         await broker.post('/obrest/optionChain/getUnderlying', {'exch': 'nse_fo'}, token)
         sid = secrets.token_urlsafe(32)
         store.put(sid, {'token': token}, ttl)
+        if local_owner_mode:
+            store.put('owner-vault', {'ownerRecoveryToken': token}, ttl)
         r = RedirectResponse(origin + '/strategy-builder.html#options-simulator', 303)
+        r.set_cookie(COOKIE, sid, max_age=ttl, httponly=True, secure=secure, samesite='lax', path=PREFIX)
+        return r
+
+    @app.post(PREFIX + '/auth/apikey')
+    async def connect_apikey(req: Request):
+        try:
+            body = await req.json()
+        except Exception:
+            body = {}
+        client_id = str(body.get('clientId') or config.get('ALICEBLUE_CLIENT_ID') or config.get('ALICEBLUE_USER_ID') or '').strip().upper()
+        api_key = str(body.get('apiKey') or config.get('ALICEBLUE_API_KEY') or '').strip()
+        if not client_id or not api_key:
+            raise HTTPException(422, 'Enter your Alice Blue Client ID and API Key')
+        token = await exchange_direct_api_key(broker, client_id, api_key)
+        ttl = max(3600, session_seconds(token))
+        sid = secrets.token_urlsafe(32)
+        store.put(sid, {'token': token}, ttl)
+        if local_owner_mode:
+            store.put('owner-vault', {'ownerRecoveryToken': token}, ttl)
+            config['ALICEBLUE_CLIENT_ID'] = client_id
+            config['ALICEBLUE_API_KEY'] = api_key
+            persist_local_env(env_path, {'ALICEBLUE_CLIENT_ID': client_id, 'ALICEBLUE_API_KEY': api_key})
+        log_event('info', 'broker_apikey_session_established', ttlSeconds=ttl)
+        r = JSONResponse({'connected': True, 'verified': True, 'mode': 'api_key', 'ttlSeconds': ttl})
         r.set_cookie(COOKIE, sid, max_age=ttl, httponly=True, secure=secure, samesite='lax', path=PREFIX)
         return r
 
@@ -396,19 +598,35 @@ def create_app(config, db, transport=None, snapshot_db=None):
         now = time.monotonic()
         while login_calls and now - login_calls[0] > 60:
             login_calls.popleft()
-        if len(login_calls) >= 6:
+        if len(login_calls) >= 10:
             raise HTTPException(429, 'Wait before reconnecting')
         login_calls.append(now)
         if not config.get('ALICEBLUE_APP_CODE') or not config.get('ALICEBLUE_API_SECRET'):
             raise HTTPException(503, 'Broker application is not configured')
+        try:
+            body = await req.json()
+        except Exception:
+            body = {}
+        submitted_cid = str(body.get('clientId') or '').strip().upper() if isinstance(body, dict) else ''
+        if submitted_cid and not re.fullmatch(r'[A-Za-z0-9_-]{2,40}', submitted_cid):
+            raise HTTPException(422, 'Enter a valid alphanumeric Alice Blue Client ID')
         old = req.cookies.get(COOKIE)
         if old:
             store.delete(old)
         sid = secrets.token_urlsafe(32)
         nonce = secrets.token_urlsafe(32)
-        store.put(sid, {'nonce': nonce}, 300)
-        r = JSONResponse({'loginUrl': 'https://ant.aliceblueonline.com/?' + urlencode({'appcode': config['ALICEBLUE_APP_CODE'], 'state': nonce})})
-        r.set_cookie(COOKIE, sid, max_age=300, httponly=True, secure=secure, samesite='lax', path=PREFIX)
+        req_origin = req.headers.get('origin')
+        pending_payload = {'nonce': nonce}
+        if submitted_cid:
+            pending_payload['expectedUser'] = submitted_cid
+        if req_origin in allowed_origins:
+            pending_payload['returnOrigin'] = req_origin
+        store.put(sid, pending_payload, 600)
+        r = JSONResponse({
+            'loginUrl': 'https://ant.aliceblueonline.com/?' + urlencode({'appcode': config['ALICEBLUE_APP_CODE'], 'state': nonce}),
+            'callbackOrigin': origin,
+        })
+        r.set_cookie(COOKIE, sid, max_age=600, httponly=True, secure=secure, samesite='lax', path=PREFIX)
         return r
 
     @app.get(PREFIX + '/auth/callback')
@@ -416,32 +634,37 @@ def create_app(config, db, transport=None, snapshot_db=None):
         sid = req.cookies.get(COOKIE)
         pending = store.get(sid)
         if not pending or 'nonce' not in pending:
-            raise HTTPException(400, 'Login initiation expired; reconnect from the website')
-        store.delete(sid)  # consume before any exchange, including failure
+            raise HTTPException(400, 'Login initiation expired; start Connect Alice Blue from ' + origin)
+        store.delete(sid)
         q = req.query_params
         code = q.get('authCode', '')
-        user = q.get('userId', '')
+        user = q.get('userId', '').strip()
         state = q.get('state', '')
         if not code or len(code) > 8192 or not re.fullmatch(r'[A-Za-z0-9_-]{1,80}', user):
             raise HTTPException(400, 'Invalid broker callback')
-        expected = config.get('ALICEBLUE_CLIENT_ID', '')
+        expected = (config.get('ALICEBLUE_CLIENT_ID') or pending.get('expectedUser') or '').strip()
         if state:
             if not secrets.compare_digest(state, pending['nonce']):
                 raise HTTPException(400, 'Login state mismatch')
-        elif not expected or not secrets.compare_digest(user, expected):
-            raise HTTPException(400, 'Broker omitted state; configure your expected ALICEBLUE_CLIENT_ID before reconnecting')
-        if expected and user != expected:
+        elif not expected or not secrets.compare_digest(user.upper(), expected.upper()):
+            raise HTTPException(400, 'Broker omitted state; enter your Alice Blue Client ID in the Connect dialog before reconnecting')
+        if config.get('ALICEBLUE_CLIENT_ID') and user.upper() != config['ALICEBLUE_CLIENT_ID'].strip().upper():
             raise HTTPException(400, 'Unexpected broker account')
         result = await broker.post('/open-api/od/v1/vendor/getUserDetails', {'checkSum': checksum(user, code, config['ALICEBLUE_API_SECRET'])})
-        if str(result.get('clientId', '')) != user or not isinstance(result.get('userSession'), str) or not result['userSession']:
+        if str(result.get('clientId', '')).upper() != user.upper() or not isinstance(result.get('userSession'), str) or not result['userSession']:
             raise HTTPException(502, 'Broker session validation failed')
         ttl = session_seconds(result['userSession'])
         if not ttl:
             raise HTTPException(401, 'Broker returned an expired session')
         fresh = secrets.token_urlsafe(32)
         store.put(fresh, {'token': result['userSession']}, ttl)
+        if local_owner_mode:
+            store.put('owner-vault', {'ownerRecoveryToken': result['userSession']}, ttl)
+            config['ALICEBLUE_CLIENT_ID'] = user
+            persist_local_env(env_path, {'ALICEBLUE_CLIENT_ID': user})
         log_event('info', 'broker_session_established', ttlSeconds=ttl)
-        r = RedirectResponse(origin + '/strategy-builder.html#options-simulator', 303)
+        target_origin = pending.get('returnOrigin') if pending.get('returnOrigin') in allowed_origins else origin
+        r = RedirectResponse(target_origin + '/strategy-builder.html#options-simulator', 303)
         r.set_cookie(COOKIE, fresh, max_age=ttl, httponly=True, secure=secure, samesite='lax', path=PREFIX)
         return r
 
@@ -450,6 +673,9 @@ def create_app(config, db, transport=None, snapshot_db=None):
         sid = req.cookies.get(COOKIE)
         if sid:
             store.delete(sid)
+        if local_owner_mode:
+            store.delete('owner-vault')
+            store.delete('local-owner-active')
         r = JSONResponse({'connected': False})
         r.delete_cookie(COOKIE, path=PREFIX)
         return r
@@ -457,7 +683,7 @@ def create_app(config, db, transport=None, snapshot_db=None):
     async def market(req, kind, exch, underlying='', expiry='', interval=10):
         if exch not in EXCHANGES or not re.fullmatch(r'[A-Z0-9&._ -]{0,50}', underlying) or len(expiry) > 30 or interval not in (5, 10, 15, 20, 25):
             raise HTTPException(422, 'Invalid market selection')
-        sid, data = session(req)
+        sid, data = await ensure_session_async(req)
         key = (hashlib.sha256(data['token'].encode()).hexdigest(), kind, exch, underlying, expiry, interval)
         if len(locks) > 1024:
             raise HTTPException(429, 'Too many selections; reconnect later')
@@ -482,7 +708,8 @@ def create_app(config, db, transport=None, snapshot_db=None):
                 result = await broker.post('/obrest/optionChain/' + ROUTES[kind], body, data['token'])
             except HTTPException as e:
                 if e.status_code == 401:
-                    store.delete(sid)
+                    if sid:
+                        store.delete(sid)
                 raise
             groups = result.get('result')
             if not isinstance(groups, list):
@@ -516,6 +743,7 @@ def create_app(config, db, transport=None, snapshot_db=None):
 
         local = []
         snap_exps = []
+        nse_exps = []
         try:
             snap_exps = snapshots.expiries(underlying, exch, start, end)
         except (ValueError, OSError, sqlite3.Error):
@@ -525,30 +753,74 @@ def create_app(config, db, transport=None, snapshot_db=None):
                 local = NiftyBackup().expiries(start, end)
             except (ValueError, OSError, sqlite3.Error):
                 pass
-        combined_local = list(dict.fromkeys([*snap_exps, *local]))
+        if not local and exch == 'nse_fo' and nse_archive.available():
+            try:
+                nse_exps = await asyncio.to_thread(nse_archive.expiries, underlying, start, end)
+            except (ValueError, OSError, sqlite3.Error):
+                nse_exps = []
+
+        combined_local = list(dict.fromkeys([*snap_exps, *local, *nse_exps]))
         today_ist = market_status_ist()['dateIST']
-        if combined_local and start and start < today_ist:
+        # Check if start is an older historical date whose contracts have already expired vs active contracts
+        pub_exps = []
+        if not start or start >= today_ist or not combined_local:
+            try:
+                pub_exps = await app.state.public_expiries(underlying, exch, start)
+            except Exception:
+                pub_exps = []
+        else:
+            # Even when start < today_ist (e.g. yesterday or last week), check if current listed contracts cover start
+            try:
+                days_ago = (datetime.strptime(today_ist, '%Y-%m-%d').date() - datetime.strptime(start, '%Y-%m-%d').date()).days
+            except ValueError:
+                days_ago = 999
+            if 0 <= days_ago <= 6:
+                try:
+                    pub_exps = await app.state.public_expiries(underlying, exch, start)
+                except Exception:
+                    pub_exps = []
+
+        # If historical date (>6 days ago, e.g. 2026-02-02) has local historical archive expiries, return them directly!
+        if combined_local and start and start < today_ist and not pub_exps:
+            src_label = (
+                'Recorded snapshots & local NSE archive'
+                if snap_exps
+                else ('Local NIFTY daily backup expiry list' if local else f'Local verified NSE archive ({underlying})')
+            )
             return {
                 'expiries': combined_local,
                 'expiryDetails': classify_expiries(combined_local, start),
                 'backup': True,
+                'historicalOnly': True,
                 'marketStatus': market_status_ist(),
-                'source': 'Recorded snapshots & local NIFTY backup expiry list' if snap_exps else 'Local NIFTY daily backup expiry list',
+                'source': src_label,
             }
+
         try:
             result = await market(req, 'expiries', exch, underlying)
+            live_list = result.get('expiries', [])
+            if start and start < today_ist and combined_local:
+                merged = list(dict.fromkeys([*live_list, *combined_local]))
+                return {**result, 'expiries': merged, 'expiryDetails': classify_expiries(merged, start)}
             if start:
-                result = {**result, 'expiryDetails': classify_expiries(result.get('expiries', []), start)}
+                result = {**result, 'expiryDetails': classify_expiries(live_list, start)}
             return result
         except HTTPException as e:
-            if combined_local and e.status_code in (401, 403, 429, 502, 503, 504):
-                return {
-                    'expiries': combined_local,
-                    'expiryDetails': classify_expiries(combined_local, start),
-                    'backup': True,
-                    'marketStatus': market_status_ist(),
-                    'source': 'Recorded snapshots & local NIFTY backup expiry list' if snap_exps else 'Local NIFTY daily backup expiry list',
-                }
+            if e.status_code in (401, 403, 429, 502, 503, 504):
+                fallback_list = list(dict.fromkeys([*pub_exps, *combined_local]))
+                if fallback_list:
+                    return {
+                        'expiries': fallback_list,
+                        'expiryDetails': classify_expiries(fallback_list, start),
+                        'backup': not bool(pub_exps),
+                        'publicMaster': bool(pub_exps),
+                        'marketStatus': market_status_ist(),
+                        'source': (
+                            'Alice Blue public contract master'
+                            if pub_exps
+                            else ('Recorded snapshots & local archive' if snap_exps else f'Local verified NSE archive ({underlying})')
+                        ),
+                    }
             raise
 
     @app.get(PREFIX + '/option-chain')
@@ -557,12 +829,16 @@ def create_app(config, db, transport=None, snapshot_db=None):
 
     app.state.store = store
     app.state.broker = broker
-    install_history(app, session, broker, market, PREFIX, snapshots=snapshots)
+    app.state.nse_archive = nse_archive
+    app.state.local_owner_mode = local_owner_mode
+    install_history(app, ensure_session_async, broker, market, PREFIX, snapshots=snapshots, nse_archive=nse_archive)
     log_event(
         'info',
         'aliceblue_service_initialized',
         appConfigured=bool(config.get('ALICEBLUE_APP_CODE') and config.get('ALICEBLUE_API_SECRET')),
-        clientIdConfigured=bool(config.get('ALICEBLUE_CLIENT_ID')),
+        clientIdConfigured=bool(config.get('ALICEBLUE_CLIENT_ID') or config.get('ALICEBLUE_USER_ID')),
+        apiKeyConfigured=bool(config.get('ALICEBLUE_API_KEY')),
+        localOwnerMode=local_owner_mode,
         redirectOrigin=origin,
         refreshSeconds=refresh,
     )
@@ -589,7 +865,8 @@ def ensure_session_key(folder, config):
 def build():
     folder = Path(os.environ['LOCALAPPDATA']) / 'IWSM'
     folder.mkdir(parents=True, exist_ok=True)
-    config = settings(folder / 'aliceblue.env')
+    env_file = folder / 'aliceblue.env'
+    config = settings(env_file)
     config['ALICEBLUE_SESSION_ENCRYPTION_KEY'] = ensure_session_key(folder, config)
     if not config.get('ALICEBLUE_REDIRECT_URL'):
         config['ALICEBLUE_REDIRECT_URL'] = 'http://127.0.0.1:4174' + PREFIX + '/auth/callback'
@@ -597,6 +874,8 @@ def build():
         config,
         str(folder / 'aliceblue-sessions.sqlite3'),
         snapshot_db=config.get('ALICEBLUE_SNAPSHOT_DB_PATH') or str(folder / 'option-snapshots.sqlite3'),
+        local_owner_mode=True,
+        env_path=str(env_file),
     )
 
 

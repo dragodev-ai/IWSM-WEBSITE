@@ -7,7 +7,7 @@ Implements Instruction 6.D:
 - Never fabricates historical option prices or substitutes live quotes for past dates.
 - Exposes earliest available historical data date and explicit coverage warnings.
 """
-import math, re, sqlite3
+import gzip, json, math, re, sqlite3, time
 from contextlib import closing
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -192,6 +192,17 @@ class SnapshotStore:
                     ON snapshot_frames(symbol, exchange, expiry, timestamp);
                 CREATE INDEX IF NOT EXISTS idx_snapshot_frames_symbol_time
                     ON snapshot_frames(symbol, exchange, timestamp);
+
+                CREATE TABLE IF NOT EXISTS minute_captures (
+                    symbol TEXT NOT NULL,
+                    exchange TEXT NOT NULL,
+                    expiry TEXT NOT NULL,
+                    start_date TEXT NOT NULL,
+                    end_date TEXT NOT NULL,
+                    saved_at REAL NOT NULL,
+                    payload BLOB NOT NULL,
+                    PRIMARY KEY(symbol, exchange, expiry, start_date, end_date)
+                );
                 """
             )
             conn.commit()
@@ -577,3 +588,55 @@ class SnapshotStore:
             },
             'coverage': cov,
         }
+
+    def remember_minute_replay(self, dataset: dict):
+        contracts = (dataset or {}).get('contracts') or []
+        if not contracts:
+            return
+        symbol = str(contracts[0].get('symbol') or '').strip().upper()
+        exch = str((dataset.get('metadata') or {}).get('exchange') or 'nse_fo').strip().lower()
+        stamps = [str(r.get('timestamp', ''))[:10] for r in contracts if r.get('timestamp')]
+        if not symbol or not stamps:
+            return
+        start_d, end_d = min(stamps), max(stamps)
+        opt_exps = sorted({str(r['expiry']) for r in contracts if r.get('type') != 'FUT' and r.get('expiry')})
+        if not opt_exps:
+            return
+        with closing(self._connect()) as conn:
+            for exp in opt_exps:
+                sub = [r for r in contracts if r.get('expiry') == exp or r.get('type') == 'FUT']
+                blob = gzip.compress(json.dumps({**dataset, 'contracts': sub}, separators=(',', ':')).encode('utf-8'))
+                conn.execute(
+                    """
+                    INSERT OR REPLACE INTO minute_captures(symbol, exchange, expiry, start_date, end_date, saved_at, payload)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (symbol, exch, exp, start_d, end_d, time.time(), blob),
+                )
+            conn.commit()
+
+    def load_minute_replay(self, symbol: str, exchange: str, expiry: str, start: str, end: str) -> dict:
+        symbol = str(symbol or '').strip().upper()
+        exchange = str(exchange or 'nse_fo').strip().lower()
+        exp_iso = normalize_expiry_iso(expiry)
+        with closing(self._connect()) as conn:
+            row = conn.execute(
+                """
+                SELECT payload FROM minute_captures
+                WHERE symbol = ? AND exchange = ? AND expiry = ?
+                  AND start_date <= ? AND end_date >= ?
+                ORDER BY saved_at DESC LIMIT 1
+                """,
+                (symbol, exchange, exp_iso, start, end),
+            ).fetchone()
+        if not row:
+            raise LookupError('No cached minute replay for selection')
+        raw = json.loads(gzip.decompress(row['payload']).decode('utf-8'))
+        raw['contracts'] = [r for r in raw.get('contracts', []) if start <= str(r.get('timestamp', ''))[:10] <= end]
+        raw['underlying'] = [r for r in raw.get('underlying', []) if start <= str(r.get('timestamp', ''))[:10] <= end]
+        if not any(r.get('type') != 'FUT' for r in raw['contracts']):
+            raise LookupError('No option contracts in cached minute window')
+        raw['metadata'] = {**raw.get('metadata', {}), 'backup': True, 'backupResolution': 'minute'}
+        as_of = max(str(r.get('timestamp', '')) for r in raw['contracts'])
+        return {'dataset': raw, 'backup': True, 'resolution': 'minute', 'asOf': as_of}
+
