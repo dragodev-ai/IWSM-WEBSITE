@@ -23,3 +23,22 @@ yarn-error.log*
 node_modules/
 dist/
 build/
+
+# Gallery browser-test artifacts
+**/gallery-test-results/
+
+# Local NSE archive and Excel data collection
+market-data/
+
+# Alice Blue private configuration and encrypted session storage
+.env
+.env.*
+!.env.example
+*.secrets.json
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
+__pycache__/
+*.py[cod]
+backend/aliceblue/runtime/
+backend/aliceblue/.venv/

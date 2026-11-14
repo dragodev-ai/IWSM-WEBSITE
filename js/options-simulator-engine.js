@@ -38,7 +38,7 @@
     if(!raw||typeof raw!=='object'||!Array.isArray(raw.contracts)||!raw.contracts.length)throw Error('Load contract observations before starting a simulation.');
     if(raw.contracts.length>MAX_ROWS||(raw.underlying||[]).length>MAX_ROWS)throw Error('Import up to 200,000 rows at a time.');
     if(raw.underlying&&!Array.isArray(raw.underlying))throw Error('Underlying observations must be an array.');
-    const records=new Map(),kinds=new Set(),spots=new Map(),derived=new Map(),warnings=[];
+    const records=new Map(),kinds=new Set(),spots=new Map(),vix=new Map(),derived=new Map(),warnings=[];
     for(const input of raw.contracts){
       if(!input||typeof input!=='object'||Array.isArray(input))throw Error('Invalid contract observation.');
       const at=observation(input),sym=symbol(input.symbol),type=String(input.type||'').toUpperCase(),expiry=input.expiry;
@@ -48,6 +48,10 @@
       if((volume!==null&&(!finite(volume)||volume<0))||(oi!==null&&(!finite(oi)||oi<0)))throw Error('Invalid volume or open interest.');
       kinds.add(at.kind);
       const row={date:at.stamp.slice(0,10),...(at.kind==='intraday'?{timestamp:at.stamp}:{}),stamp:at.stamp,symbol:sym,expiry,type,strike,close,lotSize,volume,oi};
+      for(const optKey of ['bid','ask','previousOi','oiChange','previousClose','iv','delta','gamma','theta','vega','rho']){
+        if(input[optKey]!==undefined&&input[optKey]!==null){const nv=number(input[optKey]);if(finite(nv))row[optKey]=nv;}
+      }
+      if(typeof input.greeksSource==='string'&&input.greeksSource)row.greeksSource=input.greeksSource;
       const id=sym+'|'+at.stamp+'|'+key(row),existing=records.get(id);
       if(existing&&JSON.stringify(existing)!==JSON.stringify(row))throw Error('Conflicting duplicate contract observations.');
       records.set(id,row);
@@ -65,14 +69,16 @@
       const id=sym+'|'+at.stamp;
       if(spots.has(id)&&spots.get(id)!==close)throw Error('Conflicting duplicate underlying observations.');
       spots.set(id,close);
+      const ivx=number(input.indiaVix);
+      if(ivx!==null&&finite(ivx)&&ivx>0)vix.set(id,ivx);
     }
     for(const [id,values]of derived){if(values.size===1&&!spots.has(id))spots.set(id,[...values][0]);else if(values.size>1)warnings.push('Conflicting per-contract underlying references were excluded.');}
     const contracts=[...records.values()].sort((a,b)=>a.symbol.localeCompare(b.symbol)||a.stamp.localeCompare(b.stamp)||key(a).localeCompare(key(b)));
     const bySymbol=new Map(),byFrame=new Map();
     for(const r of contracts){if(!bySymbol.has(r.symbol))bySymbol.set(r.symbol,new Set());bySymbol.get(r.symbol).add(r.stamp);const id=r.symbol+'|'+r.stamp;if(!byFrame.has(id))byFrame.set(id,[]);byFrame.get(id).push(r);}
-    for(const [id,close]of [...spots].sort((a,b)=>a[0].localeCompare(b[0]))){const split=id.indexOf('|'),sym=id.slice(0,split),stamp=id.slice(split+1);underlying.push({symbol:sym,date:stamp.slice(0,10),...(kind==='intraday'?{timestamp:stamp}:{}),close});}
+    for(const [id,close]of [...spots].sort((a,b)=>a[0].localeCompare(b[0]))){const split=id.indexOf('|'),sym=id.slice(0,split),stamp=id.slice(split+1),uRow={symbol:sym,date:stamp.slice(0,10),...(kind==='intraday'?{timestamp:stamp}:{}),close};if(vix.has(id))uRow.indiaVix=vix.get(id);underlying.push(uRow);}
     const symbols=[...bySymbol.keys()].sort(),signature=fingerprint([kind,...contracts,...underlying]);
-    return {kind,contracts,underlying,symbols,signature,source:String(raw.source||'Imported observations').slice(0,300),metadata:raw.metadata||{},warnings:[...new Set(warnings)],byFrame,records,spots,bySymbol};
+    return {kind,contracts,underlying,symbols,signature,source:String(raw.source||'Imported observations').slice(0,300),metadata:raw.metadata||{},warnings:[...new Set(warnings)],byFrame,records,spots,vix,bySymbol};
   }
   function exportDataset(d){return {source:d.source,metadata:d.metadata,contracts:d.contracts.map(({stamp,...row})=>row),underlying:d.underlying};}
   function setting(value,fallback,min,max,integer=false){const n=value===undefined?fallback:value;if(!finite(n)||n<min||n>max||(integer&&!Number.isInteger(n)))throw Error('Use valid non-negative fees/slippage, rates and whole-number quantities.');return n;}
