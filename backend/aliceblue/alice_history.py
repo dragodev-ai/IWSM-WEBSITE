@@ -1,9 +1,10 @@
 """Bounded, authenticated observed-minute replay & snapshot recorder endpoints. No interpolation or order endpoints."""
-import asyncio, hashlib, re, sqlite3, time
+import asyncio, gzip, hashlib, json, re, sqlite3, time
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 import httpx
 from fastapi import HTTPException, Request
+from fastapi.responses import Response
 from snapshot_store import SnapshotStore, solve_iv_and_greeks, normalize_expiry_iso, iso_to_broker_expiry
 
 IST = timezone(timedelta(hours=5, minutes=30))
@@ -223,16 +224,27 @@ def install_history(app, session_fn, broker, market, prefix, snapshots: Snapshot
         res = session_fn(req)
         return (await res) if asyncio.iscoroutine(res) else res
 
-    def remember(result, kind):
+    serialized_replay_cache = {}
+
+    def _remember_sync(dataset, kind):
         try:
-            backup.remember(result['dataset'], kind)
+            backup.remember(dataset, kind)
         except (OSError, ValueError, sqlite3.Error):
             pass
         if kind == 'minute':
             try:
-                snap_store.remember_minute_replay(result['dataset'])
+                snap_store.remember_minute_replay(dataset)
             except (OSError, ValueError, sqlite3.Error):
                 pass
+
+    def remember(result, kind):
+        if result.get('cached'):
+            return result
+        dataset = result['dataset']
+        if getattr(broker, '_has_mock_transport', False):
+            _remember_sync(dataset, kind)
+        else:
+            asyncio.create_task(asyncio.to_thread(_remember_sync, dataset, kind))
         return result
 
     async def fallback(error, underlying, exch, expiry, start='', end='', kind='minute'):
@@ -807,9 +819,14 @@ def install_history(app, session_fn, broker, market, prefix, snapshots: Snapshot
                 },
             }
             if len(cache) >= 32:
-                cache.pop(next(iter(cache)))
+                evicted = next(iter(cache))
+                cache.pop(evicted, None)
+                serialized_replay_cache.pop(evicted, None)
             cache[key] = dataset
-            return {'dataset': dataset, 'cached': False}
+            raw_cached_bytes = json.dumps({'dataset': dataset, 'cached': True}, separators=(',', ':')).encode('utf-8')
+            gz_cached_bytes = gzip.compress(raw_cached_bytes, compresslevel=1)
+            serialized_replay_cache[key] = (raw_cached_bytes, gz_cached_bytes)
+            return {'dataset': dataset, 'cached': False, '_cacheKey': key}
 
     @app.get(prefix + '/snapshot')
     async def snapshot(req: Request, underlying: str, expiry: str, exch: str = 'nse_fo'):
@@ -837,7 +854,24 @@ def install_history(app, session_fn, broker, market, prefix, snapshots: Snapshot
             except ValueError as exc:
                 raise HTTPException(422, str(exc)) from None
         try:
-            return remember(await live_replay(req, underlying, expiry, start, end, exch, interval=interval), 'minute')
+            res = remember(await live_replay(req, underlying, expiry, start, end, exch, interval=interval), 'minute')
+            accept_enc = req.headers.get('accept-encoding', '')
+            if res.get('cached'):
+                _, auth = await get_session(req)
+                ckey = (hashlib.sha256(auth['token'].encode()).hexdigest(), exch, underlying, expiry, start, end, interval)
+                pre = serialized_replay_cache.get(ckey)
+                if pre:
+                    raw_b, gz_b = pre
+                    if 'gzip' in accept_enc:
+                        return Response(content=gz_b, media_type='application/json', headers={'Content-Encoding': 'gzip'})
+                    return Response(content=raw_b, media_type='application/json')
+            ckey_new = res.pop('_cacheKey', None)
+            if ckey_new and not getattr(broker, '_has_mock_transport', False):
+                raw_fresh = json.dumps(res, separators=(',', ':')).encode('utf-8')
+                if 'gzip' in accept_enc and len(raw_fresh) > 2048:
+                    return Response(content=gzip.compress(raw_fresh, compresslevel=1), media_type='application/json', headers={'Content-Encoding': 'gzip'})
+                return Response(content=raw_fresh, media_type='application/json')
+            return res
         except HTTPException as e:
             return await fallback(e, underlying, exch, expiry, start, end)
 

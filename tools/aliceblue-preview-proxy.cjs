@@ -97,6 +97,7 @@ module.exports = async (req, res, url) => {
   const reqHeaders = {
     ...(req.headers.cookie ? { cookie: req.headers.cookie } : {}),
     ...(req.headers.origin ? { origin: req.headers.origin } : {}),
+    ...(req.headers['accept-encoding'] ? { 'accept-encoding': req.headers['accept-encoding'] } : {}),
     'content-type': req.headers['content-type'] || 'application/json',
     ...(bodyBuf.length ? { 'content-length': String(bodyBuf.length) } : {}),
   };
