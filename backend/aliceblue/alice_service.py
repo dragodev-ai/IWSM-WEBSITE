@@ -474,7 +474,7 @@ def create_app(config, db, transport=None, snapshot_db=None, local_owner_mode: b
             local_owner_mode
             and req.method in ('GET', 'OPTIONS')
             and req_origin == 'null'
-            and req.url.path in PUBLIC_GET_PATHS
+            and (req.url.path in PUBLIC_GET_PATHS or req.url.path.startswith('/api/heatmap/'))
         )
         if req.method == 'OPTIONS' and (req_origin in allowed_origins or is_public_file_probe):
             resp = JSONResponse({}, 204)
@@ -488,7 +488,7 @@ def create_app(config, db, transport=None, snapshot_db=None, local_owner_mode: b
             return resp
         if req_origin not in (None, *allowed_origins) and not is_public_file_probe:
             return JSONResponse({'detail': 'Origin not allowed'}, 403)
-        if req.method == 'POST' and req_origin not in allowed_origins:
+        if req.method == 'POST' and req_origin not in allowed_origins and not (req_origin is None and req.url.path == '/api/heatmap/filters'):
             return JSONResponse({'detail': 'Same-origin request required'}, 403)
         try:
             r = await call_next(req)
@@ -876,6 +876,15 @@ def create_app(config, db, transport=None, snapshot_db=None, local_owner_mode: b
     app.state.nse_archive = nse_archive
     app.state.local_owner_mode = local_owner_mode
     install_history(app, ensure_session_async, broker, market, PREFIX, snapshots=snapshots, nse_archive=nse_archive)
+    try:
+        import sys as _sys
+        _root_dir = str(Path(__file__).resolve().parent.parent.parent)
+        if _root_dir not in _sys.path:
+            _sys.path.insert(0, _root_dir)
+        from backend.heatmap.heatmap_router import install_heatmap
+        install_heatmap(app, db_path=str(Path(db).with_name('heatmap-store.sqlite3')), transport=transport)
+    except Exception as _hm_exc:
+        log_event('warning', 'heatmap_init_skipped', error=str(_hm_exc))
     log_event(
         'info',
         'market_data_service_initialized',

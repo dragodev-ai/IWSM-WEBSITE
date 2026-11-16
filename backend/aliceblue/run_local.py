@@ -9,17 +9,18 @@ import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+ROOT = HERE.parent.parent
 SP = HERE / ".venv" / "Lib" / "site-packages"
 if SP.is_dir():
     sys.path.insert(0, str(SP))
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
 
 import uvicorn
 
 from alice_service import PREFIX, create_app, ensure_session_key, settings
-
-ROOT = HERE.parent.parent
 folder = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local")) / "IWSM"
 config = settings([
     folder / "aliceblue.env",

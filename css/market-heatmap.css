@@ -1,0 +1,757 @@
+/* IWSM Stock Market Heatmap — Institutional TradingView-inspired Treemap Workspace
+   Inherits IWSM Light & Dark design tokens from css/strategy-brand-theme.css */
+
+#market-heatmap {
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 24px;
+}
+
+.hm-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 14px 14px;
+  position: relative;
+}
+
+.hm-shell.hm-fullscreen,
+.hm-shell:fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 9990;
+  border-radius: 0;
+  border: 0;
+  margin: 0;
+  padding: 12px 16px;
+  width: 100vw;
+  height: 100vh;
+  overflow: auto;
+  background: var(--surface);
+}
+
+/* Top Status & Breadcrumb Strip */
+.hm-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.hm-title-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.hm-title-group h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: var(--ink);
+}
+
+.hm-feed-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  background: var(--soft);
+  color: var(--ink);
+}
+
+.hm-feed-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #64748b;
+  flex: none;
+}
+
+.hm-feed-pill[data-state="LIVE"] {
+  border-color: rgba(22, 152, 89, 0.45);
+  background: rgba(22, 152, 89, 0.1);
+}
+.hm-feed-pill[data-state="LIVE"] .hm-feed-dot {
+  background: #16a34a;
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.22);
+}
+
+.hm-feed-pill[data-state="DELAYED"],
+.hm-feed-pill[data-state="STALE"],
+.hm-feed-pill[data-state="RECONNECTING"] {
+  border-color: rgba(217, 119, 6, 0.5);
+  background: rgba(245, 158, 11, 0.12);
+}
+.hm-feed-pill[data-state="DELAYED"] .hm-feed-dot,
+.hm-feed-pill[data-state="STALE"] .hm-feed-dot,
+.hm-feed-pill[data-state="RECONNECTING"] .hm-feed-dot {
+  background: #d97706;
+}
+
+.hm-feed-pill[data-state="MARKET_CLOSED"],
+.hm-feed-pill[data-state="DISCONNECTED"] {
+  background: var(--soft);
+  color: var(--muted);
+}
+
+.hm-meta-strip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.hm-breadth {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 9px;
+  border-radius: 7px;
+  background: var(--soft);
+  border: 1px solid var(--border);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+.hm-breadth .adv { color: var(--gain); }
+.hm-breadth .dec { color: var(--loss); }
+
+/* Primary Control Bar (TradingView Compact Layout) */
+.hm-controls-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.hm-selectors {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.hm-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0;
+}
+
+.hm-field > span {
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+
+.hm-field select,
+.hm-search-wrap input {
+  min-height: 34px;
+  height: 34px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 7px;
+  background: var(--soft);
+  border: 1px solid var(--border);
+  color: var(--ink);
+}
+
+.hm-field select:hover,
+.hm-search-wrap input:hover {
+  border-color: var(--action-border);
+}
+
+.hm-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.hm-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.hm-search-wrap input {
+  width: 165px;
+  padding-right: 26px;
+}
+
+.hm-search-clear {
+  position: absolute;
+  right: 4px;
+  min-height: 26px !important;
+  height: 26px;
+  width: 26px;
+  padding: 0;
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--muted);
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.hm-btn {
+  min-height: 34px !important;
+  height: 34px;
+  padding: 0 9px;
+  font-size: 11.5px;
+  font-weight: 600;
+  border-radius: 7px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.hm-badge-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--action);
+  color: #fff;
+}
+.hm-btn[aria-expanded="true"] .hm-badge-count,
+.hm-btn[aria-pressed="true"] .hm-badge-count {
+  background: #fff;
+  color: var(--action);
+}
+
+/* Quick Presets + Sector Zoom Breadcrumb Row */
+.hm-subbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.hm-presets {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.hm-chip {
+  min-height: 30px !important;
+  height: 30px;
+  padding: 0 10px;
+  font-size: 11.5px;
+  font-weight: 600;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+}
+.hm-chip[aria-pressed="true"] {
+  background: var(--action);
+  border-color: var(--action-border);
+  color: #fff;
+}
+
+.hm-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.hm-zoom-reset {
+  min-height: 28px !important;
+  height: 28px;
+  padding: 0 9px;
+  font-size: 11.5px;
+  border-radius: 6px;
+}
+
+/* Screener Filter Panel */
+.hm-filter-drawer {
+  background: var(--soft);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.hm-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
+  gap: 10px;
+}
+
+.hm-filter-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.hm-filter-grid input,
+.hm-filter-grid select {
+  min-height: 34px;
+  height: 34px;
+  padding: 4px 8px;
+  font-size: 12.5px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--ink);
+}
+
+.hm-filter-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.hm-filter-btns {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Display Preferences Popover */
+.hm-settings-wrap {
+  position: relative;
+}
+
+.hm-settings-popover {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 60;
+  min-width: 235px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hm-settings-popover label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+/* Main Treemap Canvas Stage */
+.hm-stage {
+  position: relative;
+  width: 100%;
+  height: clamp(540px, 73vh, 840px);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+
+.hm-shell.hm-fullscreen .hm-stage,
+.hm-shell:fullscreen .hm-stage {
+  height: calc(100vh - 185px);
+  min-height: 440px;
+}
+
+.hm-canvas {
+  width: 100%;
+  height: 100%;
+}
+
+.hm-overlay-state {
+  position: absolute;
+  inset: 0;
+  z-index: 15;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 24px;
+  text-align: center;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+}
+
+.hm-overlay-state h3 {
+  margin: 0;
+  font-size: 16px;
+  color: var(--ink);
+}
+
+.hm-overlay-state p {
+  margin: 0;
+  max-width: 460px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* Interactive 7-Bucket Color Scale Legend + Watchlist Footer */
+.hm-bottombar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-top: 2px;
+}
+
+.hm-legend {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.hm-legend-caption {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-right: 4px;
+}
+
+.hm-legend-bucket {
+  min-height: 26px !important;
+  height: 26px;
+  padding: 0 9px;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  font-size: 11px;
+  font-weight: 700;
+  color: #ffffff;
+  cursor: pointer;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.hm-legend-bucket.hm-neutral-bucket {
+  color: #1f2937;
+}
+[data-theme="dark"] .hm-legend-bucket.hm-neutral-bucket {
+  color: #e2e8f0;
+}
+
+.hm-legend-bucket[data-hidden-bucket="true"] {
+  opacity: 0.28;
+  text-decoration: line-through;
+}
+
+/* Ranked Sorted Strip (when Sort By is active) */
+.hm-sorted-panel {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--soft);
+  padding: 10px 12px;
+}
+
+.hm-sorted-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.hm-sorted-scroll {
+  max-height: 220px;
+  overflow: auto;
+}
+
+.hm-sorted-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.hm-sorted-table th,
+.hm-sorted-table td {
+  padding: 6px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.hm-sorted-table tbody tr {
+  cursor: pointer;
+}
+.hm-sorted-table tbody tr:hover {
+  background: var(--control-hover);
+}
+
+/* Watchlist Strip */
+.hm-watchlist {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 11.5px;
+}
+
+.hm-watch-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 26px !important;
+  height: 26px;
+  padding: 0 8px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  background: var(--soft);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+/* Stock Click Details Modal */
+dialog.hm-stock-dialog {
+  width: min(760px, 94vw);
+  max-height: 90vh;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 0;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+}
+
+dialog.hm-stock-dialog::backdrop {
+  background: rgba(3, 8, 18, 0.58);
+}
+
+.hm-dialog-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.hm-dialog-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.hm-logo-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 14px;
+  color: #ffffff;
+  flex: none;
+}
+
+.hm-dialog-title h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.hm-dialog-title p {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.hm-dialog-close {
+  min-height: 34px !important;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  font-size: 18px;
+  border-radius: 8px;
+}
+
+.hm-dialog-body {
+  padding: 16px 18px 18px;
+  overflow-y: auto;
+  max-height: calc(90vh - 76px);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.hm-price-hero {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.hm-price-main {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.hm-price-main strong {
+  font-size: 26px;
+  font-weight: 750;
+  letter-spacing: -0.03em;
+}
+
+.hm-chg-pill {
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.hm-chg-pill.pos { background: rgba(22, 163, 74, 0.15); color: var(--gain); }
+.hm-chg-pill.neg { background: rgba(220, 38, 38, 0.15); color: var(--loss); }
+
+.hm-kv-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+  gap: 8px;
+}
+
+.hm-kv-card {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--soft);
+  border: 1px solid var(--border);
+}
+
+.hm-kv-card small {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.hm-kv-card strong {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.hm-intraday-box {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: var(--bg);
+}
+
+.hm-intraday-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.hm-intraday-chart {
+  width: 100%;
+  height: 185px;
+}
+
+.hm-perf-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+  gap: 6px;
+}
+
+.hm-perf-cell {
+  text-align: center;
+  padding: 7px 6px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: var(--soft);
+}
+
+.hm-perf-cell span {
+  display: block;
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+.hm-perf-cell b {
+  font-size: 12.5px;
+}
+.hm-perf-cell b.pos { color: var(--gain); }
+.hm-perf-cell b.neg { color: var(--loss); }
+
+.hm-dialog-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+}
+
+@media (max-width: 900px) {
+  .hm-stage {
+    height: clamp(460px, 66vh, 680px);
+  }
+  .hm-search-wrap input {
+    width: 155px;
+  }
+}
+
+@media (max-width: 600px) {
+  .hm-shell {
+    padding: 10px;
+  }
+  .hm-selectors,
+  .hm-actions {
+    width: 100%;
+  }
+  .hm-field {
+    flex: 1 1 135px;
+  }
+  .hm-search-wrap {
+    flex: 1 1 100%;
+  }
+  .hm-search-wrap input {
+    width: 100%;
+  }
+  .hm-stage {
+    height: 480px;
+  }
+}
