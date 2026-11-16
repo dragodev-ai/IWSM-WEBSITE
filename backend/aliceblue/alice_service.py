@@ -403,6 +403,7 @@ def create_app(config, db, transport=None, snapshot_db=None, local_owner_mode: b
             'http://localhost:3000',
             'http://127.0.0.1:8080',
             'http://localhost:8080',
+            'https://dragodev-ai.github.io',
         })
 
     cache = {}
@@ -482,6 +483,8 @@ def create_app(config, db, transport=None, snapshot_db=None, local_owner_mode: b
             resp.headers['Access-Control-Allow-Headers'] = 'Content-Type'
             if not is_public_file_probe:
                 resp.headers['Access-Control-Allow-Credentials'] = 'true'
+            if local_owner_mode:
+                resp.headers['Access-Control-Allow-Private-Network'] = 'true'
             return resp
         if req_origin not in (None, *allowed_origins) and not is_public_file_probe:
             return JSONResponse({'detail': 'Origin not allowed'}, 403)

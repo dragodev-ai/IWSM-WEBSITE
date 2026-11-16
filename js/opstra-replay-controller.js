@@ -304,12 +304,13 @@
         if (apiBase) return apiBase;
         if (apiProbePromise) return apiProbePromise;
         const isFile = root.location?.protocol === 'file:';
+        const isHttpsPage = root.location?.protocol === 'https:';
         apiProbePromise = (async () => {
           for (const candidate of ['http://127.0.0.1:4174', 'http://localhost:4174']) {
             try {
               if (root.location?.origin === candidate) continue;
               const r = await fetch(candidate + '/api/aliceblue/health', {
-                credentials: isFile ? 'omit' : 'include',
+                credentials: isFile || isHttpsPage ? 'omit' : 'include',
                 signal: AbortSignal.timeout(3500),
               });
               if (r.ok && (r.headers.get('content-type') || '').includes('application/json')) {
@@ -327,9 +328,16 @@
 
       async function apiFetch(urlPath, initOpts = {}) {
         const isFile = root.location?.protocol === 'file:';
-        if (isFile && !apiBase) await probeLocalBackend();
+        const isHttpsPage = root.location?.protocol === 'https:';
+        const isGithubPages = /\.github\.io$/i.test(root.location?.hostname || '');
+        if ((isFile || isGithubPages) && !apiBase) {
+          const discovered = await probeLocalBackend();
+          if (isGithubPages && !discovered) {
+            throw Error('Static GitHub Pages mode active; local market-data server is offline.');
+          }
+        }
         const buildOpts = base => ({
-          credentials: isFile ? 'omit' : base ? 'include' : 'same-origin',
+          credentials: isFile || (isHttpsPage && base) ? 'omit' : base ? 'include' : 'same-origin',
           signal: AbortSignal.timeout(120000),
           ...initOpts,
         });
