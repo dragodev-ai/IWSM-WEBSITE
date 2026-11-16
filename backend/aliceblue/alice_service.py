@@ -20,9 +20,14 @@ SENSITIVE_KEY_RE = re.compile(r'(token|secret|auth|cookie|key|checksum|grant|ses
 PUBLIC_GET_PATHS = {
     PREFIX + '/health',
     PREFIX + '/market-status',
+    PREFIX + '/auth/status',
     PREFIX + '/instruments',
     PREFIX + '/expiries',
+    PREFIX + '/replay',
+    PREFIX + '/snapshot',
     PREFIX + '/snapshots/coverage',
+    PREFIX + '/snapshots/replay',
+    PREFIX + '/recorder/status',
 }
 
 logger = logging.getLogger('iwsm.aliceblue')
@@ -472,7 +477,7 @@ def create_app(config, db, transport=None, snapshot_db=None, local_owner_mode: b
         req_origin = req.headers.get('origin')
         is_public_file_probe = bool(
             local_owner_mode
-            and req.method in ('GET', 'OPTIONS')
+            and req.method in ('GET', 'POST', 'OPTIONS')
             and req_origin == 'null'
             and (req.url.path in PUBLIC_GET_PATHS or req.url.path.startswith('/api/heatmap/'))
         )
@@ -488,7 +493,7 @@ def create_app(config, db, transport=None, snapshot_db=None, local_owner_mode: b
             return resp
         if req_origin not in (None, *allowed_origins) and not is_public_file_probe:
             return JSONResponse({'detail': 'Origin not allowed'}, 403)
-        if req.method == 'POST' and req_origin not in allowed_origins and not (req_origin is None and req.url.path == '/api/heatmap/filters'):
+        if req.method == 'POST' and req_origin not in allowed_origins and not ((req_origin in (None, 'null')) and req.url.path == '/api/heatmap/filters'):
             return JSONResponse({'detail': 'Same-origin request required'}, 403)
         try:
             r = await call_next(req)

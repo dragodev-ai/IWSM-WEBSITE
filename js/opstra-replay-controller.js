@@ -219,7 +219,15 @@
           if (el('build-strike')) el('build-strike').innerHTML = '';
         }
         if (!session && d.kind !== 'daily') {
-          const at = P.frames(d, s).find(
+          const allFrames = P.frames(d, s);
+          const countsByDay = {};
+          for (const t of allFrames) {
+            const dayKey = t.slice(0, 10);
+            countsByDay[dayKey] = (countsByDay[dayKey] || 0) + 1;
+          }
+          const multiFrameDay = Object.keys(countsByDay).sort().find(dayKey => countsByDay[dayKey] > 1);
+          const candidateFrames = multiFrameDay ? allFrames.filter(t => t.startsWith(multiFrameDay)) : allFrames;
+          const at = candidateFrames.find(
             t => Number.isFinite(d.spots.get(s.symbol + '|' + t)) && (d.byFrame.get(s.symbol + '|' + t) || []).some(q => q.type !== 'FUT' && q.volume !== 0 && q.lotSize > 0)
           );
           if (at && at !== s.cursor) s = P.advance(d, s, at);
@@ -328,7 +336,85 @@
 
       let staticInstCache = null;
       let staticExpCache = null;
+      let universalFnoPromise = null;
       const staticReplayCache = new Map();
+
+      async function loadUniversalFnoBundle() {
+        if (root.IWSMFnoArchiveBundle) return root.IWSMFnoArchiveBundle;
+        if (universalFnoPromise) return universalFnoPromise;
+        universalFnoPromise = (async () => {
+          if (root.location?.protocol !== 'file:') {
+            try {
+              const r = await fetch('assets/market-cache/fno-all-archive.json');
+              if (r.ok) {
+                root.IWSMFnoArchiveBundle = await r.json();
+                return root.IWSMFnoArchiveBundle;
+              }
+            } catch {}
+          }
+          if (typeof document !== 'undefined') {
+            await new Promise(resolve => {
+              const sc = document.createElement('script');
+              sc.src = 'js/fno-archive-bundle.js';
+              sc.onload = resolve;
+              sc.onerror = resolve;
+              document.head.appendChild(sc);
+            });
+          }
+          return root.IWSMFnoArchiveBundle || null;
+        })().finally(() => {
+          universalFnoPromise = null;
+        });
+        return universalFnoPromise;
+      }
+
+      function unpackUniversalFnoDataset(bundleObj, sym, requestedExp = '', startIso = '', endIso = '') {
+        const entry = bundleObj?.symbols?.[sym];
+        const dates = bundleObj?.dates || [];
+        if (!entry || !dates.length) return null;
+        const targetIso = brokerCodeToIso(requestedExp) || '';
+        const typeNames = ['CE', 'PE', 'FUT'];
+        const contracts = [];
+        for (const [dIdx, eIdx, tCode, strike, close, oi, vol] of entry.c || []) {
+          const dt = dates[dIdx];
+          const expIso = entry.e[eIdx];
+          const typ = typeNames[tCode] || 'CE';
+          if (!dt || !expIso) continue;
+          if (targetIso && typ !== 'FUT' && expIso !== targetIso && entry.e.includes(targetIso)) continue;
+          contracts.push({
+            timestamp: dt + 'T15:30',
+            symbol: sym,
+            expiry: expIso,
+            type: typ,
+            strike: typ === 'FUT' ? 0 : strike,
+            close,
+            lotSize: entry.l,
+            oi,
+            volume: vol > 0 ? vol : null,
+          });
+        }
+        if (!contracts.some(c => c.type !== 'FUT')) return null;
+        const underlying = (entry.u || []).map(([dIdx, close]) => ({
+          timestamp: dates[dIdx] + 'T15:30',
+          symbol: sym,
+          close,
+        })).filter(u => u.timestamp && u.close > 0);
+        return {
+          dataset: {
+            source: 'Verified NSE Multi-Session F&O Archive (' + sym + ')',
+            contracts,
+            underlying,
+            metadata: {
+              exchange: 'nse_fo',
+              resolution: 'daily close',
+              modelled: false,
+              synthetic: false,
+              quoteTiming: 'Official NSE daily derivative close (15:30 IST)',
+            },
+          },
+          notice: 'Loaded verified NSE multi-session option chain for ' + sym + ' (' + dates[0] + ' to ' + dates.at(-1) + '). Start local preview server for live 1-minute bars.',
+        };
+      }
 
       function clientIstMarketStatus() {
         const nowIst = new Date(Date.now() + 19800000);
@@ -401,6 +487,18 @@
           if (hit && hit.expiries?.length) {
             return jsonSynthResponse({ ...hit, marketStatus: mkt });
           }
+          const fnoBundle = await loadUniversalFnoBundle();
+          const bSym = fnoBundle?.symbols?.[sym];
+          if (bSym?.e?.length) {
+            const expCodes = bSym.e.map(isoToBrokerCode);
+            const details = bSym.e.map((iso, idx) => ({
+              expiry: expCodes[idx],
+              iso,
+              cycle: 'monthly',
+              dte: Math.max(0, Math.round((Date.parse(iso + 'T00:00:00Z') - Date.parse(mkt.dateIST + 'T00:00:00Z')) / 86400000)),
+            }));
+            return jsonSynthResponse({ expiries: expCodes, expiryDetails: details, marketStatus: mkt, source: 'Verified NSE F&O Archive' });
+          }
           return jsonSynthResponse({
             expiries: ['23NOV26'],
             expiryDetails: [{ expiry: '23NOV26', iso: '2026-11-23', cycle: 'monthly', dte: 7 }],
@@ -410,34 +508,59 @@
         }
         if (p === '/api/aliceblue/replay' || p === '/api/aliceblue/snapshot') {
           const sym = (q.get('underlying') || 'NIFTY').toUpperCase();
-          if (!staticReplayCache.has(sym)) {
-            const r = await fetch('assets/market-cache/replay-' + encodeURIComponent(sym) + '.json');
-            if (!r.ok) return jsonSynthResponse({ detail: 'Option-chain dataset for ' + sym + ' requires local server for uncached symbols.' }, 404);
-            staticReplayCache.set(sym, await r.json());
+          if (!staticReplayCache.has(sym) && root.location?.protocol !== 'file:') {
+            try {
+              const r = await fetch('assets/market-cache/replay-' + encodeURIComponent(sym) + '.json');
+              if (r.ok) staticReplayCache.set(sym, await r.json());
+            } catch {}
           }
-          return jsonSynthResponse(staticReplayCache.get(sym));
+          if (staticReplayCache.has(sym)) {
+            return jsonSynthResponse(staticReplayCache.get(sym));
+          }
+          const fnoBundle = await loadUniversalFnoBundle();
+          const unpacked = unpackUniversalFnoDataset(fnoBundle, sym, q.get('expiry') || '', q.get('start') || '', q.get('end') || '');
+          if (unpacked) {
+            return jsonSynthResponse(unpacked);
+          }
+          return jsonSynthResponse({ detail: 'Option-chain dataset for ' + sym + ' requires local server for uncached symbols.' }, 404);
         }
         if (p === '/api/nse-library') {
           const mode = q.get('mode') || 'catalog';
-          const hist = root.IWSMNSEHistory;
-          const allDates = [...new Set((hist?.underlying || []).map(u => String(u.timestamp || '').slice(0, 10)).filter(Boolean))].sort();
+          const reqSym = (q.get('symbol') || 'NIFTY').toUpperCase();
+          const fnoBundle = await loadUniversalFnoBundle();
           if (mode === 'catalog') {
+            if (fnoBundle?.symbols) {
+              const syms = Object.keys(fnoBundle.symbols).sort();
+              const sd = {};
+              for (const k of syms) sd[k] = fnoBundle.dates;
+              return jsonSynthResponse({ success: true, symbols: syms, dates: fnoBundle.dates, symbolDates: sd });
+            }
+            const hist = root.IWSMNSEHistory;
+            const allDates = [...new Set((hist?.underlying || []).map(u => String(u.timestamp || u.date || '').slice(0, 10)).filter(Boolean))].sort();
             return jsonSynthResponse({ success: true, symbols: ['NIFTY'], dates: allDates, symbolDates: { NIFTY: allDates } });
           }
-          if (mode === 'window' && hist) {
-            const sDate = q.get('start') || allDates[0] || '';
-            const eDate = q.get('end') || allDates.at(-1) || '';
-            const uRows = (hist.underlying || []).filter(u => u.timestamp.slice(0, 10) >= sDate && u.timestamp.slice(0, 10) <= eDate);
-            const cRows = (hist.contracts || []).filter(c => c.timestamp.slice(0, 10) >= sDate && c.timestamp.slice(0, 10) <= eDate);
-            return jsonSynthResponse({
-              success: true,
-              dataset: {
-                source: hist.source || 'Verified NSE Historical Option Chain',
-                metadata: { ...(hist.metadata || {}), exchange: 'nse_fo' },
-                underlying: uRows.length ? uRows : hist.underlying,
-                contracts: cRows.length ? cRows : hist.contracts,
-              },
-            });
+          if (mode === 'load' || mode === 'window') {
+            const unpacked = unpackUniversalFnoDataset(fnoBundle, reqSym, '', q.get('start') || '', q.get('end') || '');
+            if (unpacked) {
+              return jsonSynthResponse({ success: true, ...unpacked });
+            }
+            const hist = root.IWSMNSEHistory;
+            if (hist && reqSym === 'NIFTY') {
+              const allDates = [...new Set((hist.underlying || []).map(u => String(u.timestamp || u.date || '').slice(0, 10)).filter(Boolean))].sort();
+              const sDate = q.get('start') || allDates[0] || '';
+              const eDate = q.get('end') || allDates.at(-1) || '';
+              const uRows = (hist.underlying || []).filter(u => String(u.timestamp || u.date || '').slice(0, 10) >= sDate && String(u.timestamp || u.date || '').slice(0, 10) <= eDate);
+              const cRows = (hist.contracts || []).filter(c => String(c.timestamp || c.date || '').slice(0, 10) >= sDate && String(c.timestamp || c.date || '').slice(0, 10) <= eDate);
+              return jsonSynthResponse({
+                success: true,
+                dataset: {
+                  source: hist.source || 'Verified NSE Historical Option Chain',
+                  metadata: { ...(hist.metadata || {}), exchange: 'nse_fo' },
+                  underlying: uRows.length ? uRows : hist.underlying,
+                  contracts: cRows.length ? cRows : hist.contracts,
+                },
+              });
+            }
           }
         }
         return jsonSynthResponse({ detail: 'Endpoint requires local preview server.' }, 404);
@@ -447,11 +570,11 @@
         const isFile = root.location?.protocol === 'file:';
         const isHttpsPage = root.location?.protocol === 'https:';
         const isGithubPages = /\.github\.io$/i.test(root.location?.hostname || '');
-        if (isGithubPages) {
-          return await staticGithubPagesFetch(urlPath);
-        }
-        if (isFile && !apiBase) {
+        if ((isFile || isGithubPages) && !apiBase) {
           await probeLocalBackend();
+        }
+        if (isGithubPages && !apiBase) {
+          return await staticGithubPagesFetch(urlPath);
         }
         const buildOpts = base => ({
           credentials: isFile || (isHttpsPage && base) ? 'omit' : base ? 'include' : 'same-origin',
@@ -459,25 +582,34 @@
           ...initOpts,
         });
         try {
-          const r = await fetch((apiBase || '') + urlPath, buildOpts(apiBase));
-          if (!apiBase && (r.status === 404 || r.status === 405 || !(r.headers.get('content-type') || '').includes('application/json'))) {
-            const discovered = await probeLocalBackend();
-            if (discovered) return await fetch(discovered + urlPath, buildOpts(discovered));
+          if (!isFile || apiBase) {
+            const r = await fetch((apiBase || '') + urlPath, buildOpts(apiBase));
+            if (!apiBase && (r.status === 404 || r.status === 405 || !(r.headers.get('content-type') || '').includes('application/json'))) {
+              const discovered = await probeLocalBackend();
+              if (discovered) return await fetch(discovered + urlPath, buildOpts(discovered));
+            }
+            return r;
           }
-          return r;
         } catch (err) {
           if (!apiBase) {
             const discovered = await probeLocalBackend();
             if (discovered) {
               try {
                 return await fetch(discovered + urlPath, buildOpts(discovered));
-              } catch (retryErr) {
-                throw Error(friendlyFetchError(retryErr));
-              }
+              } catch {}
             }
+          }
+          if (!initOpts.method || initOpts.method === 'GET') {
+            const fallbackRes = await staticGithubPagesFetch(urlPath);
+            if (fallbackRes.ok) return fallbackRes;
           }
           throw Error(friendlyFetchError(err));
         }
+        if (!initOpts.method || initOpts.method === 'GET') {
+          const fallbackRes = await staticGithubPagesFetch(urlPath);
+          if (fallbackRes.ok) return fallbackRes;
+        }
+        throw Error('Local IWSM market-data server could not be reached.');
       }
 
       async function jsonResponse(r) {
@@ -1805,20 +1937,27 @@
           e.preventDefault();
           const values = Object.fromEntries(new FormData(f)), choice = instrumentChoice(values.symbol);
           const spanDays = (Date.parse(values.end) - Date.parse(values.start)) / 86400000;
-          if (archiveFallbackOnly || (spanDays > 6 && choice.exchange === 'nse_fo')) {
-            const win = resolveArchiveWindow(choice.symbol, values.start, values.end);
-            await loadRecorded(choice.symbol, win.start, win.end);
-            return;
-          }
-          const n = ++generation;
-          f.querySelector('[type=submit]').disabled = true;
+          const submitBtn = f.querySelector('[type=submit]');
+          submitBtn.disabled = true;
           note.textContent = 'Loading ' + choice.symbol + ' option chain…';
           try {
+            if (archiveFallbackOnly || (spanDays > 6 && choice.exchange === 'nse_fo')) {
+              const win = resolveArchiveWindow(choice.symbol, values.start, values.end);
+              try {
+                await loadRecorded(choice.symbol, win.start, win.end);
+              } catch {
+                const latestWin = resolveArchiveWindow(choice.symbol);
+                await loadRecorded(choice.symbol, latestWin.start, latestWin.end);
+              }
+              return;
+            }
+            const n = ++generation;
+            const expParam = values.expiry || '23NOV26';
             const j = await brokerApi(
               'replay?' +
                 new URLSearchParams({
                   underlying: choice.symbol,
-                  expiry: values.expiry,
+                  expiry: expParam,
                   start: values.start,
                   end: values.end,
                   exch: choice.exchange,
@@ -1836,7 +1975,12 @@
             if (choice.exchange === 'nse_fo') {
               try {
                 const win = resolveArchiveWindow(choice.symbol, values.start, values.end);
-                await loadRecorded(choice.symbol, win.start, win.end);
+                try {
+                  await loadRecorded(choice.symbol, win.start, win.end);
+                } catch {
+                  const latestWin = resolveArchiveWindow(choice.symbol);
+                  await loadRecorded(choice.symbol, latestWin.start, latestWin.end);
+                }
                 msg('Loaded verified ' + choice.symbol + ' historical option chain (' + s.cursor.slice(0, 10) + ').');
                 return;
               } catch {}
@@ -1844,7 +1988,7 @@
             note.textContent = err.message;
             msg(err.message);
           } finally {
-            if (f.isConnected) f.querySelector('[type=submit]').disabled = false;
+            if (f.isConnected && submitBtn) submitBtn.disabled = false;
           }
         });
       }

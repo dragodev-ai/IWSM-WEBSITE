@@ -1,18 +1,29 @@
 (function(){
  'use strict';const $=id=>document.getElementById(id);if(!$('local-archive'))return;
- let dates=[],allDates=[],symbolDates={},loaded=null,revision=0;
+ let dates=[],allDates=[],symbolDates={},loaded=null,revision=0,archiveApiBase='';
  const message=t=>$('archive-status').textContent=t;
  function reset(){revision++;loaded=null;$('archive-apply-model').hidden=true;$('archive-open-replay').hidden=true;$('archive-source-notes').hidden=true;}
+ async function archiveFetch(urlPath,opts={}){
+  if(location.protocol!=='file:'&&!archiveApiBase){
+   try{const r=await fetch(urlPath,opts);if(r.ok&&(r.headers.get('content-type')||'').includes('application/json'))return r;}catch{}
+  }
+  if(!archiveApiBase){
+   for(const cand of ['http://127.0.0.1:4174','http://localhost:4174']){
+    try{const p=await fetch(cand+'/api/nse-library?mode=catalog',{credentials:'omit',signal:AbortSignal.timeout(3000)});if(p.ok){archiveApiBase=cand;break;}}catch{}
+   }
+  }
+  if(archiveApiBase)return fetch(archiveApiBase+urlPath,{...opts,credentials:'omit'});
+  throw Error('Open the IWSM local preview (http://127.0.0.1:4174) to read the NSE archive.');
+ }
  async function catalog(){
-  if(location.protocol==='file:'){$('archive-coverage').textContent='Open the IWSM local preview to read the archive on this computer. Existing Excel/CSV imports still work.';return;}
-  try{const response=await fetch('/api/nse-library?mode=catalog'),data=await response.json();if(!response.ok||!data.success)throw Error(data.error||'Archive unavailable');
+  try{const response=await archiveFetch('/api/nse-library?mode=catalog'),data=await response.json();if(!response.ok||!data.success)throw Error(data.error||'Archive unavailable');
    allDates=data.dates;symbolDates=data.symbolDates||{};$('archive-symbol').replaceChildren(...data.symbols.map(s=>new Option(s==='BANKNIFTY'?'BANK NIFTY':s,s)));$('archive-symbol').value='NIFTY';dates=symbolDates.NIFTY||allDates;
    $('archive-coverage').textContent=data.downloadedArchives.toLocaleString('en-IN')+' verified daily archives · '+data.contractRows.toLocaleString('en-IN')+' derivative observations · '+data.symbols.length+' reported symbols · '+(dates[0]||'no dates')+' to '+(dates.at(-1)||'no dates')+'. Original reports include all reported stock/index futures and options.';
    for(const id of ['archive-start','archive-end']){$(id).min=dates[0]||'';$(id).max=dates.at(-1)||'';}
-   if(dates.length){$('archive-start').value=dates[0];$('archive-end').value=dates[Math.min(4,dates.length-1)];$('archive-load').disabled=false;refreshDateOptions();}
+   if(dates.length){const si=Math.max(0,dates.length-5);$('archive-start').value=dates[si];$('archive-end').value=dates.at(-1);$('archive-load').disabled=false;refreshDateOptions();}
   }catch(error){$('archive-coverage').textContent=error.message+' Start the IWSM local preview; your current strategies are preserved.';}
  }
- function refreshDateOptions(){dates=symbolDates[$('archive-symbol').value]||allDates;$('archive-recorded-date').replaceChildren(...dates.map(d=>new Option(d,d)));for(const id of ['archive-start','archive-end']){$(id).min=dates[0]||'';$(id).max=dates.at(-1)||'';}if(!dates.includes($('archive-start').value))chooseDate(dates.at(-1));else $('archive-recorded-date').value=$('archive-start').value;updateArrows();}
+ function refreshDateOptions(){dates=symbolDates[$('archive-symbol').value]||allDates;$('archive-recorded-date').replaceChildren(...dates.map(d=>new Option(d,d)));for(const id of ['archive-start','archive-end']){$(id).min=dates[0]||'';$(id).max=dates.at(-1)||'';}if(!dates.includes($('archive-start').value))chooseDate(dates[Math.max(0,dates.length-5)]);else $('archive-recorded-date').value=$('archive-start').value;updateArrows();}
  function updateArrows(){const i=dates.indexOf($('archive-start').value);$('archive-date-prev').disabled=i<=0;$('archive-date-next').disabled=i<0||i>=dates.length-1;}
  function chooseDate(d){if(!d)return;$('archive-start').value=d;const i=dates.indexOf(d);$('archive-end').value=dates[Math.min(i+4,dates.length-1)];$('archive-recorded-date').value=d;reset();updateArrows();message('Ready. Load recorded contracts for '+$('archive-symbol').value+' from '+d+'.');}
  $('archive-recorded-date').onchange=()=>chooseDate($('archive-recorded-date').value);
@@ -29,7 +40,7 @@
   if(!dates.includes(start)){message('No downloaded NSE report exists for that entry date. Choose another recorded date.');return;}
   if(end<start||(Date.parse(end)-Date.parse(start))/86400000>30){message('Choose an end date within 31 calendar days of the entry date.');return;}
   $('archive-load').disabled=true;message('Reading local NSE reports for '+symbol+'…');
-  try{const query=new URLSearchParams({mode:'load',symbol,start,end}),response=await fetch('/api/nse-library?'+query,{signal:AbortSignal.timeout(125000)}),data=await response.json();if(!response.ok||!data.success)throw Error(data.error||'No matching observations');if(request!==revision)return;
+  try{const query=new URLSearchParams({mode:'load',symbol,start,end}),response=await archiveFetch('/api/nse-library?'+query,{signal:AbortSignal.timeout(125000)}),data=await response.json();if(!response.ok||!data.success)throw Error(data.error||'No matching observations');if(request!==revision)return;
    if(!data.contracts.some(r=>r.date===start))throw Error('The selected symbol has no contract observation on the entry date. Choose a different entry date.');
    $('history-mode').value='observed';window.IWSMHistoryLab.setDataset(data);$('history-mode').dispatchEvent(new Event('change',{bubbles:true}));loaded=data;
    const knownUnits=data.contracts.find(r=>Number.isInteger(r.lotSize)&&r.lotSize>0)?.lotSize;

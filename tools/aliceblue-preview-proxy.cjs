@@ -40,10 +40,9 @@ function loopbackCorsHeaders(req) {
   }
   if (origin === 'null' && (req.method === 'GET' || req.method === 'OPTIONS')) {
     return {
-      'Access-Control-Allow-Origin': 'null',
+      'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type',
-      Vary: 'Origin',
     };
   }
   return {};

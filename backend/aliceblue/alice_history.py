@@ -247,72 +247,6 @@ def install_history(app, session_fn, broker, market, prefix, snapshots: Snapshot
             asyncio.create_task(asyncio.to_thread(_remember_sync, dataset, kind))
         return result
 
-    async def fallback(error, underlying, exch, expiry, start='', end='', kind='minute'):
-        # 1. Check genuinely recorded SnapshotStore frames first (for ANY symbol/exchange)
-        if start and end:
-            try:
-                snap_res = snap_store.load_replay(underlying, exch, expiry, start, end)
-                snap_res['notice'] = (
-                    f"Broker live history unavailable ({error.detail}). "
-                    f"Showing genuinely recorded IWSM option-chain snapshots ({snap_res['dataset']['metadata']['frameCount']} timestamps)."
-                )
-                return snap_res
-            except (LookupError, ValueError, OSError, sqlite3.Error):
-                pass
-            # 2. Check persisted 1-minute captures in SnapshotStore (works for RELIANCE, BANKNIFTY, SENSEX, NIFTY, etc.)
-            if kind == 'minute':
-                try:
-                    min_res = snap_store.load_minute_replay(underlying, exch, expiry, start, end)
-                    min_res['notice'] = (
-                        f"Showing saved 1-minute intraday option-chain bars as of {min_res['asOf']}."
-                    )
-                    return min_res
-                except (LookupError, ValueError, OSError, sqlite3.Error):
-                    pass
-
-        # 3. Check local 5-year NIFTY SQLite backup (includes saved NIFTY minute captures + daily backup)
-        if underlying == 'NIFTY' and exch == 'nse_fo' and error.status_code in (401, 403, 404, 422, 429, 500, 502, 503, 504):
-            try:
-                result = backup.load(expiry, start, end, kind)
-                result['notice'] = 'Showing local ' + result['resolution'] + ' option-chain archive as of ' + result['asOf'] + '.'
-                return result
-            except (ValueError, OSError, sqlite3.Error):
-                pass
-
-        # 3b. In hybrid/NSE mode on recent dates, serve live NSE option-chain snapshot if 1m session is offline
-        if provider in ('hybrid', 'nse') and exch == 'nse_fo' and getattr(app.state, 'local_owner_mode', False) and not getattr(broker, '_has_mock_transport', False):
-            try:
-                end_dt = datetime.strptime(end, '%Y-%m-%d').date() if end else datetime.now(IST).date()
-                if (datetime.now(IST).date() - end_dt).days <= 4:
-                    ds = await nse_live.snapshot_dataset(underlying, expiry)
-                    return {'dataset': ds, 'notice': f'Live {underlying} ({expiry}) exchange option-chain snapshot loaded.'}
-            except Exception:
-                pass
-
-        # 4. Check local verified NSE derivatives archive (covers all 224+ NSE F&O stocks & indices, e.g. RELIANCE, BANKNIFTY, HDFCBANK)
-        if exch == 'nse_fo' and nse_archive and nse_archive.available() and error.status_code in (401, 403, 404, 422, 429, 500, 502, 503, 504):
-            try:
-                nse_res = await asyncio.to_thread(nse_archive.load, underlying, expiry, start, end)
-                nse_res['notice'] = (
-                    f"Live minute history unavailable for {underlying} ({expiry}). "
-                    f"Showing verified NSE official daily closes as of {nse_res['asOf']}."
-                )
-                return nse_res
-            except (ValueError, OSError, sqlite3.Error):
-                pass
-
-        # 5. Surface clear coverage diagnostics without fabricating data
-        try:
-            cov = snap_store.coverage(symbol=underlying, exchange=exch)
-            if cov.get('earliestDate'):
-                raise HTTPException(
-                    error.status_code,
-                    f"{error.detail} Earliest recorded local snapshot for {underlying}: {cov['earliestTimestamp']} IST.",
-                )
-        except (ValueError, OSError, sqlite3.Error):
-            pass
-        raise error
-
     masters = {}
     catalog_cache = {'stamp': None, 'rows': []}
     underlyings_cache = {}
@@ -334,6 +268,231 @@ def install_history(app, session_fn, broker, market, prefix, snapshots: Snapshot
                 except Exception:
                     raise HTTPException(502, 'Contract directory unavailable; retry shortly')
             return masters[name][1]
+
+    async def resolve_nfo_contract_meta(underlying: str, expiry: str, as_of: str = ''):
+        """Return (option_lot_size, front_future_iso, front_future_lot_size) from NFO contract master."""
+        try:
+            iso_target = normalize_expiry_iso(expiry) if expiry else ''
+        except ValueError:
+            iso_target = ''
+        try:
+            records = master_rows(await master('NFO'))
+        except Exception:
+            return None, '', None
+        exact_lot = None
+        any_lot = None
+        for row in records:
+            if row.get('symbol') != underlying:
+                continue
+            kind = str(row.get('instrument_type', ''))
+            if not (kind.startswith('OPT') or kind in ('IO', 'SO')):
+                continue
+            try:
+                lot = int(float(row.get('lot_size') or 0))
+            except (TypeError, ValueError):
+                continue
+            if lot <= 0:
+                continue
+            if any_lot is None or lot < any_lot:
+                any_lot = lot
+            if iso_target and _row_expiry_iso(row) == iso_target:
+                exact_lot = lot
+                break
+        ref_day = as_of if (as_of and re.fullmatch(r'\d{4}-\d{2}-\d{2}', as_of)) else datetime.now(IST).strftime('%Y-%m-%d')
+        fut = front_future(records, underlying, ref_day, target_expiry_iso=iso_target)
+        fut_iso = fut['expiryISO'] if fut else ''
+        fut_lot = int(float(fut['lot_size'])) if (fut and float(fut.get('lot_size') or 0) > 0) else (exact_lot or any_lot)
+        return (exact_lot or any_lot), fut_iso, fut_lot
+
+    async def fallback(error, underlying, exch, expiry, start='', end='', kind='minute'):
+        today_ist_str = datetime.now(IST).strftime('%Y-%m-%d')
+        includes_live_day = (not end) or (end >= today_ist_str)
+
+        # 1. Check genuinely recorded SnapshotStore frames first (for past windows or explicit snapshot queries)
+        if start and end and not includes_live_day:
+            try:
+                snap_res = snap_store.load_replay(underlying, exch, expiry, start, end)
+                snap_res['notice'] = (
+                    f"Showing genuinely recorded IWSM option-chain snapshots ({snap_res['dataset']['metadata']['frameCount']} timestamps)."
+                )
+                return snap_res
+            except (LookupError, ValueError, OSError, sqlite3.Error):
+                pass
+            if kind == 'minute':
+                try:
+                    min_res = snap_store.load_minute_replay(underlying, exch, expiry, start, end)
+                    if (min_res.get('dataset', {}).get('metadata', {}).get('frameCount') or len(min_res.get('dataset', {}).get('underlying', []))) > 1:
+                        min_res['notice'] = f"Showing saved 1-minute intraday option-chain bars as of {min_res['asOf']}."
+                        return min_res
+                except (LookupError, ValueError, OSError, sqlite3.Error):
+                    pass
+
+        # 2. In hybrid/NSE live mode, fetch genuine 1-minute intraday option-chain + futures + spot + VIX from NSE official feeds!
+        if (
+            provider in ('hybrid', 'nse')
+            and exch == 'nse_fo'
+            and getattr(app.state, 'local_owner_mode', False)
+            and not getattr(broker, '_has_mock_transport', False)
+        ):
+            opt_lot, fut_iso, fut_lot = await resolve_nfo_contract_meta(underlying, expiry, end)
+            if kind == 'minute':
+                try:
+                    end_dt = datetime.strptime(end, '%Y-%m-%d').date() if end else datetime.now(IST).date()
+                    if (datetime.now(IST).date() - end_dt).days <= 4:
+                        nse_ds = await nse_live.intraday_minute_dataset(
+                            underlying,
+                            expiry,
+                            start=start,
+                            end=end,
+                            lot_size=opt_lot,
+                            futures_expiry_iso=fut_iso,
+                            futures_lot_size=fut_lot,
+                            strike_window=12,
+                        )
+                        # Persist today's 1-minute bars to SnapshotStore asynchronously
+                        asyncio.create_task(asyncio.to_thread(_remember_sync, nse_ds, 'minute'))
+
+                        # If user's requested window also spans earlier trading days before the live 1m session, prepend earlier sessions!
+                        intraday_dates = sorted({c['timestamp'][:10] for c in nse_ds.get('contracts', []) if c.get('timestamp')})
+                        first_intra_date = intraday_dates[0] if intraday_dates else ''
+                        merged_contracts = list(nse_ds.get('contracts', []))
+                        merged_underlying = list(nse_ds.get('underlying', []))
+
+                        if start and first_intra_date and start < first_intra_date:
+                            prev_end = (datetime.strptime(first_intra_date, '%Y-%m-%d').date() - timedelta(days=1)).isoformat()
+                            covered_prev_dates = set()
+                            # First pull any saved 1-minute bars from SnapshotStore for earlier days
+                            try:
+                                prev_min = snap_store.load_minute_replay(underlying, exch, expiry, start, prev_end)
+                                p_ds = prev_min.get('dataset') or {}
+                                for c in p_ds.get('contracts', []):
+                                    ts = c.get('timestamp')
+                                    if ts and ts[:10] < first_intra_date:
+                                        covered_prev_dates.add(ts[:10])
+                                        merged_contracts.append(c)
+                                for u in p_ds.get('underlying', []):
+                                    ts = u.get('timestamp')
+                                    if ts and ts[:10] < first_intra_date:
+                                        merged_underlying.append(u)
+                            except Exception:
+                                pass
+
+                            # Fill any remaining uncovered earlier trading days from official NSE historical archive
+                            if nse_archive and nse_archive.available():
+                                try:
+                                    arch_res = await asyncio.to_thread(nse_archive.load, underlying, expiry, start, prev_end)
+                                    a_ds = arch_res.get('dataset') or {}
+                                    fallback_lot = int(opt_lot or 1)
+                                    for c in a_ds.get('contracts', []):
+                                        dt_s = c.get('date') or str(c.get('timestamp') or '')[:10]
+                                        if not dt_s or dt_s >= first_intra_date or dt_s in covered_prev_dates:
+                                            continue
+                                        ts_eod = f"{dt_s}T15:30"
+                                        if ts_eod > f"{c['expiry']}T15:30":
+                                            continue
+                                        merged_contracts.append({
+                                            'timestamp': ts_eod,
+                                            'symbol': c['symbol'],
+                                            'expiry': c['expiry'],
+                                            'type': c['type'],
+                                            'strike': c['strike'],
+                                            'close': c['close'],
+                                            'lotSize': int(c.get('lotSize') or fallback_lot),
+                                            'oi': c.get('oi'),
+                                            'volume': c.get('volume'),
+                                        })
+                                    for u in a_ds.get('underlying', []):
+                                        dt_s = u.get('date') or str(u.get('timestamp') or '')[:10]
+                                        if not dt_s or dt_s >= first_intra_date or dt_s in covered_prev_dates:
+                                            continue
+                                        if u.get('close') and u['close'] > 0:
+                                            merged_underlying.append({
+                                                'timestamp': f"{dt_s}T15:30",
+                                                'symbol': u['symbol'],
+                                                'close': u['close'],
+                                            })
+                                except Exception:
+                                    pass
+
+                        all_frames = sorted({c['timestamp'] for c in merged_contracts if c.get('timestamp')})
+                        out_ds = {
+                            **nse_ds,
+                            'contracts': merged_contracts,
+                            'underlying': merged_underlying,
+                            'metadata': {
+                                **nse_ds.get('metadata', {}),
+                                'frameCount': len(all_frames),
+                            },
+                        }
+                        return {
+                            'dataset': out_ds,
+                            'notice': f"Intraday 1-minute {underlying} ({expiry}) option chain loaded ({len(all_frames)} timestamps).",
+                        }
+                except Exception:
+                    pass
+
+            if includes_live_day or kind == 'snapshot':
+                try:
+                    ds = await nse_live.snapshot_dataset(underlying, expiry, lot_size=opt_lot)
+                    return {'dataset': ds, 'notice': f'Live {underlying} ({expiry}) exchange option-chain snapshot loaded.'}
+                except Exception:
+                    pass
+
+        # 3. Check SnapshotStore (also for single-frame or current-day fallbacks in mock/offline mode)
+        if start and end and includes_live_day:
+            try:
+                snap_res = snap_store.load_replay(underlying, exch, expiry, start, end)
+                snap_res['notice'] = (
+                    f"Broker live history unavailable ({error.detail}). "
+                    f"Showing genuinely recorded IWSM option-chain snapshots ({snap_res['dataset']['metadata']['frameCount']} timestamps)."
+                )
+                return snap_res
+            except (LookupError, ValueError, OSError, sqlite3.Error):
+                pass
+            if kind == 'minute':
+                try:
+                    min_res = snap_store.load_minute_replay(underlying, exch, expiry, start, end)
+                    min_res['notice'] = f"Showing saved 1-minute intraday option-chain bars as of {min_res['asOf']}."
+                    return min_res
+                except (LookupError, ValueError, OSError, sqlite3.Error):
+                    pass
+
+        # 4. Check local 5-year NIFTY SQLite backup
+        if underlying == 'NIFTY' and exch == 'nse_fo' and error.status_code in (401, 403, 404, 422, 429, 500, 502, 503, 504):
+            try:
+                result = backup.load(expiry, start, end, kind)
+                result['notice'] = 'Showing local ' + result['resolution'] + ' option-chain archive as of ' + result['asOf'] + '.'
+                return result
+            except (ValueError, OSError, sqlite3.Error):
+                pass
+
+        # 5. Check local verified NSE derivatives archive (covers all 218+ NSE F&O stocks & indices)
+        if exch == 'nse_fo' and nse_archive and nse_archive.available() and error.status_code in (401, 403, 404, 422, 429, 500, 502, 503, 504):
+            try:
+                nse_res = await asyncio.to_thread(nse_archive.load, underlying, expiry, start, end)
+                opt_lot, _, _ = await resolve_nfo_contract_meta(underlying, expiry, end)
+                if opt_lot:
+                    for c in nse_res.get('dataset', {}).get('contracts', []):
+                        if not c.get('lotSize'):
+                            c['lotSize'] = int(opt_lot)
+                nse_res['notice'] = (
+                    f"Showing verified NSE historical option-chain archive for {underlying} ({expiry}) as of {nse_res['asOf']}."
+                )
+                return nse_res
+            except (ValueError, OSError, sqlite3.Error):
+                pass
+
+        # 6. Surface clear coverage diagnostics without fabricating data
+        try:
+            cov = snap_store.coverage(symbol=underlying, exchange=exch)
+            if cov.get('earliestDate'):
+                raise HTTPException(
+                    error.status_code,
+                    f"{error.detail} Earliest recorded local snapshot for {underlying}: {cov['earliestTimestamp']} IST.",
+                )
+        except (ValueError, OSError, sqlite3.Error):
+            pass
+        raise error
 
     async def public_expiries(underlying: str, exch: str = 'nse_fo', as_of: str = '') -> list:
         if exch not in ('nse_fo', 'bse_fo'):
@@ -629,7 +788,8 @@ def install_history(app, session_fn, broker, market, prefix, snapshots: Snapshot
             raise HTTPException(422, 'Select an NSE or BSE option underlying')
         if provider == 'nse' and exch == 'nse_fo' and not getattr(broker, '_has_mock_transport', False):
             try:
-                ds = await nse_live.snapshot_dataset(underlying, expiry)
+                opt_lot, _, _ = await resolve_nfo_contract_meta(underlying, expiry)
+                ds = await nse_live.snapshot_dataset(underlying, expiry, lot_size=opt_lot)
                 return {'dataset': ds}
             except Exception as exc:
                 raise HTTPException(502, f'NSE live option chain unavailable: {exc}') from None
@@ -640,7 +800,8 @@ def install_history(app, session_fn, broker, market, prefix, snapshots: Snapshot
         except HTTPException:
             if provider == 'hybrid' and exch == 'nse_fo' and getattr(app.state, 'local_owner_mode', False) and not getattr(broker, '_has_mock_transport', False):
                 try:
-                    ds = await nse_live.snapshot_dataset(underlying, expiry)
+                    opt_lot, _, _ = await resolve_nfo_contract_meta(underlying, expiry)
+                    ds = await nse_live.snapshot_dataset(underlying, expiry, lot_size=opt_lot)
                     return {'dataset': ds}
                 except Exception:
                     pass

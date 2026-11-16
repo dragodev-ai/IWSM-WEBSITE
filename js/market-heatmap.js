@@ -189,6 +189,10 @@
     if (!host) return;
 
     const isGithubPages = /\.github\.io$/i.test(root.location?.hostname || '');
+    const isFile = root.location?.protocol === 'file:';
+    let apiBase = '';
+    let apiProbePromise = null;
+    let usingStaticBundle = false;
     let prefs = loadPrefs();
     let watchlist = loadWatchlist();
     let universesList = [];
@@ -488,6 +492,7 @@
 
             <div class="hm-dialog-actions">
               <button type="button" class="primary" id="hm-dlg-open-sim">Open in Options Simulator</button>
+              <button type="button" id="hm-dlg-open-backtest">Backtest Historical Strategy</button>
               <button type="button" id="hm-dlg-open-builder">Load Spot in Strategy Builder</button>
               <button type="button" id="hm-dlg-watch">☆ Add to Watchlist</button>
             </div>
@@ -704,13 +709,13 @@
           : currentStatus.feedState || 'MARKET_CLOSED';
 
       pill.dataset.state = state;
-      const connLabel = isGithubPages
-        ? 'Static CDN Snapshot'
+      const connLabel = isGithubPages || usingStaticBundle
+        ? 'Verified Exchange Snapshot'
         : wsConnected
           ? 'WS Live'
           : 'HTTP Poll';
 
-      const badgeWord = isGithubPages
+      const badgeWord = isGithubPages || usingStaticBundle
         ? 'MARKET SNAPSHOT'
         : state === 'LIVE'
           ? 'LIVE'
@@ -1086,41 +1091,137 @@
       );
     }
 
+    async function probeLocalHeatmapBackend() {
+      if (apiBase) return apiBase;
+      if (isGithubPages) return '';
+      if (apiProbePromise) return apiProbePromise;
+      apiProbePromise = (async () => {
+        for (const cand of ['http://127.0.0.1:4174', 'http://localhost:4174']) {
+          try {
+            if (root.location?.origin === cand) {
+              apiBase = '';
+              return cand;
+            }
+            const r = await fetch(cand + '/api/heatmap/status', {
+              credentials: 'omit',
+              signal: AbortSignal.timeout(2500),
+            });
+            if (r.ok && (r.headers.get('content-type') || '').includes('application/json')) {
+              apiBase = cand;
+              usingStaticBundle = false;
+              return cand;
+            }
+          } catch {}
+        }
+        return '';
+      })().finally(() => {
+        apiProbePromise = null;
+      });
+      return apiProbePromise;
+    }
+
+    function readFromWindowBundle(path) {
+      const b = root.IWSMHeatmapBundle;
+      if (!b) return null;
+      usingStaticBundle = true;
+      if (path.startsWith('universes')) {
+        return { universes: b.universes || [], status: b.status || null };
+      }
+      if (path.startsWith('securities')) {
+        const u = new URL(path, 'https://iwsm.local').searchParams.get('universe') || 'NIFTY 50';
+        const syms = b.membersByUniverse?.[u] || b.membersByUniverse?.['NIFTY 50'] || [];
+        const secs = syms.map(sym => b.stocksBySymbol?.[sym]).filter(Boolean);
+        return {
+          universe: u,
+          totalUniverseCount: secs.length,
+          matchedCount: secs.length,
+          securities: secs,
+          status: b.status || null,
+          metrics: b.metrics || null,
+        };
+      }
+      if (path.startsWith('stock/')) {
+        const sym = decodeURIComponent(path.slice('stock/'.length)).toUpperCase();
+        const q = allUniverseSecurities.get(sym) || b.stocksBySymbol?.[sym] || null;
+        return { quote: q, master: q, extra: {}, intradayChart: [] };
+      }
+      return null;
+    }
+
     async function fetchHeatmapJson(path, init) {
       if (isGithubPages) {
         return fetchStaticFallback(path);
       }
-      const res = await fetch('/api/heatmap/' + path, init);
-      if (!res.ok) {
-        let msg = `HTTP ${res.status}`;
-        try {
-          const j = await res.json();
-          msg = j.detail || msg;
-        } catch {}
-        throw new Error(msg);
+      if (isFile && !apiBase) {
+        await probeLocalHeatmapBackend();
       }
-      return res.json();
+      const fetchOpts = {
+        ...(init || {}),
+        ...(isFile || apiBase ? { credentials: 'omit' } : {}),
+      };
+      try {
+        if (!isFile || apiBase) {
+          const res = await fetch((apiBase || '') + '/api/heatmap/' + path, fetchOpts);
+          if (res.ok && (res.headers.get('content-type') || '').includes('application/json')) {
+            usingStaticBundle = false;
+            return await res.json();
+          }
+          if (!apiBase && (res.status === 404 || !(res.headers.get('content-type') || '').includes('application/json'))) {
+            const disc = await probeLocalHeatmapBackend();
+            if (disc && apiBase) {
+              const res2 = await fetch(apiBase + '/api/heatmap/' + path, { ...fetchOpts, credentials: 'omit' });
+              if (res2.ok) {
+                usingStaticBundle = false;
+                return await res2.json();
+              }
+            }
+          }
+        }
+      } catch {
+        if (!apiBase) {
+          const disc = await probeLocalHeatmapBackend();
+          if (disc && apiBase) {
+            try {
+              const res2 = await fetch(apiBase + '/api/heatmap/' + path, { ...fetchOpts, credentials: 'omit' });
+              if (res2.ok) {
+                usingStaticBundle = false;
+                return await res2.json();
+              }
+            } catch {}
+          }
+        }
+      }
+      return fetchStaticFallback(path);
     }
 
     async function fetchStaticFallback(path) {
-      if (path.startsWith('universes')) {
-        const r = await fetch('assets/heatmap-cache/universes.json');
-        if (!r.ok) throw new Error('Static heatmap universes unavailable');
-        return r.json();
+      if (!isFile) {
+        try {
+          if (path.startsWith('universes')) {
+            const r = await fetch('assets/heatmap-cache/universes.json');
+            if (r.ok) {
+              usingStaticBundle = true;
+              return await r.json();
+            }
+          } else if (path.startsWith('securities')) {
+            const u = new URL(path, 'https://iwsm.local').searchParams.get('universe') || 'NIFTY 50';
+            const slug = u.replace(/[^A-Za-z0-9]+/g, '_');
+            const r = await fetch(`assets/heatmap-cache/universe-${slug}.json`);
+            if (r.ok) {
+              usingStaticBundle = true;
+              return await r.json();
+            }
+          }
+        } catch {}
       }
-      if (path.startsWith('securities')) {
-        const u = new URL(path, 'https://iwsm.local').searchParams.get('universe') || 'NIFTY 50';
-        const slug = u.replace(/[^A-Za-z0-9]+/g, '_');
-        const r = await fetch(`assets/heatmap-cache/universe-${slug}.json`);
-        if (!r.ok) throw new Error(`Static cache for ${u} unavailable`);
-        return r.json();
-      }
+      const bundled = readFromWindowBundle(path);
+      if (bundled) return bundled;
       if (path.startsWith('stock/')) {
         const sym = decodeURIComponent(path.slice('stock/'.length)).toUpperCase();
         const q = allUniverseSecurities.get(sym);
         return { quote: q || null, master: q || null, extra: {}, intradayChart: [] };
       }
-      throw new Error('Endpoint requires live backend');
+      throw new Error('Market-data cache unavailable; start local preview server (node tools/local-preview.cjs).');
     }
 
     function ingestInitialPayload(payload) {
@@ -1201,16 +1302,25 @@
       }, 12000);
     }
 
-    function connectWebSocket() {
+    async function connectWebSocket() {
       if (isGithubPages) {
         loadUniverseHttp(prefs.universe, false);
         return;
       }
+      if ((isFile || usingStaticBundle) && !apiBase) {
+        const disc = await probeLocalHeatmapBackend();
+        if (!disc) return;
+      }
       if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
       clearTimeout(reconnectTimer);
 
-      const proto = root.location?.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${proto}//${root.location.host}/api/heatmap/ws?universe=${encodeURIComponent(prefs.universe)}`;
+      let wsUrl;
+      if (apiBase) {
+        wsUrl = apiBase.replace(/^http/i, 'ws') + `/api/heatmap/ws?universe=${encodeURIComponent(prefs.universe)}`;
+      } else {
+        const proto = root.location?.protocol === 'https:' ? 'wss:' : 'ws:';
+        wsUrl = `${proto}//${root.location.host}/api/heatmap/ws?universe=${encodeURIComponent(prefs.universe)}`;
+      }
       try {
         ws = new WebSocket(wsUrl);
       } catch {
@@ -1407,6 +1517,41 @@
               simSearch.value = s.symbol;
               simSearch.dispatchEvent(new Event('input', { bubbles: true }));
               simSearch.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+            }
+          }, 120);
+        };
+
+        el('dlg-open-backtest').onclick = () => {
+          dlg.close();
+          root.location.hash = '#historical-lab';
+          setTimeout(() => {
+            const archSym = document.getElementById('archive-symbol');
+            const archForm = document.getElementById('archive-window-form');
+            const histLab = document.getElementById('historical-lab');
+            if (histLab) histLab.scrollIntoView({ block: 'start', behavior: 'smooth' });
+            if (archSym && [...archSym.options].some(o => o.value === s.symbol)) {
+              archSym.value = s.symbol;
+              archSym.dispatchEvent(new Event('change', { bubbles: true }));
+              const recSel = document.getElementById('archive-recorded-date');
+              if (recSel && recSel.options.length > 1) {
+                const startIdx = Math.max(0, recSel.options.length - 5);
+                recSel.value = recSel.options[startIdx].value;
+                recSel.dispatchEvent(new Event('change', { bubbles: true }));
+              }
+              if (archForm) archForm.requestSubmit?.();
+            } else {
+              // Fallback to Theoretical Model Replay for cash-only equities not in F&O
+              const symInput = document.getElementById('symbol');
+              const spotInput = document.getElementById('spot');
+              const mktForm = document.getElementById('market-form');
+              if (symInput) symInput.value = s.symbol;
+              if (spotInput && s.price) spotInput.value = String(Math.round(s.price * 100) / 100);
+              if (mktForm) mktForm.requestSubmit?.();
+              const histMode = document.getElementById('history-mode');
+              if (histMode) {
+                histMode.value = 'model';
+                histMode.dispatchEvent(new Event('change', { bubbles: true }));
+              }
             }
           }, 120);
         };

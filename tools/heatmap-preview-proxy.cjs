@@ -7,6 +7,14 @@ const backend = require('./aliceblue-supervisor.cjs').createSupervisor();
 
 function loopbackCorsHeaders(req) {
   const origin = req.headers.origin || '';
+  if (origin === 'null') {
+    return {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Private-Network': 'true',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    };
+  }
   if (/^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/i.test(origin) || /^https:\/\/dragodev-ai\.github\.io$/i.test(origin)) {
     return {
       'Access-Control-Allow-Origin': origin,
