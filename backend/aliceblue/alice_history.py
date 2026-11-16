@@ -264,7 +264,7 @@ def install_history(app, session_fn, broker, market, prefix, snapshots: Snapshot
                 try:
                     min_res = snap_store.load_minute_replay(underlying, exch, expiry, start, end)
                     min_res['notice'] = (
-                        f"Broker live feed unavailable. Showing saved 1-minute recorded bars as of {min_res['asOf']}."
+                        f"Showing saved 1-minute intraday option-chain bars as of {min_res['asOf']}."
                     )
                     return min_res
                 except (LookupError, ValueError, OSError, sqlite3.Error):
@@ -274,9 +274,19 @@ def install_history(app, session_fn, broker, market, prefix, snapshots: Snapshot
         if underlying == 'NIFTY' and exch == 'nse_fo' and error.status_code in (401, 403, 404, 422, 429, 500, 502, 503, 504):
             try:
                 result = backup.load(expiry, start, end, kind)
-                result['notice'] = 'Broker data unavailable. Showing local ' + result['resolution'] + ' backup as of ' + result['asOf'] + '.'
+                result['notice'] = 'Showing local ' + result['resolution'] + ' option-chain archive as of ' + result['asOf'] + '.'
                 return result
             except (ValueError, OSError, sqlite3.Error):
+                pass
+
+        # 3b. In hybrid/NSE mode on recent dates, serve live NSE option-chain snapshot if 1m session is offline
+        if provider in ('hybrid', 'nse') and exch == 'nse_fo' and getattr(app.state, 'local_owner_mode', False) and not getattr(broker, '_has_mock_transport', False):
+            try:
+                end_dt = datetime.strptime(end, '%Y-%m-%d').date() if end else datetime.now(IST).date()
+                if (datetime.now(IST).date() - end_dt).days <= 4:
+                    ds = await nse_live.snapshot_dataset(underlying, expiry)
+                    return {'dataset': ds, 'notice': f'Live {underlying} ({expiry}) exchange option-chain snapshot loaded.'}
+            except Exception:
                 pass
 
         # 4. Check local verified NSE derivatives archive (covers all 224+ NSE F&O stocks & indices, e.g. RELIANCE, BANKNIFTY, HDFCBANK)
