@@ -34,7 +34,7 @@
 #options-simulator .pp-inspector:focus-within{position:static;width:auto;height:auto;clip-path:none}
 #options-simulator .pp-readout{font-size:11px;min-height:18px}
 #options-simulator .opstra-chain-section{border:0;border-radius:0;margin-top:30px}
-#options-simulator .opstra-chain-section>.opstra-table-container{max-height:none}
+#options-simulator .opstra-chain-section>.opstra-table-container{max-height:min(70vh,620px);overflow:auto}
 #options-simulator .opstra-chain-table{font-size:12px}
 #options-simulator .opstra-chain-table td{height:32px;padding:5px 9px}
 #options-simulator .opstra-chain-title{font:600 14px/1.5 Arial,sans-serif!important;text-align:center}

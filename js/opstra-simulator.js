@@ -282,6 +282,7 @@
                 <option value="25" selected>ATM ±25 Strikes</option>
                 <option value="0">All Strikes</option>
               </select>
+              <button type="button" class="opstra-btn-soft" id="opstra-btn-center-atm" title="Scroll Option Chain to ATM strike">⌖ ATM</button>
               <label class="opstra-inline-toggle" title="Show Chg OI, Volume, and Bid/Ask columns">
                 <input type="checkbox" id="opstra-chain-detail-cols">
                 <span>Full Columns</span>
@@ -313,27 +314,32 @@
             <span class="opstra-greeks-attribution">IV &amp; Greeks: Calculated (European BSM / Black-76, ACT/365) unless exchange-attributed</span>
           </div>
 
-          <div class="opstra-table-container">
+          <div class="opstra-table-container" id="opstra-chain-scroll">
             <table class="opstra-chain-table" aria-label="Option chain strike quotes and actions">
               <thead id="opstra-chain-head">
-                <tr>
-                  <th scope="col" style="text-align:center;">Call B/S</th>
-                  <th scope="col">Call OI</th>
-                  <th scope="col" class="opstra-col-detail" hidden>Chg OI</th>
-                  <th scope="col" class="opstra-col-detail" hidden>Vol</th>
-                  <th scope="col" class="opstra-col-detail" hidden>Bid / Ask</th>
-                  <th scope="col">Call LTP</th>
-                  <th scope="col">Call IV</th>
-                  <th scope="col">Call Delta</th>
+                <tr class="opstra-chain-group-row">
+                  <td class="opstra-group-cell opstra-group-call opstra-group-side" colspan="5" role="presentation"><span class="opstra-side-dot call" aria-hidden="true"></span>CALL OPTIONS (CE)</td>
+                  <td class="opstra-group-cell opstra-group-strike" role="presentation">STRIKE</td>
+                  <td class="opstra-group-cell opstra-group-put opstra-group-side" colspan="5" role="presentation"><span class="opstra-side-dot put" aria-hidden="true"></span>PUT OPTIONS (PE)</td>
+                </tr>
+                <tr class="opstra-chain-cols-row">
+                  <th scope="col" class="opstra-th-call opstra-th-act">Call B/S</th>
+                  <th scope="col" class="opstra-th-call">Call OI</th>
+                  <th scope="col" class="opstra-th-call opstra-col-detail" hidden>Call Chg OI</th>
+                  <th scope="col" class="opstra-th-call opstra-col-detail" hidden>Call Vol</th>
+                  <th scope="col" class="opstra-th-call opstra-col-detail" hidden>Call Bid / Ask</th>
+                  <th scope="col" class="opstra-th-call opstra-th-ltp">Call LTP</th>
+                  <th scope="col" class="opstra-th-call">Call IV</th>
+                  <th scope="col" class="opstra-th-call opstra-th-delta">Call Delta</th>
                   <th scope="col" class="opstra-th-strike">Strike</th>
-                  <th scope="col">Put Delta</th>
-                  <th scope="col">Put IV</th>
-                  <th scope="col">Put LTP</th>
-                  <th scope="col" class="opstra-col-detail" hidden>Bid / Ask</th>
-                  <th scope="col" class="opstra-col-detail" hidden>Vol</th>
-                  <th scope="col" class="opstra-col-detail" hidden>Chg OI</th>
-                  <th scope="col">Put OI</th>
-                  <th scope="col" style="text-align:center;">Put B/S</th>
+                  <th scope="col" class="opstra-th-put opstra-th-delta">Put Delta</th>
+                  <th scope="col" class="opstra-th-put">Put IV</th>
+                  <th scope="col" class="opstra-th-put opstra-th-ltp">Put LTP</th>
+                  <th scope="col" class="opstra-th-put opstra-col-detail" hidden>Put Bid / Ask</th>
+                  <th scope="col" class="opstra-th-put opstra-col-detail" hidden>Put Vol</th>
+                  <th scope="col" class="opstra-th-put opstra-col-detail" hidden>Put Chg OI</th>
+                  <th scope="col" class="opstra-th-put">Put OI</th>
+                  <th scope="col" class="opstra-th-put opstra-th-act">Put B/S</th>
                 </tr>
               </thead>
               <tbody id="opstra-chain-body"></tbody>

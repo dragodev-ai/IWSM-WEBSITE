@@ -1680,3 +1680,219 @@ html[data-theme=dark] #options-simulator .opstra-td-itm {
   color: var(--muted);
   line-height: 1.45;
 }
+
+
+/* ==========================================================================
+   Sticky 2-Tier Option Chain Header & High-Clarity Call / Strike / Put Grid
+   ========================================================================== */
+#options-simulator .opstra-chain-section > .opstra-table-container {
+  max-height: min(70vh, 620px) !important;
+  overflow: auto !important;
+  overscroll-behavior: contain;
+  border: 1px solid var(--op-border) !important;
+  border-radius: 8px !important;
+  position: relative;
+}
+
+#options-simulator .opstra-chain-table {
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  width: 100%;
+}
+
+/* Tier 1 Sticky Group Banner: CALL OPTIONS (CE) | STRIKE | PUT OPTIONS (PE) */
+#options-simulator .opstra-chain-table thead tr.opstra-chain-group-row td {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 12 !important;
+  height: 30px !important;
+  min-height: 30px !important;
+  padding: 4px 12px !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.08em;
+  text-align: center !important;
+  box-sizing: border-box;
+  border-bottom: 1px solid var(--op-border) !important;
+}
+
+#options-simulator .opstra-side-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+#options-simulator .opstra-side-dot.call {
+  background: #16a34a;
+}
+#options-simulator .opstra-side-dot.put {
+  background: #dc2626;
+}
+
+#options-simulator .opstra-chain-table thead td.opstra-group-call {
+  background: #daf0e4 !important;
+  color: #0d5c3a !important;
+}
+#options-simulator .opstra-chain-table thead td.opstra-group-strike {
+  background: #cfe3d8 !important;
+  color: #152a22 !important;
+  border-inline: 2px solid #9ec4b0 !important;
+}
+#options-simulator .opstra-chain-table thead td.opstra-group-put {
+  background: #fde2e2 !important;
+  color: #991b1b !important;
+}
+
+html[data-theme=dark] #options-simulator .opstra-chain-table thead td.opstra-group-call {
+  background: #0e2d24 !important;
+  color: #6ee7b7 !important;
+  border-bottom-color: #1f4d3d !important;
+}
+html[data-theme=dark] #options-simulator .opstra-chain-table thead td.opstra-group-strike {
+  background: #172b42 !important;
+  color: #f8fafc !important;
+  border-inline: 2px solid #3c5d82 !important;
+  border-bottom-color: #3c5d82 !important;
+}
+html[data-theme=dark] #options-simulator .opstra-chain-table thead td.opstra-group-put {
+  background: #30161d !important;
+  color: #fca5a5 !important;
+  border-bottom-color: #572633 !important;
+}
+
+/* Tier 2 Sticky Column Headers */
+#options-simulator .opstra-chain-table thead tr.opstra-chain-cols-row th {
+  position: sticky !important;
+  top: 30px !important;
+  z-index: 11 !important;
+  padding: 8px 10px !important;
+  font-size: 11.5px !important;
+  font-weight: 700 !important;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+#options-simulator .opstra-chain-table thead th.opstra-th-act {
+  text-align: center !important;
+}
+
+#options-simulator .opstra-chain-table thead th.opstra-th-call {
+  background: #eef8f2 !important;
+  color: #154731 !important;
+  border-bottom: 2px solid #16a34a !important;
+  border-right: 1px solid #d2e7da !important;
+}
+#options-simulator .opstra-chain-table thead th.opstra-th-call.opstra-th-ltp {
+  background: #e0f2e8 !important;
+  color: #0b4a2d !important;
+}
+#options-simulator .opstra-chain-table thead th.opstra-th-strike {
+  background: #dfece5 !important;
+  color: #152a22 !important;
+  text-align: center !important;
+  border-bottom: 2px solid #126744 !important;
+  border-inline: 2px solid #9ec4b0 !important;
+}
+#options-simulator .opstra-chain-table thead th.opstra-th-put {
+  background: #fef2f2 !important;
+  color: #7f1d1d !important;
+  border-bottom: 2px solid #dc2626 !important;
+  border-right: 1px solid #f3d4d4 !important;
+}
+#options-simulator .opstra-chain-table thead th.opstra-th-put.opstra-th-ltp {
+  background: #fde6e6 !important;
+  color: #7f1d1d !important;
+}
+#options-simulator .opstra-chain-table thead th:last-child {
+  border-right: 0 !important;
+}
+
+html[data-theme=dark] #options-simulator .opstra-chain-table thead th.opstra-th-call {
+  background: #0d2220 !important;
+  color: #a7f3d0 !important;
+  border-bottom: 2px solid #10b981 !important;
+  border-right: 1px solid rgba(52, 211, 153, 0.16) !important;
+}
+html[data-theme=dark] #options-simulator .opstra-chain-table thead th.opstra-th-call.opstra-th-ltp {
+  background: #122f2a !important;
+  color: #d1fae5 !important;
+}
+html[data-theme=dark] #options-simulator .opstra-chain-table thead th.opstra-th-strike {
+  background: #172b42 !important;
+  color: #ffffff !important;
+  border-bottom: 2px solid #34d399 !important;
+  border-inline: 2px solid #3c5d82 !important;
+}
+html[data-theme=dark] #options-simulator .opstra-chain-table thead th.opstra-th-put {
+  background: #24141b !important;
+  color: #fecaca !important;
+  border-bottom: 2px solid #ef4444 !important;
+  border-right: 1px solid rgba(248, 113, 113, 0.16) !important;
+}
+html[data-theme=dark] #options-simulator .opstra-chain-table thead th.opstra-th-put.opstra-th-ltp {
+  background: #301922 !important;
+  color: #fee2e2 !important;
+}
+
+/* Body Column Dividers, Center Strike Spine & Price/Greek Readability */
+#options-simulator .opstra-chain-table tbody td {
+  border-right: 1px solid rgba(148, 163, 184, 0.22);
+  border-bottom: 1px solid var(--op-border);
+  padding: 6px 10px;
+}
+#options-simulator .opstra-chain-table tbody td:last-child {
+  border-right: 0;
+}
+
+#options-simulator .opstra-chain-table tbody td.opstra-td-strike {
+  text-align: center !important;
+  font-weight: 700;
+  background: #ecf5f0;
+  border-inline: 2px solid #9ec4b0 !important;
+}
+html[data-theme=dark] #options-simulator .opstra-chain-table tbody td.opstra-td-strike {
+  background: #132336;
+  border-inline: 2px solid #3c5d82 !important;
+}
+
+#options-simulator .opstra-chain-table tbody td.opstra-td-call-ltp {
+  font-weight: 700;
+  color: #0d5c3a;
+  background-color: rgba(16, 185, 129, 0.05);
+}
+#options-simulator .opstra-chain-table tbody td.opstra-td-put-ltp {
+  font-weight: 700;
+  color: #991b1b;
+  background-color: rgba(239, 68, 68, 0.05);
+}
+html[data-theme=dark] #options-simulator .opstra-chain-table tbody td.opstra-td-call-ltp {
+  color: #6ee7b7;
+  background-color: rgba(16, 185, 129, 0.07);
+}
+html[data-theme=dark] #options-simulator .opstra-chain-table tbody td.opstra-td-put-ltp {
+  color: #fca5a5;
+  background-color: rgba(239, 68, 68, 0.07);
+}
+
+#options-simulator .opstra-chain-table tbody td.opstra-td-call-ltp.opstra-td-itm,
+#options-simulator .opstra-chain-table tbody td.opstra-td-put-ltp.opstra-td-itm {
+  background-color: rgba(245, 158, 11, 0.14);
+}
+
+#options-simulator .opstra-chain-table tbody td.opstra-td-iv {
+  color: var(--op-muted);
+  font-size: 11.5px;
+}
+#options-simulator .opstra-chain-table tbody td.opstra-td-delta {
+  font-weight: 600;
+  font-size: 11.5px;
+}
+
+#options-simulator .opstra-chain-table tbody tr:hover td {
+  filter: brightness(0.96);
+}
+html[data-theme=dark] #options-simulator .opstra-chain-table tbody tr:hover td {
+  filter: brightness(1.18);
+}

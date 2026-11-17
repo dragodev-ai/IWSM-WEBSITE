@@ -1215,6 +1215,7 @@
 
         // Option Chain Table with ITM/OTM tint, ATM badge, Active-Position highlight, OI bars, B/S buttons & optional detail columns
         host.querySelectorAll('#opstra-chain-head .opstra-col-detail').forEach(th => { th.hidden = !showDetailCols; });
+        host.querySelectorAll('#opstra-chain-head .opstra-group-side').forEach(td => { td.colSpan = showDetailCols ? 8 : 5; });
         const refForChain = Number.isFinite(spot) && spot > 0 ? spot : future?.close;
         const useFutForChain = !(Number.isFinite(spot) && spot > 0) && Number.isFinite(future?.close);
         const activeStrikes = new Map();
@@ -1240,14 +1241,15 @@
         const maxPutOi = Math.max(1, ...chainRows.filter(q => q.type === 'PE' && Number.isFinite(q.oi)).map(q => q.oi));
 
         function actionCell(q, sideType) {
-          if (!q) return '<td class="opstra-td-act">—</td>';
+          const sideCls = sideType === 'CE' ? 'opstra-td-call' : 'opstra-td-put';
+          if (!q) return '<td class="opstra-td-act ' + sideCls + '">—</td>';
           const idx = chainRows.indexOf(q);
           const dis = q.volume === 0 ? 'disabled title="Zero recorded volume at this timestamp"' : '';
           return (
-            '<td class="opstra-td-act">' +
+            '<td class="opstra-td-act ' + sideCls + '">' +
             '<div class="opstra-bs-group">' +
-            '<button type="button" class="opstra-btn-bs opstra-btn-b" data-quote="' + idx + '" data-side="1" ' + dis + ' aria-label="Buy ' + q.strike + ' ' + sideType + '">B</button>' +
-            '<button type="button" class="opstra-btn-bs opstra-btn-s" data-quote="' + idx + '" data-side="-1" ' + dis + ' aria-label="Sell ' + q.strike + ' ' + sideType + '">S</button>' +
+            '<button type="button" class="opstra-btn-bs opstra-btn-b" data-quote="' + idx + '" data-side="1" ' + dis + ' title="Buy ' + q.strike + ' ' + sideType + '" aria-label="Buy ' + q.strike + ' ' + sideType + '">B</button>' +
+            '<button type="button" class="opstra-btn-bs opstra-btn-s" data-quote="' + idx + '" data-side="-1" ' + dis + ' title="Sell ' + q.strike + ' ' + sideType + '" aria-label="Sell ' + q.strike + ' ' + sideType + '">S</button>' +
             '</div>' +
             '</td>'
           );
@@ -1270,34 +1272,42 @@
 
                 const ceBidAsk = ce && (Number.isFinite(ce.bid) || Number.isFinite(ce.ask)) ? numFixed(ce.bid, 2) + ' / ' + numFixed(ce.ask, 2) : '—';
                 const peBidAsk = pe && (Number.isFinite(pe.bid) || Number.isFinite(pe.ask)) ? numFixed(pe.bid, 2) + ' / ' + numFixed(pe.ask, 2) : '—';
+                const ceDeltaTxt = gCe.g ? (gCe.g.delta > 0 ? '+' : '') + numFixed(gCe.g.delta, 2) : '—';
+                const peDeltaTxt = gPe.g ? (gPe.g.delta > 0 ? '+' : '') + numFixed(gPe.g.delta, 2) : '—';
 
                 return (
                   '<tr' + (rowCls ? ' class="' + rowCls + '"' : '') + '>' +
                   actionCell(ce, 'CE') +
-                  '<td class="' + callItm + '"><div class="opstra-oi-cell"><span class="opstra-oi-bar call" style="width:' + callOiPct + '%"></span><span>' + (ce && Number.isFinite(ce.oi) ? num(ce.oi, 0) : '—') + '</span></div></td>' +
-                  (showDetailCols ? '<td class="' + callItm + '">' + (ce && Number.isFinite(ce.oiChange) ? (ce.oiChange > 0 ? '+' : '') + num(ce.oiChange, 0) : '—') + '</td>' : '') +
-                  (showDetailCols ? '<td class="' + callItm + '">' + (ce && Number.isFinite(ce.volume) ? num(ce.volume, 0) : '—') + '</td>' : '') +
-                  (showDetailCols ? '<td class="' + callItm + '">' + ceBidAsk + '</td>' : '') +
-                  '<td class="' + callItm + ' opstra-td-ltp">' + (ce ? numFixed(ce.close, 2) : '—') + '</td>' +
-                  '<td class="' + callItm + '">' + (gCe.iv === null ? '—' : numFixed(gCe.iv * 100, 1)) + '</td>' +
-                  '<td class="' + callItm + '">' + (gCe.g ? numFixed(gCe.g.delta, 2) : '—') + '</td>' +
+                  '<td class="opstra-td-call opstra-td-oi' + callItm + '"><div class="opstra-oi-cell"><span class="opstra-oi-bar call" style="width:' + callOiPct + '%"></span><span>' + (ce && Number.isFinite(ce.oi) ? num(ce.oi, 0) : '—') + '</span></div></td>' +
+                  (showDetailCols ? '<td class="opstra-td-call' + callItm + '">' + (ce && Number.isFinite(ce.oiChange) ? (ce.oiChange > 0 ? '+' : '') + num(ce.oiChange, 0) : '—') + '</td>' : '') +
+                  (showDetailCols ? '<td class="opstra-td-call' + callItm + '">' + (ce && Number.isFinite(ce.volume) ? num(ce.volume, 0) : '—') + '</td>' : '') +
+                  (showDetailCols ? '<td class="opstra-td-call' + callItm + '">' + ceBidAsk + '</td>' : '') +
+                  '<td class="opstra-td-call opstra-td-ltp opstra-td-call-ltp' + callItm + '">' + (ce ? numFixed(ce.close, 2) : '—') + '</td>' +
+                  '<td class="opstra-td-call opstra-td-iv' + callItm + '">' + (gCe.iv === null ? '—' : numFixed(gCe.iv * 100, 1) + '%') + '</td>' +
+                  '<td class="opstra-td-call opstra-td-delta' + callItm + '">' + ceDeltaTxt + '</td>' +
                   '<td class="opstra-td-strike"><strong>' + num(k, 0) + '</strong>' +
                   (isAtm ? '<span class="opstra-strike-tag atm">ATM</span>' : '') +
                   (posBadges ? '<span class="opstra-strike-tag pos">' + esc(posBadges.join(' ')) + '</span>' : '') +
                   '</td>' +
-                  '<td class="' + putItm + '">' + (gPe.g ? numFixed(gPe.g.delta, 2) : '—') + '</td>' +
-                  '<td class="' + putItm + '">' + (gPe.iv === null ? '—' : numFixed(gPe.iv * 100, 1)) + '</td>' +
-                  '<td class="' + putItm + ' opstra-td-ltp">' + (pe ? numFixed(pe.close, 2) : '—') + '</td>' +
-                  (showDetailCols ? '<td class="' + putItm + '">' + peBidAsk + '</td>' : '') +
-                  (showDetailCols ? '<td class="' + putItm + '">' + (pe && Number.isFinite(pe.volume) ? num(pe.volume, 0) : '—') + '</td>' : '') +
-                  (showDetailCols ? '<td class="' + putItm + '">' + (pe && Number.isFinite(pe.oiChange) ? (pe.oiChange > 0 ? '+' : '') + num(pe.oiChange, 0) : '—') + '</td>' : '') +
-                  '<td class="' + putItm + '"><div class="opstra-oi-cell"><span class="opstra-oi-bar put" style="width:' + putOiPct + '%"></span><span>' + (pe && Number.isFinite(pe.oi) ? num(pe.oi, 0) : '—') + '</span></div></td>' +
+                  '<td class="opstra-td-put opstra-td-delta' + putItm + '">' + peDeltaTxt + '</td>' +
+                  '<td class="opstra-td-put opstra-td-iv' + putItm + '">' + (gPe.iv === null ? '—' : numFixed(gPe.iv * 100, 1) + '%') + '</td>' +
+                  '<td class="opstra-td-put opstra-td-ltp opstra-td-put-ltp' + putItm + '">' + (pe ? numFixed(pe.close, 2) : '—') + '</td>' +
+                  (showDetailCols ? '<td class="opstra-td-put' + putItm + '">' + peBidAsk + '</td>' : '') +
+                  (showDetailCols ? '<td class="opstra-td-put' + putItm + '">' + (pe && Number.isFinite(pe.volume) ? num(pe.volume, 0) : '—') + '</td>' : '') +
+                  (showDetailCols ? '<td class="opstra-td-put' + putItm + '">' + (pe && Number.isFinite(pe.oiChange) ? (pe.oiChange > 0 ? '+' : '') + num(pe.oiChange, 0) : '—') + '</td>' : '') +
+                  '<td class="opstra-td-put opstra-td-oi' + putItm + '"><div class="opstra-oi-cell"><span class="opstra-oi-bar put" style="width:' + putOiPct + '%"></span><span>' + (pe && Number.isFinite(pe.oi) ? num(pe.oi, 0) : '—') + '</span></div></td>' +
                   actionCell(pe, 'PE') +
                   '</tr>'
                 );
               })
               .join('')
           : '<tr><td colspan="' + (showDetailCols ? 17 : 11) + '" class="opstra-empty">No strikes match the current filter for ' + esc(viewExpiry || s.symbol) + '.</td></tr>';
+
+        const chainContextKey = (s.symbol || '') + '|' + (viewExpiry || '') + '|' + chainRangeCount;
+        if (host.dataset.centeredChainKey !== chainContextKey && !chainSearchQuery) {
+          host.dataset.centeredChainKey = chainContextKey;
+          centerAtmRowInScroll(false);
+        }
 
         el('save-candles').hidden = !bundle || bundle.synthetic === true;
         renderChart(a);
@@ -2182,11 +2192,26 @@
         if (!x.hidden) x.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       };
 
+      function centerAtmRowInScroll(smooth = true) {
+        const scroller = el('chain-scroll') || host.querySelector('.opstra-table-container');
+        const atmRow = scroller && scroller.querySelector('.opstra-row-atm');
+        if (!scroller || !atmRow || scroller.scrollHeight <= scroller.clientHeight) return;
+        const headH = scroller.querySelector('thead')?.offsetHeight || 64;
+        const visibleBodyH = Math.max(80, scroller.clientHeight - headH);
+        const targetTop = Math.max(0, atmRow.offsetTop - headH - visibleBodyH / 2 + atmRow.offsetHeight / 2);
+        if (smooth && typeof scroller.scrollTo === 'function') {
+          scroller.scrollTo({ top: targetTop, behavior: 'smooth' });
+        } else {
+          scroller.scrollTop = targetTop;
+        }
+      }
+
       // Option chain filters & B/S clicks
       el('chain-search').oninput = e => { chainSearchQuery = (e.target.value || '').trim(); render(); };
       el('chain-range').onchange = e => { chainRangeCount = +e.target.value; render(); };
       el('chain-detail-cols').onchange = e => { showDetailCols = e.target.checked; render(); };
       el('quick-trade').onchange = e => { quickTrade = e.target.checked; };
+      if (el('btn-center-atm')) el('btn-center-atm').onclick = () => centerAtmRowInScroll(true);
 
       el('chain-body').onclick = guard(e => {
         const b = e.target.closest('[data-quote]');
