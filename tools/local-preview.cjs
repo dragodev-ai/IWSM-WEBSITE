@@ -42,6 +42,7 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname === '/.netlify/functions/login-report') return loginRoute(req, res);
   if (url.pathname.startsWith('/api/aliceblue/')) return require('./aliceblue-preview-proxy.cjs')(req, res, url);
   if (url.pathname.startsWith('/api/heatmap/')) return require('./heatmap-preview-proxy.cjs').httpProxy(req, res, url);
+  if (url.pathname === '/api/algo-strategy') return require('./algo-strategy-handler.cjs')(req, res);
   if (url.pathname === '/api/bhav-analysis') return require('./bhav-analysis-handler.cjs')(req, res);
   if (url.pathname === '/api/candle-library') return require('./candle-library-handler.cjs')(req, res, url);
   if (url.pathname === '/api/nse-reference') return require('./nse-official-mcp.cjs').handler(req, res, url);
