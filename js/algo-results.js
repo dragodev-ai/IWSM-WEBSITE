@@ -35,13 +35,6 @@
     return String(parts[2]).padStart(2, '0') + ' ' + MONTHS_SHORT[parts[1] - 1] + ' ' + parts[0];
   }
 
-  function formatRangeButtonLabel(fromYmd, toYmd) {
-    const f = String(fromYmd || '').slice(0, 10).split('-').map(Number);
-    const t = String(toYmd || '').slice(0, 10).split('-').map(Number);
-    if (f.length !== 3 || t.length !== 3) return fromYmd + ' - ' + toYmd;
-    return `${MONTHS_SHORT[f[1] - 1]} ${f[2]} ${f[0]} - ${MONTHS_SHORT[t[1] - 1]} ${t[2]} ${t[0]}`;
-  }
-
   function formatTimeIST(isoStr) {
     if (!isoStr) return '—';
     const m = String(isoStr).match(/T(\d{2}:\d{2}(?::\d{2})?)/);
@@ -51,29 +44,13 @@
   function mondayOfDateStr(ymd) {
     const [y, m, d] = String(ymd).slice(0, 10).split('-').map(Number);
     const dt = new Date(Date.UTC(y, m - 1, d));
-    const dow = dt.getUTCDay(); // 0=Sun, 1=Mon..6=Sat
+    const dow = dt.getUTCDay();
     const diff = (dow + 6) % 7;
     dt.setUTCDate(dt.getUTCDate() - diff);
     return dt.toISOString().slice(0, 10);
   }
 
-  function effectiveTradePnl(trade, mult, slipOn, slipPct) {
-    const raw = Number(trade.pnl) || 0;
-    if (!slipOn || !(slipPct > 0)) return raw * mult;
-    const half = slipPct / 100 / 2;
-    const buy = Number(trade.buy) || 0;
-    const sell = Number(trade.sell) || 0;
-    const diff = sell - buy;
-    if (Math.abs(diff) > 1e-12) {
-      const units = raw / diff;
-      const adjBuy = Math.round(buy * (1 + half) * 100) / 100;
-      const adjSell = Math.round(sell * (1 - half) * 100) / 100;
-      return (adjSell - adjBuy) * units * mult;
-    }
-    return raw * (1 - 2 * half) * mult;
-  }
-
-  function computeMetricsAndSeries(trades, baselineYmd, capital, baseCapital, slipOn, slipPct) {
+  function computeMetricsAndSeries(trades, baselineYmd, capital, baseCapital) {
     const mult = baseCapital > 0 ? capital / baseCapital : 1;
     const equityPoints = [{ date: formatDDMMMYYYY(baselineYmd), equity: capital }];
 
@@ -87,7 +64,7 @@
 
     for (let i = 0; i < trades.length; i++) {
       const t = trades[i];
-      const pnl = effectiveTradePnl(t, mult, slipOn, slipPct);
+      const pnl = (Number(t.pnl) || 0) * mult;
       runningPnl += pnl;
       equityPoints.push({
         date: formatDDMMMYYYY(t.date),
@@ -156,18 +133,8 @@
       period: 'overall',
       rangeFrom: firstDate,
       rangeTo: lastDate,
-      btFrom: firstDate,
-      btTo: lastDate,
-      slippageOn: false,
-      slippagePct: 0,
       page: 0,
     };
-
-    const lotOptionsHtml = Array.from({ length: 20 }, (_, idx) => {
-      const lots = idx + 1;
-      const margin = lots * baseCapital;
-      return `<option value="${margin}">${lots} Lot${lots > 1 ? 's' : ''} &nbsp;·&nbsp; REQ Margin ${formatCapitalCompact(margin)}</option>`;
-    }).join('');
 
     const extArrowSvg = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17L17 7"/><path d="M8 7h9v9"/></svg>`;
 
@@ -204,6 +171,7 @@
               </div>
               <button type="button" class="ar-cap-btn" id="ar-cap-inc" aria-label="Increase capital by 1 lot">+</button>
               <span class="ar-cap-lots-badge" id="ar-cap-lots-badge">1 Lot</span>
+              <button type="button" class="ar-cap-reset" id="ar-cap-reset" hidden>Reset</button>
             </div>
           </div>
           <div class="ar-top-item">
@@ -251,8 +219,9 @@
           </blockquote>
         </div>
 
-        <div class="ar-side-col">
-          <div class="ar-specs-card">
+        <div class="ar-specs-card">
+          <div>
+            <h4>Strategy Specifications</h4>
             <div class="ar-specs-grid">
               <div class="ar-spec-cell">
                 <span>Min amount</span>
@@ -271,6 +240,8 @@
                 <strong id="ar-spec-risk">${esc(data.riskType || 'Medium')}</strong>
               </div>
             </div>
+          </div>
+          <div class="ar-specs-cta-wrap">
             <a class="ar-free-algo-btn ar-free-algo-primary" href="${FREE_ALGO_URL}" target="_blank" rel="noopener noreferrer sponsored">
               <span>Free Algo</span>
               ${extArrowSvg}
@@ -278,36 +249,6 @@
             <p class="ar-specs-note">
               By activating this strategy you understand that trading involves risk and past performance is not a guarantee of future returns. Manually interfering with automated signals might affect live performance.
             </p>
-          </div>
-
-          <div class="ar-backtest-card">
-            <h4>Want to backtest before subscribing?</h4>
-            <div class="ar-bt-field">
-              <label class="ar-bt-label" for="ar-lot-select">Lot size</label>
-              <select id="ar-lot-select" class="ar-bt-select">
-                ${lotOptionsHtml}
-              </select>
-            </div>
-            <div class="ar-bt-date-row">
-              <span>Date range</span>
-              <button type="button" class="ar-bt-date-toggle" id="ar-bt-date-toggle" aria-expanded="false">
-                <span id="ar-bt-date-label">${esc(formatRangeButtonLabel(firstDate, lastDate))}</span>
-                <span aria-hidden="true">▾</span>
-              </button>
-            </div>
-            <div class="ar-bt-dates-grid" id="ar-bt-dates-grid" hidden>
-              <label>Start date<input type="date" id="ar-bt-from" class="ar-bt-input" value="${firstDate}" min="${firstDate}" max="${lastDate}"></label>
-              <label>End date<input type="date" id="ar-bt-to" class="ar-bt-input" value="${lastDate}" min="${firstDate}" max="${lastDate}"></label>
-            </div>
-            <div class="ar-slippage-box">
-              <input type="number" id="ar-slippage-input" placeholder="Slippage" min="0" max="5" step="0.05" aria-label="Slippage percentage">
-              <input type="checkbox" id="ar-slippage-check" aria-label="Apply slippage deduction">
-              <span class="ar-slippage-unit">%</span>
-            </div>
-            <div class="ar-bt-actions">
-              <button type="button" class="ar-backtest-btn" id="ar-backtest-btn">Backtest now!</button>
-              <button type="button" class="ar-reset-btn" id="ar-reset-btn" hidden>Reset</button>
-            </div>
           </div>
         </div>
       </div>
@@ -402,13 +343,13 @@
     function getThemeColors() {
       const isLight = document.documentElement.dataset.theme === 'light';
       return {
-        equityLine: isLight ? '#0038FF' : '#3B82F6',
-        ddLine: '#EF4444',
-        ddFill: isLight ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.18)',
-        grid: isLight ? 'rgba(15, 23, 42, 0.07)' : 'rgba(148, 163, 184, 0.11)',
-        ticks: isLight ? '#64748B' : '#94A3B8',
-        tooltipBg: isLight ? '#0F172A' : '#020617',
-        tooltipBorder: isLight ? 'rgba(148, 163, 184, 0.25)' : 'rgba(104, 168, 255, 0.35)',
+        equityLine: isLight ? '#126744' : '#10B981',
+        ddLine: isLight ? '#DC2626' : '#EF4444',
+        ddFill: isLight ? 'rgba(220, 38, 38, 0.13)' : 'rgba(239, 68, 68, 0.18)',
+        grid: isLight ? 'rgba(18, 103, 68, 0.09)' : 'rgba(148, 163, 184, 0.11)',
+        ticks: isLight ? '#354E43' : '#94A3B8',
+        tooltipBg: isLight ? '#152A22' : '#05101D',
+        tooltipBorder: isLight ? 'rgba(181, 212, 195, 0.45)' : 'rgba(99, 173, 136, 0.42)',
       };
     }
 
@@ -442,28 +383,7 @@
       q('ar-cap-lots-badge').textContent = Number.isInteger(lots)
         ? `${lots} Lot${lots > 1 ? 's' : ''}`
         : `${lots.toFixed(2)}x`;
-
-      const sel = q('ar-lot-select');
-      const existingCustom = sel.querySelector('option[data-custom="1"]');
-      if ([...sel.options].some((o) => !o.dataset.custom && Number(o.value) === cap)) {
-        if (existingCustom) existingCustom.remove();
-        sel.value = String(cap);
-      } else {
-        const opt = existingCustom || document.createElement('option');
-        opt.dataset.custom = '1';
-        opt.value = String(cap);
-        opt.textContent = `Custom Capital · ${formatCapitalCompact(cap)} (${lots.toFixed(2)}x)`;
-        if (!existingCustom) sel.prepend(opt);
-        sel.value = String(cap);
-      }
-
-      const isModified =
-        state.capital !== baseCapital ||
-        state.slippageOn ||
-        state.period === 'range' ||
-        state.btFrom !== firstDate ||
-        state.btTo !== lastDate;
-      q('ar-reset-btn').hidden = !isModified;
+      q('ar-cap-reset').hidden = cap === baseCapital;
     }
 
     function renderCharts(series) {
@@ -475,7 +395,6 @@
         series.minDD < 0 ? Number((series.minDD * 1.1).toFixed(2)) : -100 * Math.max(1, series.mult);
 
       if (typeof window.Chart !== 'function') {
-        // Resilient SVG fallback if Chart.js script is unavailable
         const eqBox = host.querySelector('.ar-canvas-equity');
         const minV = Math.min(...eqValues);
         const maxV = Math.max(...eqValues);
@@ -523,7 +442,7 @@
                 data: eqValues,
                 borderColor: theme.equityLine,
                 backgroundColor: 'transparent',
-                borderWidth: 2,
+                borderWidth: 2.1,
                 fill: false,
                 pointRadius: eqValues.length <= 4 ? 3 : 0,
                 pointHoverRadius: 4.5,
@@ -545,7 +464,7 @@
                 borderColor: theme.tooltipBorder,
                 borderWidth: 1,
                 titleColor: '#F8FAFC',
-                bodyColor: '#F8FAFC',
+                bodyColor: '#6EE7B7',
                 padding: 10,
                 displayColors: false,
                 callbacks: {
@@ -677,6 +596,8 @@
       } else {
         ddChart.data.labels = labels;
         ddChart.data.datasets[0].data = ddValues;
+        ddChart.data.datasets[0].borderColor = theme.ddLine;
+        ddChart.data.datasets[0].pointHoverBackgroundColor = theme.ddLine;
         ddChart.data.datasets[0].fill.below = theme.ddFill;
         ddChart.data.datasets[0].pointRadius = ddValues.length <= 4 ? 3 : 0;
         ddChart.options.scales.y.min = ddMinBound;
@@ -702,7 +623,7 @@
       q('ar-trades-tbody').innerHTML = rows.length
         ? rows
             .map((t) => {
-              const pnl = effectiveTradePnl(t, mult, state.slippageOn, state.slippagePct);
+              const pnl = (Number(t.pnl) || 0) * mult;
               const cls = pnl >= 0 ? 'ar-td-pos' : 'ar-td-neg';
               return `<tr>
                 <td>${esc(formatDDMMMYYYY(t.date))}</td>
@@ -726,15 +647,8 @@
     function render() {
       syncCapitalControls();
 
-      // 1. Headline Top Strip (strategy overall scaled to chosen Capital & Slippage)
-      const overallSummary = computeMetricsAndSeries(
-        data.trades,
-        firstDate,
-        state.capital,
-        baseCapital,
-        state.slippageOn,
-        state.slippagePct
-      );
+      // 1. Headline Top Strip (strategy overall scaled to chosen Capital)
+      const overallSummary = computeMetricsAndSeries(data.trades, firstDate, state.capital, baseCapital);
 
       const topNp = q('ar-top-netprofit');
       topNp.textContent = formatINR(overallSummary.pnl, 2, true);
@@ -752,21 +666,12 @@
       });
       q('ar-range-bar').hidden = state.period !== 'range';
 
-      const windowText =
+      q('ar-active-window').textContent =
         bounds.from === bounds.to
           ? `${formatDDMMMYYYY(bounds.from)} · ${filteredTrades.length} trade${filteredTrades.length === 1 ? '' : 's'}`
           : `${formatDDMMMYYYY(bounds.from)} – ${formatDDMMMYYYY(bounds.to)} · ${filteredTrades.length} trades`;
-      q('ar-active-window').textContent =
-        windowText + (state.slippageOn && state.slippagePct > 0 ? ` · ${state.slippagePct}% slippage` : '');
 
-      const periodSeries = computeMetricsAndSeries(
-        filteredTrades,
-        bounds.baseline,
-        state.capital,
-        baseCapital,
-        state.slippageOn,
-        state.slippagePct
-      );
+      const periodSeries = computeMetricsAndSeries(filteredTrades, bounds.baseline, state.capital, baseCapital);
 
       // 3. 6-Column Curve KPIs
       const kpiPnl = q('ar-kpi-pnl');
@@ -823,73 +728,9 @@
       }
     });
 
-    // Right-Hand Backtest Controls
-    q('ar-lot-select').addEventListener('change', () => {
-      const val = Number(q('ar-lot-select').value);
-      if (Number.isFinite(val) && val >= baseCapital) {
-        state.capital = val;
-        render();
-      }
-    });
-
-    q('ar-bt-date-toggle').addEventListener('click', () => {
-      const grid = q('ar-bt-dates-grid');
-      const nextOpen = grid.hidden;
-      grid.hidden = !nextOpen;
-      q('ar-bt-date-toggle').setAttribute('aria-expanded', String(nextOpen));
-    });
-
-    ['ar-bt-from', 'ar-bt-to'].forEach((id) => {
-      q(id).addEventListener('change', () => {
-        const f = q('ar-bt-from').value || firstDate;
-        const t = q('ar-bt-to').value || lastDate;
-        state.btFrom = f <= t ? f : t;
-        state.btTo = f <= t ? t : f;
-        q('ar-bt-date-label').textContent = formatRangeButtonLabel(state.btFrom, state.btTo);
-      });
-    });
-
-    q('ar-slippage-input').addEventListener('input', () => {
-      const v = Number(q('ar-slippage-input').value);
-      if (v > 0 && !q('ar-slippage-check').checked) {
-        q('ar-slippage-check').checked = true;
-      }
-    });
-
-    q('ar-backtest-btn').addEventListener('click', () => {
-      const slipVal = Math.max(0, Math.min(5, Number(q('ar-slippage-input').value) || 0));
-      state.slippagePct = slipVal;
-      state.slippageOn = q('ar-slippage-check').checked && slipVal > 0;
-
-      if (state.btFrom !== firstDate || state.btTo !== lastDate) {
-        state.period = 'range';
-        state.rangeFrom = state.btFrom;
-        state.rangeTo = state.btTo;
-        q('ar-range-from').value = state.btFrom;
-        q('ar-range-to').value = state.btTo;
-      }
-      state.page = 0;
-      render();
-    });
-
-    q('ar-reset-btn').addEventListener('click', () => {
+    q('ar-cap-reset').addEventListener('click', () => {
       state.capital = baseCapital;
-      state.period = 'overall';
-      state.rangeFrom = firstDate;
-      state.rangeTo = lastDate;
-      state.btFrom = firstDate;
-      state.btTo = lastDate;
-      state.slippageOn = false;
-      state.slippagePct = 0;
-      state.page = 0;
-      q('ar-slippage-input').value = '';
-      q('ar-slippage-check').checked = false;
-      q('ar-bt-from').value = firstDate;
-      q('ar-bt-to').value = lastDate;
-      q('ar-range-from').value = firstDate;
-      q('ar-range-to').value = lastDate;
-      q('ar-bt-date-label').textContent = formatRangeButtonLabel(firstDate, lastDate);
-      q('ar-range-msg').textContent = '';
+      q('ar-cap-input').value = String(baseCapital);
       render();
     });
 
@@ -919,11 +760,6 @@
       q('ar-range-msg').textContent = '';
       state.rangeFrom = f;
       state.rangeTo = t;
-      state.btFrom = f;
-      state.btTo = t;
-      q('ar-bt-from').value = f;
-      q('ar-bt-to').value = t;
-      q('ar-bt-date-label').textContent = formatRangeButtonLabel(f, t);
       state.page = 0;
       render();
     });
@@ -946,7 +782,7 @@
 
     render();
 
-    // Optional live sync via local backend proxy when running on local server (zero CORS issues)
+    // Optional live sync via local backend proxy when running on local server
     if (location.protocol.startsWith('http') && /^(127\.0\.0\.1|localhost)$/i.test(location.hostname)) {
       fetch('/api/algo-strategy')
         .then((r) => (r.ok ? r.json() : null))

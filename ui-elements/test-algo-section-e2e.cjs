@@ -21,7 +21,7 @@ async function runSuite() {
     // -----------------------------------------------------------------------
     // 1. Test HTTP Local Preview (http://127.0.0.1:4174/index.html#algo-trading)
     // -----------------------------------------------------------------------
-    const ctxHttp = await browser.newContext({ viewport: { width: 1440, height: 960 } });
+    const ctxHttp = await browser.newContext({ viewport: { width: 1440, height: 960 }, colorScheme: 'dark' });
     const page = await ctxHttp.newPage();
     const consoleErrors = [];
     page.on('pageerror', (err) => consoleErrors.push('PAGEERROR: ' + err.message));
@@ -31,21 +31,29 @@ async function runSuite() {
 
     await page.goto('http://127.0.0.1:4174/index.html#algo-trading', { waitUntil: 'networkidle' });
     await page.locator('#ar-equity-canvas').waitFor({ state: 'visible', timeout: 10000 });
-    await page.waitForTimeout(400);
+    await page.waitForTimeout(350);
 
     const sectionText = await page.locator('#algo-trading').innerText();
     assert(!/temporarily unavailable/i.test(sectionText), 'Must never show unavailable error');
     assert(!/alice\s*blue|aliceblue|1lyalgos|1ly\s*algo/i.test(sectionText), 'Must contain ZERO Alice Blue or 1lyAlgos brand text');
+    assert(!/want to backtest before subscribing|backtest now!/i.test(sectionText), 'Backtest column must be completely removed');
+    assert.equal(await page.locator('.ar-backtest-card').count(), 0, 'ar-backtest-card must not exist');
 
-    // Verify Free Algo CTA links
+    // Verify Free Algo CTA links & IWSM Emerald theme (no #0038ff blue)
     const ctaLinks = await page.locator('#algo-trading a.ar-free-algo-btn').evaluateAll((els) =>
-      els.map((a) => ({ text: a.innerText.trim(), href: a.getAttribute('href'), target: a.getAttribute('target') }))
+      els.map((a) => ({
+        text: a.innerText.trim(),
+        href: a.getAttribute('href'),
+        target: a.getAttribute('target'),
+        bg: getComputedStyle(a).backgroundColor,
+      }))
     );
-    assert(ctaLinks.length >= 2, 'Expected Free Algo CTA buttons');
+    assert.equal(ctaLinks.length, 2, 'Expected 2 Free Algo CTA buttons (header + specs card)');
     for (const link of ctaLinks) {
       assert.equal(link.href, 'https://ekyc.aliceblueonline.com/?source=WRAJ1371');
       assert.equal(link.target, '_blank');
       assert(/free algo/i.test(link.text), `CTA text should mention Free Algo, got: ${link.text}`);
+      assert.notEqual(link.bg, 'rgb(0, 56, 255)', 'CTA button must use IWSM emerald theme, not #0038ff blue');
     }
 
     // Verify exact Overall headline & curve values
@@ -67,7 +75,7 @@ async function runSuite() {
     assert.equal(await page.locator('#ar-kpi-winstreak').innerText(), '12');
     assert.equal(await page.locator('#ar-kpi-lossstreak').innerText(), '5');
 
-    // Verify both Chart.js canvases rendered non-zero dimensions and 658 points on Overall
+    // Verify both Chart.js canvases rendered non-zero dimensions and emerald line color
     const chartCheck = await page.evaluate(() => {
       const eq = document.getElementById('ar-equity-canvas');
       const dd = document.getElementById('ar-dd-canvas');
@@ -78,6 +86,7 @@ async function runSuite() {
         eqHeight: eq.height,
         ddWidth: dd.width,
         ddHeight: dd.height,
+        eqColor: eqChart ? eqChart.data.datasets[0].borderColor : null,
         eqPoints: eqChart ? eqChart.data.datasets[0].data.length : 0,
         eqFirst: eqChart ? eqChart.data.datasets[0].data[0] : null,
         eqLast: eqChart ? eqChart.data.datasets[0].data.at(-1) : null,
@@ -87,6 +96,7 @@ async function runSuite() {
     });
     assert(chartCheck.eqWidth > 300 && chartCheck.eqHeight > 150, 'Equity canvas must render');
     assert(chartCheck.ddWidth > 300 && chartCheck.ddHeight > 120, 'Drawdown canvas must render');
+    assert.equal(chartCheck.eqColor, '#10B981', 'Dark mode equity curve should use IWSM emerald #10B981');
     assert.equal(chartCheck.eqPoints, 658);
     assert.equal(chartCheck.eqFirst, 18000);
     assert.equal(chartCheck.eqLast, 123054);
@@ -96,7 +106,7 @@ async function runSuite() {
     // Screenshot 1: Desktop Dark Mode
     await page.locator('#algo-trading').scrollIntoViewIfNeeded();
     await page.waitForTimeout(250);
-    await page.locator('#algo-trading').screenshot({ path: path.join(OUT_DIR, 'algo-desktop-dark.png') });
+    await page.locator('#algo-trading').screenshot({ path: path.join(OUT_DIR, 'algo-iwsm-dark.png') });
 
     // Test Period Tabs: Monthly, Weekly, Today, Range
     await page.locator('.ar-period-pills button[data-period="monthly"]').click();
@@ -124,8 +134,8 @@ async function runSuite() {
     const pnl2024 = await page.locator('#ar-kpi-pnl').innerText();
     assert(pnl2024.startsWith('+₹'), `Expected positive 2024 P&L, got ${pnl2024}`);
 
-    // Reset back to Overall & test interactive Capital scaling (2 Lots = ₹36,000)
-    await page.locator('#ar-reset-btn').click();
+    // Switch back to Overall & test interactive Capital scaling (2 Lots = ₹36,000)
+    await page.locator('.ar-period-pills button[data-period="overall"]').click();
     assert.equal(await page.locator('#ar-kpi-pnl').innerText(), '+₹1,05,054.00');
 
     await page.locator('#ar-cap-inc').click();
@@ -134,12 +144,18 @@ async function runSuite() {
     assert.equal(await page.locator('#ar-kpi-pnl').innerText(), '+₹2,10,108.00');
     assert.equal(await page.locator('#ar-kpi-dd').innerText(), '-₹14,884.00');
     assert.equal(await page.locator('#ar-kpi-return').innerText(), '+583.63%');
-    await page.locator('#ar-reset-btn').click();
+    await page.locator('#ar-cap-reset').click();
+    assert.equal(await page.locator('#ar-top-capital').innerText(), '₹18,000');
 
-    // Screenshot 2: Desktop Light Mode
+    // Screenshot 2: Desktop Light Mode (IWSM Mint & Forest Emerald #126744)
     await page.locator('#theme-toggle-btn').click();
     await page.waitForTimeout(300);
-    await page.locator('#algo-trading').screenshot({ path: path.join(OUT_DIR, 'algo-desktop-light.png') });
+    const lightEqColor = await page.evaluate(() => {
+      const eq = document.getElementById('ar-equity-canvas');
+      return window.Chart.getChart(eq).data.datasets[0].borderColor;
+    });
+    assert.equal(lightEqColor, '#126744', 'Light mode equity curve should use IWSM forest emerald #126744');
+    await page.locator('#algo-trading').screenshot({ path: path.join(OUT_DIR, 'algo-iwsm-light.png') });
 
     // Mobile Responsive Check (390px) — Zero Horizontal Overflow
     await page.setViewportSize({ width: 390, height: 844 });
@@ -148,7 +164,7 @@ async function runSuite() {
       return document.documentElement.scrollWidth - document.documentElement.clientWidth;
     });
     assert(mobileOverflow <= 1, `Expected zero mobile horizontal overflow, got ${mobileOverflow}px`);
-    await page.locator('#ar-graphs-card').screenshot({ path: path.join(OUT_DIR, 'algo-mobile-graphs.png') });
+    await page.locator('#ar-graphs-card').screenshot({ path: path.join(OUT_DIR, 'algo-iwsm-mobile.png') });
 
     assert.equal(consoleErrors.length, 0, 'Unexpected console/page errors: ' + consoleErrors.join(' | '));
     await ctxHttp.close();
@@ -165,7 +181,7 @@ async function runSuite() {
     assert.equal(await filePage.locator('#ar-kpi-pnl').innerText(), '+₹1,05,054.00');
     await ctxFile.close();
 
-    console.log('ALL ALGO SECTION E2E CHECKS PASSED (HTTP + FILE + PERIODS + CAPITAL + LIGHT/DARK + MOBILE)!');
+    console.log('ALL IWSM-THEMED ALGO SECTION E2E CHECKS PASSED!');
   } finally {
     await browser.close();
   }
