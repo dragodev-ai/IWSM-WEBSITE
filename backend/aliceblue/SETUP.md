@@ -61,4 +61,14 @@ To preserve genuine historical Open Interest, Change in OI, Bid/Ask, India VIX, 
   - **Vendor SSO Client ID Persistence**: `POST /api/aliceblue/auth/login` accepts `{"clientId": "..."}` once so callbacks where `ant.aliceblueonline.com` omits `state` pass ownership verification cleanly.
   - **Resilient Parallel 1-Minute Chain Loader**: `/chart/history` skips untraded OTM/ITM strikes returning `"No Data Available"` (`allow_not_ok=True`) instead of aborting the chain with `HTTP 502`, fetches strikes concurrently (`Semaphore(8)`), caches 1-minute replays in `SnapshotStore.minute_captures`, and overlaps `NiftyBackup` + `LocalNseArchive` across all 224 NSE F&O stocks & indices (`37/37` Python tests passing).
 
+## Official ANT A3 API & SDK Reference Links (17 November 2026)
+
+See `docs/aliceblue-a3-reference-links.md` and `backend/aliceblue/AGENTS.md` for verified parameters, rate limits, WebSocket authentication (`wss://ws1.aliceblueonline.com/NorenWS/`), and availability windows across:
+
+- `https://ant.aliceblueonline.com/productdocumentation/Historical%20Data/`
+- `https://ant.aliceblueonline.com/productdocumentation/Market%20Data/`
+- `https://ant.aliceblueonline.com/productdocumentation/Option%20Chain/`
+- `https://ant.aliceblueonline.com/productdocumentation/#user-registration`
+- `https://pypi.org/project/Ant-A3-tradehub-sdk-production/`
+
 
