@@ -34,7 +34,7 @@
       let viewExpiry = '', payoffDate = '', activeTab = 'payoff', basis = 'spot', recording = false, modal = null;
       let chainRows = [], symbols = ['NIFTY'], archiveDates = [], symbolDates = {}, loading = false;
       let symbolSearchQuery = '', chainSearchQuery = '', chainRangeCount = 25, showDetailCols = false, quickTrade = false;
-      let serverMarketStatus = null, snapshotCoverage = null, brokerExpiryDetails = {};
+      let serverMarketStatus = null, snapshotCoverage = null, parquetCoverage = null, brokerExpiryDetails = {};
       let apiBase = '', apiProbePromise = null, brokerAuth = { connected: false };
 
       const settings = { initialBalance: 1000000, feePerOrder: 20, feeBps: 0, slippage: 0, marginRate: 0.2, rate: 6.5, dividend: 0 };
@@ -648,12 +648,22 @@
         return x === 'bse_fo' || x === 'bse' || x === 'bfo' ? 'bse_fo' : 'nse_fo';
       }
 
+      function resolveDataSourceBadge() {
+        if (!d) return 'UNAVAILABLE';
+        const rawStatus = String(d.metadata?.dataSourceStatus || '').toUpperCase();
+        if (d.metadata?.synthetic || d.metadata?.modelled || rawStatus === 'SIMULATED') return 'SIMULATED';
+        if (rawStatus === 'CACHED') return 'CACHED';
+        if (rawStatus === 'HISTORICAL' || d.metadata?.backup || d.kind === 'daily') return 'HISTORICAL';
+        return 'LIVE';
+      }
+
       async function refreshMarketAndCoverage(sym = '') {
         try {
           const exch = fnoExch();
           const j = await brokerApi('market-status?' + new URLSearchParams({ underlying: sym || s?.symbol || 'NIFTY', exch }));
           serverMarketStatus = j.marketStatus || null;
           snapshotCoverage = j.snapshotCoverage || null;
+          parquetCoverage = j.parquetCoverage || null;
           updateMarketBadges();
         } catch {
           // Non-fatal on static preview
@@ -663,20 +673,24 @@
       function updateMarketBadges() {
         const pill = el('market-status');
         const covTag = el('snapshot-coverage');
+        const badge = resolveDataSourceBadge();
         if (pill) {
-          const isSnap = Boolean(d?.metadata?.quoteTiming?.startsWith('Snapshot'));
+          pill.dataset.sourceBadge = badge;
           if (serverMarketStatus) {
             const openTxt = serverMarketStatus.isOpen ? 'MARKET OPEN · IST' : 'MARKET CLOSED · ' + serverMarketStatus.reason;
-            pill.textContent = (isSnap ? 'LIVE SNAPSHOT · ' : 'REPLAY MODE · ') + openTxt;
+            pill.textContent = badge + ' · ' + openTxt;
             pill.className = 'opstra-market-pill ' + (serverMarketStatus.isOpen ? 'is-open' : 'is-closed');
           } else {
-            pill.textContent = isSnap ? 'LIVE SNAPSHOT MODE (IST)' : 'HISTORICAL SIMULATION MODE (IST)';
+            pill.textContent = badge + ' · ' + (badge === 'LIVE' ? 'EXCHANGE FEED (IST)' : 'SIMULATION MODE (IST)');
             pill.className = 'opstra-market-pill';
           }
         }
         if (covTag) {
           if (snapshotCoverage?.hasSnapshots) {
             covTag.textContent = 'Earliest Snapshot: ' + snapshotCoverage.earliestDate + ' (' + snapshotCoverage.frameCount + ' frames)';
+          } else if (parquetCoverage?.hasParquet && parquetCoverage.symbols?.length) {
+            const pSym = parquetCoverage.symbols[0];
+            covTag.textContent = '1m Historical Archive: ' + pSym.earliestDate + ' to ' + pSym.latestDate + ' (' + Math.round((parquetCoverage.totalRowsInstalled || 0) / 1e6) + 'M rows)';
           } else {
             covTag.textContent = 'Recorded Snapshots: 0 (enable Snapshot Store during live session)';
           }
@@ -891,7 +905,7 @@
         return brokerInstruments.find(x => x.symbol === symbol && x.exchange === exchange) || null;
       }
 
-      function instrumentOptions(symbol, exchange = 'nse_fo', filterText = '') {
+      function instrumentOptions(symbol, exchange = 'nse_fo', filterText = '', activeLotOverride = null) {
         const selected = exchange + '|' + symbol;
         const q = String(filterText || '').trim().toUpperCase();
         const matches = (sym, und = '') => !q || sym.toUpperCase().includes(q) || String(und).toUpperCase().includes(q);
@@ -914,7 +928,8 @@
             rows.map(x => {
               const key = x.exchange + '|' + x.symbol;
               seen.add(key);
-              const metaTag = x.lotSize ? ' · Lot ' + x.lotSize : '';
+              const shownLot = key === selected && activeLotOverride ? activeLotOverride : x.lotSize;
+              const metaTag = shownLot ? ' · Lot ' + shownLot : '';
               const unavail = x.chainAvailable === false ? ' · chain unavailable' : '';
               return '<option value="' + esc(key) + '" ' + (key === selected ? 'selected' : '') + (x.chainAvailable === false ? ' disabled' : '') + '>' + esc(x.symbol + metaTag + unavail) + '</option>';
             }).join('') +
@@ -1025,10 +1040,11 @@
         const activeExpDetail = expMap[viewExpiry];
 
         // Instrument selector & rich metadata line
-        el('symbol-select').innerHTML = instrumentOptions(s.symbol, exch, symbolSearchQuery);
+        const instMeta = activeInstrumentMeta(s.symbol, exch);
+        const lotVal = chainRows[0]?.lotSize || future?.lotSize || instMeta?.lotSize || null;
+        el('symbol-select').innerHTML = instrumentOptions(s.symbol, exch, symbolSearchQuery, lotVal);
         el('symbol-select').disabled = loading;
         renderSearchMatches();
-        const instMeta = activeInstrumentMeta(s.symbol, exch);
         const strikeDiffs = (() => {
           const st = [...new Set(chainRows.filter(q => q.type !== 'FUT').map(q => q.strike))].sort((x, y) => x - y);
           return st.length >= 2 ? st[1] - st[0] : instMeta?.strikeInterval || null;
@@ -1057,7 +1073,6 @@
         el('val-future').textContent = el('chain-fut-price').textContent = Number.isFinite(future?.close) ? numFixed(future.close, 2) : 'Unavailable';
         el('chain-fut-price').title = future ? 'Futures expiry ' + future.expiry : 'No futures contract quote at this timestamp';
         el('val-atm').textContent = atmInfo.atmStrike !== null ? num(atmInfo.atmStrike, 0) : '—';
-        const lotVal = chainRows[0]?.lotSize || future?.lotSize || instMeta?.lotSize || null;
         el('val-lot').textContent = lotVal ? num(lotVal, 0) : '—';
         el('val-iv').textContent = Number.isFinite(atmInfo.atmIvPct) ? numFixed(atmInfo.atmIvPct, 2) + '% (' + atmInfo.source + ')' : '—';
         const vixVal = d.vix?.get(s.symbol + '|' + s.cursor) ?? d.metadata?.indiaVix ?? null;
@@ -1115,17 +1130,23 @@
         if (!timer) el('btn-play').textContent = playback.restart ? '↻ REPLAY' : '▶ PLAY';
         el('btn-fut-buy').disabled = el('btn-fut-sell').disabled = !future;
 
-        // Data source provenance banner (always visible so Live vs Historical vs Modelled is unmistakable)
+        // Data source provenance banner (always visible so Live vs Cached vs Historical vs Simulated is unmistakable)
         const isSnap = Boolean(d.metadata?.quoteTiming?.startsWith('Snapshot'));
-        const provPrefix = d.metadata?.modelled
-          ? 'MODELLED OPTION ESTIMATES'
-          : d.metadata?.backup
-          ? 'LOCAL HISTORICAL BACKUP'
-          : isSnap
-          ? 'LIVE EXCHANGE SNAPSHOT'
-          : 'GENUINE RECORDED OBSERVATIONS';
+        const dsBadge = resolveDataSourceBadge();
+        const provPrefix =
+          '[' +
+          dsBadge +
+          '] ' +
+          (d.metadata?.modelled
+            ? 'MODELLED OPTION ESTIMATES'
+            : d.metadata?.backup
+            ? 'VERIFIED HISTORICAL ARCHIVE'
+            : isSnap
+            ? 'LIVE EXCHANGE SNAPSHOT'
+            : 'GENUINE RECORDED OBSERVATIONS');
         const warnText = (d.metadata?.warnings || []).concat(d.warnings || []).filter(Boolean).join(' · ');
         source.hidden = false;
+        source.dataset.sourceBadge = dsBadge;
         source.textContent =
           provPrefix +
           ' · ' +
@@ -1138,11 +1159,25 @@
           (s.cursor < s.frontier ? ' · Review mode (edits auto-branch at cursor)' : '') +
           (warnText ? ' · Note: ' + warnText : '');
 
-        // Sync inline Multi-Leg Builder & keep Option Chain strike ladder continuous across 1-minute bars
+        // Sync inline Multi-Leg Builder & keep Option Chain strike ladder continuous within the active session date
         const builderStrikes = [...new Set(chainRows.filter(q => q.type !== 'FUT').map(q => q.strike))].sort((x, y) => x - y);
-        const allStrikes = chainRows.some(q => q.type !== 'FUT')
-          ? [...new Set(d.contracts.filter(q => q.symbol === s.symbol && q.expiry === viewExpiry && q.type !== 'FUT').map(q => q.strike))].sort((x, y) => x - y)
-          : builderStrikes;
+        const cursorDay = s.cursor.slice(0, 10);
+        const sameDayStrikes = chainRows.some(q => q.type !== 'FUT')
+          ? [
+              ...new Set(
+                d.contracts
+                  .filter(
+                    q =>
+                      q.symbol === s.symbol &&
+                      q.expiry === viewExpiry &&
+                      q.type !== 'FUT' &&
+                      String(q.timestamp || q.date || '').slice(0, 10) === cursorDay
+                  )
+                  .map(q => q.strike)
+              ),
+            ].sort((x, y) => x - y)
+          : [];
+        const allStrikes = sameDayStrikes.length ? sameDayStrikes : builderStrikes;
         syncLegBuilder(expiries, builderStrikes, future);
 
         // Strategy Positions list with 5 Opstra-grade controls: Toggle, Edit, Flip, Exit/SL, Delete
@@ -1842,7 +1877,7 @@
             '</form>'
         );
         const f = dom.querySelector('form'), note = dom.querySelector('[role=status]');
-        let request = 0, archiveFallbackOnly = false;
+        let request = 0, archiveFallbackOnly = false, parquetMinuteAvailable = false;
 
         function clampModalDates() {
           const sVal = f.elements.start.value;
@@ -1863,6 +1898,7 @@
           const n = ++request, choice = instrumentChoice(f.elements.symbol.value);
           const startVal = f.elements.start.value, endVal = f.elements.end.value;
           archiveFallbackOnly = false;
+          parquetMinuteAvailable = false;
           f.querySelector('.broker-expiry').hidden = false;
           f.elements.expiry.innerHTML = '';
           f.querySelector('[type=submit]').disabled = true;
@@ -1910,10 +1946,13 @@
               note.textContent = 'No option contracts found for ' + choice.symbol + ' in ' + startVal + ' – ' + endVal + '.';
               return;
             }
-            if (j.historicalOnly && choice.exchange === 'nse_fo') {
+            parquetMinuteAvailable = Boolean(j.parquetMinuteAvailable);
+            if (j.historicalOnly && !parquetMinuteAvailable && choice.exchange === 'nse_fo') {
               archiveFallbackOnly = true;
             }
-            note.textContent = j.historicalOnly || j.backup
+            note.textContent = parquetMinuteAvailable
+              ? 'Verified 1-Minute Historical Options Archive ready (' + (j.source || choice.symbol) + ') · Loads observed 1m option-chain bars & Greeks.'
+              : j.historicalOnly || j.backup
               ? 'Historical contracts resolved (' + (j.source || 'verified local archive') + '). Automatically loads best available intraday or daily chain.'
               : '1-Minute Intraday Option History ready · Automatically loads observed 1m option-chain bars.';
             f.querySelector('[type=submit]').disabled = !j.expiries.length;
@@ -1951,7 +1990,7 @@
           submitBtn.disabled = true;
           note.textContent = 'Loading ' + choice.symbol + ' option chain…';
           try {
-            if (archiveFallbackOnly || (spanDays > 6 && choice.exchange === 'nse_fo')) {
+            if (archiveFallbackOnly || (!parquetMinuteAvailable && spanDays > 6 && choice.exchange === 'nse_fo')) {
               const win = resolveArchiveWindow(choice.symbol, values.start, values.end);
               try {
                 await loadRecorded(choice.symbol, win.start, win.end);
@@ -1971,6 +2010,7 @@
                   start: values.start,
                   end: values.end,
                   exch: choice.exchange,
+                  interval: '25',
                 })
             );
             if (n !== generation) return;

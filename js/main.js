@@ -773,10 +773,11 @@
   const resProfit30 = document.getElementById('res-profit-30');
 
   const instrumentLotSizes = {
-    nifty: 25,
-    banknifty: 15,
-    finnifty: 25,
-    midcpnifty: 50,
+    nifty: 65,
+    banknifty: 30,
+    finnifty: 60,
+    midcpnifty: 120,
+    sensex: 20,
     crudeoil: 100,
     equity: 1
   };
@@ -786,6 +787,7 @@
     banknifty: 'BANK NIFTY',
     finnifty: 'FINNIFTY',
     midcpnifty: 'MIDCPNIFTY',
+    sensex: 'BSE SENSEX',
     crudeoil: 'MCX CRUDE OIL',
     equity: 'EQUITY INTRADAY/SWING'
   };
@@ -903,6 +905,9 @@
     } else if (key === 'midcpnifty') {
       calcEntryInput.value = '12900';
       calcSlInput.value = '12850';
+    } else if (key === 'sensex') {
+      calcEntryInput.value = '80500';
+      calcSlInput.value = '80350';
     } else if (key === 'crudeoil') {
       calcEntryInput.value = '6140';
       calcSlInput.value = '6100';

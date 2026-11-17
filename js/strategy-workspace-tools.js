@@ -11,7 +11,7 @@
     const outlook = options.outlook ?? 'All', unitsPerLot = options.unitsPerLot ?? 65, lots = options.lots ?? 1;
     const fees = options.fees ?? 20, slippage = options.slippage ?? 0, rate = options.rate ?? 6, dividend = options.dividend ?? 0, iv = options.iv ?? 15;
     const maxLoss = options.maxLoss ?? null, requireLiquidity = options.requireLiquidity !== false;
-    if (!['All','Bullish','Bearish','Neutral'].includes(outlook) || !Number.isInteger(unitsPerLot) || unitsPerLot < 1 || unitsPerLot > 10000 || !Number.isInteger(lots) || lots < 1 || lots > 100 || ![fees,slippage,rate,dividend,iv].every(finite) || fees < 0 || slippage < 0 || (maxLoss != null && (!finite(maxLoss) || maxLoss < 0))) throw new Error('Check screener quantity, costs, assumptions and maximum-loss inputs.');
+    if (!['All','Bullish','Bearish','Neutral'].includes(outlook) || !Number.isInteger(unitsPerLot) || unitsPerLot < 1 || unitsPerLot > 1000000 || !Number.isInteger(lots) || lots < 1 || lots > 100 || ![fees,slippage,rate,dividend,iv].every(finite) || fees < 0 || slippage < 0 || (maxLoss != null && (!finite(maxLoss) || maxLoss < 0))) throw new Error('Check screener quantity, costs, assumptions and maximum-loss inputs.');
     const snapshot = Research.summarize(dataset, {symbol,date,expiry,rate,dividend}), spot = snapshot.spot, days = daysBetween(date,expiry);
     const skipped = [], candidates = [], selected = E.templates.map((template,index)=>({...template,index})).filter(template=>outlook==='All'||template.outlook===outlook);
     const baseResult = {candidates,skipped,asOf:date,date,symbol:snapshot.symbol,expiry,spot};
@@ -34,7 +34,7 @@
         if (requireLiquidity && (!finite(row.volume)||row.volume<=0)) { reason = 'Positive recorded trading volume is required for every leg.'; break; }
         if (!finite(row.volume)||row.volume<=0) volumeUnknown.push(index);
         const lotSize = row.lotSize == null ? unitsPerLot : row.lotSize;
-        if (!Number.isInteger(lotSize)||lotSize<1||lotSize>10000) { reason = 'Invalid recorded contract lot size.'; break; }
+        if (!Number.isInteger(lotSize)||lotSize<1||lotSize>1000000) { reason = 'Invalid recorded contract lot size.'; break; }
         lotSizes.push(lotSize);
         legs.push({id:'screen-'+template.index+'-'+index,enabled:true,side,type,strike:type==='FUT'?spot:strike,lots:lots*ratio,days,premium:row.close});
       }

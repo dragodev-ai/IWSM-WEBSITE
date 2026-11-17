@@ -136,6 +136,8 @@ def instrument_catalog(directories):
     strikes_by_key = {}
     expiries_by_key = {}
     lot_by_key = {}
+    lot_exp_by_key = {}
+    today_iso = datetime.now(IST).strftime('%Y-%m-%d')
     for exchange, rows in directories.items():
         for row in master_rows(rows):
             kind = str(row.get('instrument_type', ''))
@@ -157,8 +159,13 @@ def instrument_catalog(directories):
                 }
             try:
                 lot = int(float(row.get('lot_size') or 0))
-                if lot > 0 and (key not in lot_by_key or lot < lot_by_key[key]):
-                    lot_by_key[key] = lot
+                if lot > 0:
+                    exp_iso = _row_expiry_iso(row)
+                    rank_exp = exp_iso if (exp_iso and exp_iso >= today_iso) else ('9999-99-99' if not exp_iso else '9999-99-98')
+                    prev_exp = lot_exp_by_key.get(key)
+                    if prev_exp is None or rank_exp < prev_exp:
+                        lot_exp_by_key[key] = rank_exp
+                        lot_by_key[key] = lot
             except (TypeError, ValueError):
                 pass
             try:
@@ -209,7 +216,7 @@ def observations(result, start, end):
     return [out[k] for k in sorted(out)]
 
 
-def install_history(app, session_fn, broker, market, prefix, snapshots: SnapshotStore = None, nse_archive=None):
+def install_history(app, session_fn, broker, market, prefix, snapshots: SnapshotStore = None, nse_archive=None, parquet_store=None):
     from nifty_backup import NiftyBackup
     from nse_live_chain import NseLiveOptionChain
 
@@ -218,6 +225,7 @@ def install_history(app, session_fn, broker, market, prefix, snapshots: Snapshot
     nse_live = NseLiveOptionChain()
     app.state.snapshots = snap_store
     app.state.nse_live = nse_live
+    app.state.parquet_store = parquet_store
     provider = str((getattr(app.state, 'config', {}) or {}).get('IWSM_MARKET_DATA_PROVIDER') or 'hybrid').strip().lower()
 
     async def get_session(req: Request):
@@ -279,8 +287,10 @@ def install_history(app, session_fn, broker, market, prefix, snapshots: Snapshot
             records = master_rows(await master('NFO'))
         except Exception:
             return None, '', None
+        ref_day = as_of if (as_of and re.fullmatch(r'\d{4}-\d{2}-\d{2}', as_of)) else datetime.now(IST).strftime('%Y-%m-%d')
         exact_lot = None
         any_lot = None
+        any_lot_exp = None
         for row in records:
             if row.get('symbol') != underlying:
                 continue
@@ -293,12 +303,14 @@ def install_history(app, session_fn, broker, market, prefix, snapshots: Snapshot
                 continue
             if lot <= 0:
                 continue
-            if any_lot is None or lot < any_lot:
+            row_exp = _row_expiry_iso(row)
+            rank_exp = row_exp if (row_exp and row_exp >= ref_day) else ('9999-99-99' if not row_exp else '9999-99-98')
+            if any_lot_exp is None or rank_exp < any_lot_exp:
+                any_lot_exp = rank_exp
                 any_lot = lot
-            if iso_target and _row_expiry_iso(row) == iso_target:
+            if iso_target and row_exp == iso_target:
                 exact_lot = lot
                 break
-        ref_day = as_of if (as_of and re.fullmatch(r'\d{4}-\d{2}-\d{2}', as_of)) else datetime.now(IST).strftime('%Y-%m-%d')
         fut = front_future(records, underlying, ref_day, target_expiry_iso=iso_target)
         fut_iso = fut['expiryISO'] if fut else ''
         fut_lot = int(float(fut['lot_size'])) if (fut and float(fut.get('lot_size') or 0) > 0) else (exact_lot or any_lot)
@@ -347,7 +359,7 @@ def install_history(app, session_fn, broker, market, prefix, snapshots: Snapshot
                             lot_size=opt_lot,
                             futures_expiry_iso=fut_iso,
                             futures_lot_size=fut_lot,
-                            strike_window=12,
+                            strike_window=30,
                         )
                         # Persist today's 1-minute bars to SnapshotStore asynchronously
                         asyncio.create_task(asyncio.to_thread(_remember_sync, nse_ds, 'minute'))
@@ -355,6 +367,7 @@ def install_history(app, session_fn, broker, market, prefix, snapshots: Snapshot
                         # If user's requested window also spans earlier trading days before the live 1m session, prepend earlier sessions!
                         intraday_dates = sorted({c['timestamp'][:10] for c in nse_ds.get('contracts', []) if c.get('timestamp')})
                         first_intra_date = intraday_dates[0] if intraday_dates else ''
+                        intra_strikes = {c['strike'] for c in nse_ds.get('contracts', []) if c.get('type') != 'FUT'}
                         merged_contracts = list(nse_ds.get('contracts', []))
                         merged_underlying = list(nse_ds.get('underlying', []))
 
@@ -367,7 +380,7 @@ def install_history(app, session_fn, broker, market, prefix, snapshots: Snapshot
                                 p_ds = prev_min.get('dataset') or {}
                                 for c in p_ds.get('contracts', []):
                                     ts = c.get('timestamp')
-                                    if ts and ts[:10] < first_intra_date:
+                                    if ts and ts[:10] < first_intra_date and (c.get('type') == 'FUT' or not intra_strikes or c.get('strike') in intra_strikes):
                                         covered_prev_dates.add(ts[:10])
                                         merged_contracts.append(c)
                                 for u in p_ds.get('underlying', []):
@@ -386,6 +399,8 @@ def install_history(app, session_fn, broker, market, prefix, snapshots: Snapshot
                                     for c in a_ds.get('contracts', []):
                                         dt_s = c.get('date') or str(c.get('timestamp') or '')[:10]
                                         if not dt_s or dt_s >= first_intra_date or dt_s in covered_prev_dates:
+                                            continue
+                                        if c.get('type') != 'FUT' and intra_strikes and c.get('strike') not in intra_strikes:
                                             continue
                                         ts_eod = f"{dt_s}T15:30"
                                         if ts_eod > f"{c['expiry']}T15:30":
@@ -452,15 +467,36 @@ def install_history(app, session_fn, broker, market, prefix, snapshots: Snapshot
             if kind == 'minute':
                 try:
                     min_res = snap_store.load_minute_replay(underlying, exch, expiry, start, end)
+                    min_res['dataset'].setdefault('metadata', {})['dataSourceStatus'] = 'HISTORICAL'
                     min_res['notice'] = f"Showing saved 1-minute intraday option-chain bars as of {min_res['asOf']}."
                     return min_res
                 except (LookupError, ValueError, OSError, sqlite3.Error):
                     pass
 
+        # 3b. Check verified 1-minute historical Parquet archive (NIFTY, BANKNIFTY, SENSEX)
+        if (
+            parquet_store
+            and parquet_store.supports(underlying, exch)
+            and start
+            and end
+            and start <= end <= today_ist_str
+            and error.status_code in (401, 403, 404, 422, 429, 500, 502, 503, 504)
+        ):
+            try:
+                pq_res = await asyncio.to_thread(parquet_store.load_replay, underlying, exch, expiry, start, end, 30)
+                pq_res['notice'] = (
+                    f"Showing verified 1-minute historical option-chain archive for {underlying} ({expiry}) "
+                    f"as of {pq_res['asOf']} IST."
+                )
+                return pq_res
+            except (LookupError, ValueError, OSError):
+                pass
+
         # 4. Check local 5-year NIFTY SQLite backup
         if underlying == 'NIFTY' and exch == 'nse_fo' and error.status_code in (401, 403, 404, 422, 429, 500, 502, 503, 504):
             try:
                 result = backup.load(expiry, start, end, kind)
+                result['dataset'].setdefault('metadata', {})['dataSourceStatus'] = 'HISTORICAL'
                 result['notice'] = 'Showing local ' + result['resolution'] + ' option-chain archive as of ' + result['asOf'] + '.'
                 return result
             except (ValueError, OSError, sqlite3.Error):
@@ -475,6 +511,7 @@ def install_history(app, session_fn, broker, market, prefix, snapshots: Snapshot
                     for c in nse_res.get('dataset', {}).get('contracts', []):
                         if not c.get('lotSize'):
                             c['lotSize'] = int(opt_lot)
+                nse_res['dataset'].setdefault('metadata', {})['dataSourceStatus'] = 'HISTORICAL'
                 nse_res['notice'] = (
                     f"Showing verified NSE historical option-chain archive for {underlying} ({expiry}) as of {nse_res['asOf']}."
                 )
@@ -485,11 +522,15 @@ def install_history(app, session_fn, broker, market, prefix, snapshots: Snapshot
         # 6. Surface clear coverage diagnostics without fabricating data
         try:
             cov = snap_store.coverage(symbol=underlying, exchange=exch)
+            pq_cov = parquet_store.coverage(symbol=underlying, exchange=exch) if parquet_store else {'symbols': []}
+            hints = []
             if cov.get('earliestDate'):
-                raise HTTPException(
-                    error.status_code,
-                    f"{error.detail} Earliest recorded local snapshot for {underlying}: {cov['earliestTimestamp']} IST.",
-                )
+                hints.append(f"Earliest recorded local snapshot for {underlying}: {cov['earliestTimestamp']} IST.")
+            if pq_cov.get('symbols'):
+                s_info = pq_cov['symbols'][0]
+                hints.append(f"1-minute historical Parquet coverage for {underlying}: {s_info['earliestDate']} to {s_info['latestDate']}.")
+            if hints:
+                raise HTTPException(error.status_code, f"{error.detail} {' '.join(hints)}")
         except (ValueError, OSError, sqlite3.Error):
             pass
         raise error
@@ -531,9 +572,11 @@ def install_history(app, session_fn, broker, market, prefix, snapshots: Snapshot
     @app.get(prefix + '/market-status')
     async def get_market_status(underlying: str = '', exch: str = ''):
         cov = snap_store.coverage(symbol=underlying, exchange=exch)
+        pq_cov = parquet_store.coverage(symbol=underlying, exchange=exch) if parquet_store else {'hasParquet': False, 'totalRowsInstalled': 0, 'symbols': []}
         return {
             'marketStatus': market_status_ist(),
             'snapshotCoverage': cov,
+            'parquetCoverage': pq_cov,
         }
 
     @app.get(prefix + '/instruments')
@@ -769,6 +812,7 @@ def install_history(app, session_fn, broker, market, prefix, snapshots: Snapshot
                 'underlying': spots,
                 'metadata': {
                     'modelled': False,
+                    'dataSourceStatus': 'LIVE',
                     'exchange': exch,
                     'capturedAt': now.isoformat(),
                     'marketStatus': market_status_ist(now),
@@ -807,7 +851,7 @@ def install_history(app, session_fn, broker, market, prefix, snapshots: Snapshot
                     pass
             raise
 
-    async def live_replay(req: Request, underlying: str, expiry: str, start: str, end: str, exch: str = 'nse_fo', interval: int = 15):
+    async def live_replay(req: Request, underlying: str, expiry: str, start: str, end: str, exch: str = 'nse_fo', interval: int = 25):
         _, auth = await get_session(req)
         if exch not in ('nse_fo', 'bse_fo') or interval not in (5, 10, 15, 20, 25):
             raise HTTPException(422, 'Select a supported option exchange and strike interval')
@@ -981,6 +1025,8 @@ def install_history(app, session_fn, broker, market, prefix, snapshots: Snapshot
                 'underlying': spots,
                 'metadata': {
                     'exchange': exch,
+                    'dataSourceStatus': 'LIVE',
+                    'capturedAt': datetime.now(IST).isoformat(),
                     'resolution': '1 minute',
                     'quoteTiming': 'Completed minute close; bar labelled by its minute in IST',
                     'modelled': False,
@@ -994,7 +1040,8 @@ def install_history(app, session_fn, broker, market, prefix, snapshots: Snapshot
                 cache.pop(evicted, None)
                 serialized_replay_cache.pop(evicted, None)
             cache[key] = dataset
-            raw_cached_bytes = json.dumps({'dataset': dataset, 'cached': True}, separators=(',', ':')).encode('utf-8')
+            cached_ds = {**dataset, 'metadata': {**dataset['metadata'], 'dataSourceStatus': 'CACHED'}}
+            raw_cached_bytes = json.dumps({'dataset': cached_ds, 'cached': True}, separators=(',', ':')).encode('utf-8')
             gz_cached_bytes = gzip.compress(raw_cached_bytes, compresslevel=1)
             serialized_replay_cache[key] = (raw_cached_bytes, gz_cached_bytes)
             return {'dataset': dataset, 'cached': False, '_cacheKey': key}
@@ -1014,7 +1061,7 @@ def install_history(app, session_fn, broker, market, prefix, snapshots: Snapshot
         start: str,
         end: str,
         exch: str = 'nse_fo',
-        interval: int = 15,
+        interval: int = 25,
         source: str = 'auto',
     ):
         if source == 'snapshots':
@@ -1200,7 +1247,7 @@ def install_history(app, session_fn, broker, market, prefix, snapshots: Snapshot
                 try:
                     exps = await public_expiries(sym, 'nse_fo', start_iso)
                     if exps:
-                        res = await live_replay(req_stub, sym, exps[0], start_iso, end_iso, 'nse_fo', interval=15)
+                        res = await live_replay(req_stub, sym, exps[0], start_iso, end_iso, 'nse_fo', interval=25)
                         remember(res, 'minute')
                 except Exception:
                     continue

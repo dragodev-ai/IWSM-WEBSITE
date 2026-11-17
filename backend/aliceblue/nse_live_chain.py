@@ -19,18 +19,20 @@ NSE_INDEX_CHART_NAMES = {
 }
 
 DEFAULT_LOT_SIZES = {
-    "NIFTY": 75,
+    "NIFTY": 65,
     "BANKNIFTY": 30,
-    "FINNIFTY": 65,
+    "FINNIFTY": 60,
     "MIDCPNIFTY": 120,
     "NIFTYNXT50": 25,
+    "SENSEX": 20,
+    "BANKEX": 30,
     "RELIANCE": 500,
     "HDFCBANK": 550,
     "ICICIBANK": 700,
     "SBIN": 750,
     "TCS": 175,
     "INFY": 400,
-    "IDEA": 36125,
+    "IDEA": 71475,
 }
 
 
@@ -176,8 +178,11 @@ class NseLiveOptionChain:
 
         spot = records.get("underlyingValue")
         spot_f = float(spot) if isinstance(spot, (int, float)) and spot > 0 else None
-        stamp = datetime.now(IST).strftime("%Y-%m-%dT%H:%M")
-        dte = max((datetime.strptime(iso_exp, "%Y-%m-%d") - datetime.now(IST).replace(tzinfo=None)).total_seconds() / 86400.0, 1.0 / 1440.0)
+        now_ist = datetime.now(IST)
+        raw_stamp = now_ist.strftime("%Y-%m-%dT%H:%M")
+        stamp = min(raw_stamp, f"{iso_exp}T15:30")
+        exp_settlement = datetime.strptime(f"{iso_exp} 15:30", "%Y-%m-%d %H:%M")
+        dte = max((exp_settlement - now_ist.replace(tzinfo=None)).total_seconds() / 86400.0, 1.0 / 1440.0)
         T = dte / 365.0
 
         contracts = []
@@ -199,8 +204,8 @@ class NseLiveOptionChain:
                 vol = leg.get("totalTradedVolume")
                 nse_iv = leg.get("impliedVolatility")
                 solved = (
-                    solve_iv_and_greeks(float(ltp), spot_f or float(strike), float(strike), T, side)
-                    if (spot_f or strike) and ltp > 0 and T > 1e-6
+                    solve_iv_and_greeks(float(ltp), spot_f, float(strike), T, side, is_futures_basis=False)
+                    if spot_f and spot_f > 0 and ltp > 0 and T > 1e-6
                     else None
                 )
                 iv_val, delta, gamma, theta, vega, rho = solved if solved is not None else (None, None, None, None, None, None)
@@ -217,8 +222,8 @@ class NseLiveOptionChain:
                     "ltp": float(ltp),
                     "bid": float(bid) if bid is not None else None,
                     "ask": float(ask) if ask is not None else None,
-                    "volume": int(vol) if isinstance(vol, (int, float)) else None,
-                    "oi": int(oi_lots * unit_lot) if isinstance(oi_lots, (int, float)) else None,
+                    "volume": int(vol * unit_lot) if isinstance(vol, (int, float)) and vol >= 0 else None,
+                    "oi": int(oi_lots * unit_lot) if isinstance(oi_lots, (int, float)) and oi_lots >= 0 else None,
                     "oiChange": int(chg_oi_lots * unit_lot) if isinstance(chg_oi_lots, (int, float)) else None,
                     "iv": round(float(nse_iv), 2) if isinstance(nse_iv, (int, float)) and nse_iv > 0 else iv_val,
                     "delta": delta,
@@ -242,10 +247,11 @@ class NseLiveOptionChain:
             "metadata": {
                 "synthetic": False,
                 "modelled": False,
+                "dataSourceStatus": "LIVE",
                 "exchange": "nse_fo",
                 "baseIntervalMinutes": 1,
                 "singleSnapshot": True,
-                "capturedAt": datetime.now(IST).isoformat(),
+                "capturedAt": now_ist.isoformat(),
                 "spotPrice": spot_f,
                 "quoteTiming": "Snapshot capture time (IST); persisted to local historical snapshot store.",
                 "warnings": [],
@@ -265,7 +271,7 @@ class NseLiveOptionChain:
         lot_size: int | None = None,
         futures_expiry_iso: str = "",
         futures_lot_size: int | None = None,
-        strike_window: int = 12,
+        strike_window: int = 30,
     ) -> dict:
         """Fetch genuine 1-minute intraday option-chain + futures + spot + India VIX bars from NSE official feeds."""
         sym = symbol.strip().upper()
@@ -325,7 +331,7 @@ class NseLiveOptionChain:
         if not leg_specs:
             raise LookupError(f"No option contract identifiers available for {sym} {iso_exp}")
 
-        sem = asyncio.Semaphore(14)
+        sem = asyncio.Semaphore(24)
 
         async def _fetch_contract_chart(ident: str) -> dict[str, float]:
             async with sem:
@@ -406,13 +412,15 @@ class NseLiveOptionChain:
                 continue
             last_stamp = day_stamps[-1]
 
-            # Option contracts: carry latest traded price forward across the session's 1-minute grid once traded
+            # Option contracts: carry latest traded price forward causally from first print onward (zero lookahead!)
             for (st, side, _, leg_meta), mp in zip(leg_specs, leg_maps):
                 day_leg_pts = {ts: pr for ts, pr in mp.items() if ts[:10] == s_date}
                 oi_lots = leg_meta.get("openInterest")
                 oi_units = int(oi_lots * unit_lot) if isinstance(oi_lots, (int, float)) and oi_lots >= 0 else None
                 chg_oi_lots = leg_meta.get("changeinOpenInterest")
                 oi_chg = int(chg_oi_lots * unit_lot) if isinstance(chg_oi_lots, (int, float)) else None
+                vol_lots = leg_meta.get("totalTradedVolume")
+                vol_units = int(vol_lots * unit_lot) if isinstance(vol_lots, (int, float)) and vol_lots >= 0 else None
                 bid_live = (
                     float(leg_meta["buyPrice1"])
                     if isinstance(leg_meta.get("buyPrice1"), (int, float)) and leg_meta["buyPrice1"] > 0
@@ -437,18 +445,20 @@ class NseLiveOptionChain:
                             "lotSize": unit_lot,
                             "oi": oi_units,
                             "oiChange": oi_chg,
-                            "volume": None,
+                            "volume": vol_units,
                             "bid": bid_live,
                             "ask": ask_live,
                         })
                     continue
 
-                # Seed initial price from first observed print so early 09:15+ frames also have full strike chain
                 first_ts = min(day_leg_pts)
                 cur_price = day_leg_pts[first_ts]
                 for ts in day_stamps:
+                    if ts < first_ts:
+                        continue
                     if ts in day_leg_pts:
                         cur_price = day_leg_pts[ts]
+                    is_last = ts == last_stamp and s_date == session_dates[-1]
                     row_out = {
                         "timestamp": ts,
                         "symbol": sym,
@@ -458,10 +468,10 @@ class NseLiveOptionChain:
                         "close": cur_price,
                         "lotSize": unit_lot,
                         "oi": oi_units,
-                        "oiChange": oi_chg,
-                        "volume": None,
+                        "oiChange": oi_chg if is_last else None,
+                        "volume": vol_units if is_last else None,
                     }
-                    if ts == last_stamp:
+                    if is_last:
                         if bid_live is not None:
                             row_out["bid"] = bid_live
                         if ask_live is not None:
@@ -515,6 +525,8 @@ class NseLiveOptionChain:
             "underlying": underlying_rows,
             "metadata": {
                 "exchange": "nse_fo",
+                "dataSourceStatus": "LIVE",
+                "capturedAt": datetime.now(IST).isoformat(),
                 "resolution": "1 minute",
                 "quoteTiming": "Completed minute close; bar labelled by its minute in IST",
                 "modelled": False,

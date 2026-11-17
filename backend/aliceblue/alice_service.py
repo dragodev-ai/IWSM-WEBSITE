@@ -383,7 +383,7 @@ async def exchange_direct_api_key(broker: Broker, user_id: str, api_key: str) ->
     return session_id
 
 
-def create_app(config, db, transport=None, snapshot_db=None, local_owner_mode: bool = False, env_path=None):
+def create_app(config, db, transport=None, snapshot_db=None, local_owner_mode: bool = False, env_path=None, parquet_root=None):
     validate_config(config)
     app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
     store = Store(db, config['ALICEBLUE_SESSION_ENCRYPTION_KEY'])
@@ -420,10 +420,17 @@ def create_app(config, db, transport=None, snapshot_db=None, local_owner_mode: b
     from snapshot_store import SnapshotStore
     from alice_history import install_history, classify_expiries, market_status_ist
     from nse_archive_fallback import LocalNseArchive
+    from parquet_1min_store import Parquet1MinStore, DEFAULT_PARQUET_ROOT
 
     snap_path = snapshot_db or config.get('ALICEBLUE_SNAPSHOT_DB_PATH') or str(Path(db).with_name('option-snapshots.sqlite3'))
     snapshots = SnapshotStore(snap_path)
     nse_archive = LocalNseArchive(allow_sync=local_owner_mode)
+    resolved_parquet_root = (
+        parquet_root
+        or config.get('ALICEBLUE_PARQUET_1MIN_ROOT')
+        or (DEFAULT_PARQUET_ROOT if (local_owner_mode and transport is None) else None)
+    )
+    parquet_store = Parquet1MinStore(resolved_parquet_root)
 
     # Automatically seed any server-configured .env session token so live & 1m chains load with zero UI prompts
     env_seed_token = (config.get('ALICEBLUE_SESSION_TOKEN') or '').strip()
@@ -558,7 +565,19 @@ def create_app(config, db, transport=None, snapshot_db=None, local_owner_mode: b
                 if e.status_code in (401, 403):
                     if sid:
                         store.delete(sid)
+                    if local_owner_mode:
+                        store.delete('local-owner-active')
+                        store.delete('owner-vault')
+                        config['ALICEBLUE_SESSION_TOKEN'] = ''
                     connected = False
+                    if local_owner_mode and config.get('ALICEBLUE_API_KEY') and (config.get('ALICEBLUE_CLIENT_ID') or config.get('ALICEBLUE_USER_ID')):
+                        try:
+                            sid, data = await ensure_session_async(req)
+                            ttl = session_seconds(data['token'])
+                            connected = bool(ttl > 0)
+                            verified = connected
+                        except HTTPException:
+                            connected = False
         if connected and sid:
             store.put(sid, data, ttl)
         r = JSONResponse({
@@ -777,23 +796,29 @@ def create_app(config, db, transport=None, snapshot_db=None, local_owner_mode: b
 
         local = []
         snap_exps = []
+        parquet_exps = []
         nse_exps = []
         try:
             snap_exps = snapshots.expiries(underlying, exch, start, end)
         except (ValueError, OSError, sqlite3.Error):
             snap_exps = []
-        if underlying == 'NIFTY' and exch == 'nse_fo':
+        if parquet_store.supports(underlying, exch) and (start or end):
+            try:
+                parquet_exps = await asyncio.to_thread(parquet_store.expiries, underlying, exch, start, end)
+            except (ValueError, OSError):
+                parquet_exps = []
+        if underlying == 'NIFTY' and exch == 'nse_fo' and not parquet_exps:
             try:
                 local = NiftyBackup().expiries(start, end)
             except (ValueError, OSError, sqlite3.Error):
                 pass
-        if not local and exch == 'nse_fo' and nse_archive.available():
+        if not local and not parquet_exps and exch == 'nse_fo' and nse_archive.available():
             try:
                 nse_exps = await asyncio.to_thread(nse_archive.expiries, underlying, start, end)
             except (ValueError, OSError, sqlite3.Error):
                 nse_exps = []
 
-        combined_local = list(dict.fromkeys([*snap_exps, *local, *nse_exps]))
+        combined_local = list(dict.fromkeys([*snap_exps, *parquet_exps, *local, *nse_exps]))
         today_ist = market_status_ist()['dateIST']
         # Check if start is an older historical date whose contracts have already expired vs active contracts
         pub_exps = []
@@ -816,16 +841,23 @@ def create_app(config, db, transport=None, snapshot_db=None, local_owner_mode: b
 
         # If historical date (>6 days ago, e.g. 2026-02-02) has local historical archive expiries, return them directly!
         if combined_local and start and start < today_ist and not pub_exps:
+            has_minute_hist = bool(snap_exps or parquet_exps)
             src_label = (
-                'Recorded snapshots & local NSE archive'
-                if snap_exps
-                else ('Local NIFTY daily backup expiry list' if local else f'Local verified NSE archive ({underlying})')
+                f'Verified 1-Minute Historical Options Archive ({underlying})'
+                if parquet_exps
+                else (
+                    'Recorded snapshots & local NSE archive'
+                    if snap_exps
+                    else ('Local NIFTY daily backup expiry list' if local else f'Local verified NSE archive ({underlying})')
+                )
             )
             return {
                 'expiries': combined_local,
                 'expiryDetails': classify_expiries(combined_local, start),
                 'backup': True,
-                'historicalOnly': True,
+                'historicalOnly': not has_minute_hist,
+                'parquetMinuteAvailable': bool(parquet_exps),
+                'dataSourceStatus': 'HISTORICAL',
                 'marketStatus': market_status_ist(),
                 'source': src_label,
             }
@@ -879,8 +911,18 @@ def create_app(config, db, transport=None, snapshot_db=None, local_owner_mode: b
     app.state.broker = broker
     app.state.config = config
     app.state.nse_archive = nse_archive
+    app.state.parquet_store = parquet_store
     app.state.local_owner_mode = local_owner_mode
-    install_history(app, ensure_session_async, broker, market, PREFIX, snapshots=snapshots, nse_archive=nse_archive)
+    install_history(
+        app,
+        ensure_session_async,
+        broker,
+        market,
+        PREFIX,
+        snapshots=snapshots,
+        nse_archive=nse_archive,
+        parquet_store=parquet_store,
+    )
     try:
         import sys as _sys
         _root_dir = str(Path(__file__).resolve().parent.parent.parent)
