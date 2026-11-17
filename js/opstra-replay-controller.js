@@ -485,7 +485,18 @@
           }
           const hit = staticExpCache[exch + '|' + sym];
           if (hit && hit.expiries?.length) {
-            return jsonSynthResponse({ ...hit, marketStatus: mkt });
+            const details = Array.isArray(hit.expiryDetails) ? hit.expiryDetails : [];
+            const liveDetails = !start && details.length
+              ? details
+                  .filter(d => !d.iso || d.iso >= mkt.dateIST)
+                  .map(d => ({
+                    ...d,
+                    dte: d.iso ? Math.max(0, Math.round((Date.parse(d.iso + 'T00:00:00Z') - Date.parse(mkt.dateIST + 'T00:00:00Z')) / 86400000)) : d.dte,
+                  }))
+              : details;
+            const useDetails = liveDetails.length ? liveDetails : details;
+            const useExps = useDetails.length ? useDetails.map(d => d.expiry) : hit.expiries;
+            return jsonSynthResponse({ ...hit, expiries: useExps, expiryDetails: useDetails, marketStatus: mkt });
           }
           const fnoBundle = await loadUniversalFnoBundle();
           const bSym = fnoBundle?.symbols?.[sym];
@@ -501,21 +512,34 @@
           }
           return jsonSynthResponse({
             expiries: ['23NOV26'],
-            expiryDetails: [{ expiry: '23NOV26', iso: '2026-11-23', cycle: 'monthly', dte: 7 }],
+            expiryDetails: [{ expiry: '23NOV26', iso: '2026-11-23', cycle: 'monthly', dte: 6 }],
             marketStatus: mkt,
             source: 'Exchange Contract Directory',
           });
         }
         if (p === '/api/aliceblue/replay' || p === '/api/aliceblue/snapshot') {
           const sym = (q.get('underlying') || 'NIFTY').toUpperCase();
-          if (!staticReplayCache.has(sym) && root.location?.protocol !== 'file:') {
-            try {
-              const r = await fetch('assets/market-cache/replay-' + encodeURIComponent(sym) + '.json');
-              if (r.ok) staticReplayCache.set(sym, await r.json());
-            } catch {}
+          const isSnap = p === '/api/aliceblue/snapshot';
+          const cacheKey = (isSnap ? 'snap:' : 'replay:') + sym;
+          if (!staticReplayCache.has(cacheKey) && root.location?.protocol !== 'file:') {
+            const urls = isSnap
+              ? [
+                  'assets/market-cache/snapshot-' + encodeURIComponent(sym) + '.json',
+                  'assets/market-cache/replay-' + encodeURIComponent(sym) + '.json',
+                ]
+              : ['assets/market-cache/replay-' + encodeURIComponent(sym) + '.json'];
+            for (const u of urls) {
+              try {
+                const r = await fetch(u);
+                if (r.ok) {
+                  staticReplayCache.set(cacheKey, await r.json());
+                  break;
+                }
+              } catch {}
+            }
           }
-          if (staticReplayCache.has(sym)) {
-            return jsonSynthResponse(staticReplayCache.get(sym));
+          if (staticReplayCache.has(cacheKey)) {
+            return jsonSynthResponse(staticReplayCache.get(cacheKey));
           }
           const fnoBundle = await loadUniversalFnoBundle();
           const unpacked = unpackUniversalFnoDataset(fnoBundle, sym, q.get('expiry') || '', q.get('start') || '', q.get('end') || '');
