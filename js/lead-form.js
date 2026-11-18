@@ -9,6 +9,45 @@
   var whatsappActions = document.querySelector('#confirm-whatsapp-actions');
   var previousFocus = null;
   var uncertainMessage = 'We could not confirm that your enquiry was saved. Please try again. Your details are still here.';
+  var publicEnquiryUrl = 'https://script.google.com/macros/s/AKfycbx_L4Hp3yDer-w-QT4CzrYwxFpwrPCUJRCuXYthJSxI0T0C60QmEn6OLZqQiBfQ-zvqBA/exec';
+
+  async function postEnquiryRequest(payload, signal) {
+    var isStaticHost = /\.github\.io$/i.test(window.location.hostname || '');
+    if (!isStaticHost) {
+      try {
+        var proxyReq = {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        };
+        if (signal) proxyReq.signal = signal;
+        var proxyRes = await window.fetch('/.netlify/functions/collect-enquiry', proxyReq);
+        var proxyType = (proxyRes.headers && proxyRes.headers.get('content-type')) || '';
+        if (proxyRes.status !== 404 && proxyRes.status !== 405 && proxyType.indexOf('application/json') !== -1) {
+          return { response: proxyRes, result: await proxyRes.json() };
+        }
+      } catch (proxyErr) {
+        if (signal && signal.aborted) throw proxyErr;
+      }
+    }
+    var directReq = {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        public_form: 'iwsm-counselling-v1',
+        full_name: payload.full_name,
+        phone: payload.phone,
+        email: payload.email,
+        course: payload.course,
+        submission_id: payload.submission_id,
+        'bot-field': payload['bot-field']
+      }),
+      redirect: 'follow'
+    };
+    if (signal) directReq.signal = signal;
+    var directRes = await window.fetch(publicEnquiryUrl, directReq);
+    return { response: directRes, result: await directRes.json() };
+  }
 
   function displayError(message) {
     var error = new Error(message);
@@ -147,12 +186,7 @@
           retryFingerprint = fingerprint;
         }
         var controller = typeof window.AbortController === 'function' ? new window.AbortController() : null;
-        var request = {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ full_name: name, phone: phone, email: email, course: course, submission_id: retryId, 'bot-field': trap ? trap.value : '' })
-        };
-        if (controller) request.signal = controller.signal;
+        var payload = { full_name: name, phone: phone, email: email, course: course, submission_id: retryId, 'bot-field': trap ? trap.value : '' };
         // Promise.race still stops the UI waiting when AbortController/AbortSignal.timeout is unavailable.
         var timeout = new Promise(function (resolve, reject) {
           timeoutId = window.setTimeout(function () {
@@ -161,14 +195,17 @@
           }, 25000);
         });
         var receipt = await Promise.race([
-          window.fetch('/.netlify/functions/collect-enquiry', request).then(async function (response) {
-            return { response: response, result: await response.json() };
-          }),
+          postEnquiryRequest(payload, controller ? controller.signal : null),
           timeout
         ]);
         var result = receipt.result;
         if (!receipt.response.ok || !result || typeof result !== 'object' || Array.isArray(result) || result.success !== true) {
-          var serverMessage = result && typeof result.error === 'string' ? result.error.slice(0, 300) : uncertainMessage;
+          var codeMsg = result && result.code === 'invalid_details'
+            ? 'Please check your details and try again.'
+            : result && result.code === 'rate_limited'
+            ? 'Too many enquiries submitted right now. Please wait a minute and try again.'
+            : '';
+          var serverMessage = result && typeof result.error === 'string' ? result.error.slice(0, 300) : (codeMsg || uncertainMessage);
           throw displayError(serverMessage);
         }
         if (result.submission_id !== retryId || typeof result.month !== 'string' || !/^\d{4}-(0[1-9]|1[0-2])$/.test(result.month)) {
