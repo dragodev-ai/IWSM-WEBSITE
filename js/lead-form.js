@@ -192,7 +192,7 @@
           timeoutId = window.setTimeout(function () {
             reject(displayError(uncertainMessage));
             if (controller) controller.abort();
-          }, 25000);
+          }, 40000);
         });
         var receipt = await Promise.race([
           postEnquiryRequest(payload, controller ? controller.signal : null),
