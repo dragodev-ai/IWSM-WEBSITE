@@ -1,10 +1,22 @@
-"""Indexed counterpart of the Excel export; no token or authentication storage."""
+"""Indexed counterpart of the 5-year NIFTY Excel export; no token or authentication storage."""
 import gzip, json, sqlite3, re, time
 from contextlib import contextmanager
 from pathlib import Path
 from datetime import date, datetime
 
 DEFAULT_ROOT = Path(__file__).resolve().parents[2] / 'market-data/nifty-backup'
+
+
+def _historical_nifty_lot_size(expiry_iso: str) -> int:
+    if expiry_iso <= '2021-07-29':
+        return 75
+    if expiry_iso <= '2024-04-25':
+        return 50
+    if expiry_iso <= '2024-11-20':
+        return 25
+    if expiry_iso <= '2025-12-30':
+        return 75
+    return 65
 
 
 class NiftyBackup:
@@ -24,10 +36,32 @@ class NiftyBackup:
             c.close()
 
     def expiry_iso(self, value):
+        s = str(value or '').strip().upper()
+        for fmt in ('%d%b%y', '%d%b%Y', '%d-%b-%Y'):
+            try:
+                return datetime.strptime(s, fmt).date().isoformat()
+            except ValueError:
+                continue
+        return date.fromisoformat(s).isoformat()
+
+    def minute_expiries(self, start='', end=''):
         try:
-            return datetime.strptime(value, '%d%b%y').date().isoformat()
-        except ValueError:
-            return date.fromisoformat(value).isoformat()
+            with self.connect() as c:
+                found = set()
+                if start and end:
+                    date.fromisoformat(start)
+                    date.fromisoformat(end)
+                    rows = c.execute(
+                        "SELECT DISTINCT expiry FROM captures WHERE kind='minute' AND start<=? AND end>=? AND expiry>=? ORDER BY expiry",
+                        (end, start, start),
+                    ).fetchall()
+                else:
+                    rows = c.execute("SELECT DISTINCT expiry FROM captures WHERE kind='minute' ORDER BY expiry").fetchall()
+                for r in rows:
+                    found.add(r[0])
+                return [datetime.strptime(exp, '%Y-%m-%d').strftime('%d%b%y').upper() for exp in sorted(found)]
+        except (ValueError, OSError, sqlite3.Error):
+            return []
 
     def expiries(self, start='', end=''):
         with self.connect() as c:
@@ -36,15 +70,15 @@ class NiftyBackup:
                 date.fromisoformat(start)
                 date.fromisoformat(end)
                 rows = c.execute(
-                    "SELECT DISTINCT expiry FROM quotes WHERE date>=? AND date<=? AND type!='FUT' ORDER BY expiry",
-                    (start, end),
+                    "SELECT DISTINCT expiry FROM quotes WHERE date>=? AND date<=? AND expiry>=? AND type!='FUT' ORDER BY expiry",
+                    (start, end, start),
                 )
                 for r in rows:
                     found.add(r[0])
                 try:
                     cap_rows = c.execute(
-                        "SELECT DISTINCT expiry FROM captures WHERE start<=? AND end>=? ORDER BY expiry",
-                        (end, start),
+                        "SELECT DISTINCT expiry FROM captures WHERE start<=? AND end>=? AND expiry>=? ORDER BY expiry",
+                        (end, start, start),
                     )
                     for r in cap_rows:
                         found.add(r[0])
@@ -71,8 +105,8 @@ class NiftyBackup:
         end = max(r.get('timestamp', r.get('date', ''))[:10] for r in rows)
         with self.connect() as c:
             c.execute('CREATE TABLE IF NOT EXISTS captures(kind TEXT,start TEXT,end TEXT,expiry TEXT,saved REAL,payload BLOB,PRIMARY KEY(kind,start,end,expiry))')
-            for expiry in {r['expiry'] for r in rows}:
-                copy = {**dataset, 'contracts': [r for r in rows if r['expiry'] == expiry]}
+            for expiry in {r['expiry'] for r in rows if r.get('type') != 'FUT'}:
+                copy = {**dataset, 'contracts': [r for r in rows if r['expiry'] == expiry or r.get('type') == 'FUT']}
                 c.execute(
                     'INSERT OR REPLACE INTO captures VALUES(?,?,?,?,?,?)',
                     (kind, start, end, expiry, time.time(), gzip.compress(json.dumps(copy, separators=(',', ':')).encode())),
@@ -83,9 +117,8 @@ class NiftyBackup:
             with self.connect() as c:
                 if kind == 'minute':
                     rows = c.execute(
-                        'SELECT payload FROM captures WHERE kind=? AND expiry=? AND start<=? AND end>=? '
-                        'ORDER BY (CASE WHEN start<=? AND end>=? THEN 1 ELSE 0 END) DESC, (julianday(end)-julianday(start)) DESC, saved DESC',
-                        (kind, expiry, end, start, start, end),
+                        'SELECT payload FROM captures WHERE kind=? AND expiry=? AND start<=? AND end>=? ORDER BY saved ASC',
+                        (kind, expiry, end, start),
                     ).fetchall()
                 else:
                     rows = c.execute(
@@ -94,23 +127,57 @@ class NiftyBackup:
                     ).fetchall()
             if not rows:
                 return None
+            if kind != 'minute':
+                raw = json.loads(gzip.decompress(rows[0][0]))
+                if raw.get('contracts'):
+                    return raw
+                return None
+
+            merged_contracts = {}
+            merged_underlying = {}
+            base_meta = {}
+            source_label = 'IWSM 1-Minute Intraday Option History'
             for row in rows:
                 raw = json.loads(gzip.decompress(row[0]))
-                raw['contracts'] = [r for r in raw['contracts'] if kind != 'minute' or start <= r['timestamp'][:10] <= end]
-                raw['underlying'] = [r for r in raw.get('underlying', []) if kind != 'minute' or start <= r['timestamp'][:10] <= end]
-                if raw['contracts']:
-                    return raw
-            return None
+                if raw.get('source'):
+                    source_label = raw['source']
+                if isinstance(raw.get('metadata'), dict):
+                    base_meta.update(raw['metadata'])
+                for r in raw.get('contracts', []):
+                    ts = str(r.get('timestamp', ''))
+                    if len(ts) >= 10 and start <= ts[:10] <= end:
+                        k = (ts, r.get('expiry'), r.get('type'), 0 if r.get('type') == 'FUT' else float(r.get('strike', 0)))
+                        merged_contracts[k] = r
+                for u in raw.get('underlying', []):
+                    ts = str(u.get('timestamp', ''))
+                    if len(ts) >= 10 and start <= ts[:10] <= end:
+                        merged_underlying[ts] = u
+
+            contracts_list = [merged_contracts[k] for k in sorted(merged_contracts)]
+            if not any(r.get('type') != 'FUT' for r in contracts_list):
+                return None
+            underlying_list = [merged_underlying[ts] for ts in sorted(merged_underlying)]
+            active_stamps = sorted({c['timestamp'] for c in contracts_list if c.get('type') != 'FUT' and c.get('timestamp')})
+            return {
+                'source': source_label,
+                'contracts': contracts_list,
+                'underlying': underlying_list,
+                'metadata': {
+                    **base_meta,
+                    'frameCount': len(active_stamps),
+                },
+            }
         except sqlite3.OperationalError:
             return None
 
     def load(self, expiry, start='', end='', kind='minute'):
         exp = self.expiry_iso(expiry)
+        eff_end = min(end, exp) if (end and exp < end and (not start or start <= exp)) else end
         if kind == 'minute':
-            a, b = date.fromisoformat(start), date.fromisoformat(end)
+            a, b = date.fromisoformat(start), date.fromisoformat(eff_end)
             if not 0 <= (b - a).days <= 30:
                 raise ValueError('Select up to 31 calendar days')
-        raw = self.cached(exp, start, end, kind)
+        raw = self.cached(exp, start, eff_end, kind)
         if raw:
             raw['metadata'] = {**raw.get('metadata', {}), 'backup': True, 'backupResolution': 'minute' if kind == 'minute' else 'snapshot'}
             return {
@@ -121,20 +188,44 @@ class NiftyBackup:
             }
         with self.connect() as c:
             if kind == 'snapshot':
-                start = end = c.execute('select max(date) from quotes where expiry=?', (exp,)).fetchone()[0]
+                start = eff_end = c.execute('select max(date) from quotes where expiry=?', (exp,)).fetchone()[0]
             if not start:
                 raise ValueError('No backup records for this expiry')
             rows = c.execute(
                 'select * from quotes where expiry=? and date>=? and date<=? order by date,strike,type',
-                (exp, start, end),
+                (exp, start, eff_end),
             ).fetchall()
             if not rows:
                 raise ValueError('No backup records for this expiry/date window')
             refs = []
             try:
-                refs = [{'date': r[0], 'symbol': 'NIFTY', 'close': r[1]} for r in c.execute('select date,close from underlying where date>=? and date<=?', (start, end))]
+                ohlc_rows = c.execute(
+                    'select date, open, high, low, close from underlying_ohlc where date>=? and date<=? order by date',
+                    (start, eff_end),
+                ).fetchall()
+                if ohlc_rows:
+                    refs = [
+                        {
+                            'date': r['date'],
+                            'symbol': 'NIFTY',
+                            'open': r['open'],
+                            'high': r['high'],
+                            'low': r['low'],
+                            'close': r['close'],
+                        }
+                        for r in ohlc_rows
+                    ]
             except sqlite3.OperationalError:
                 pass
+            if not refs:
+                try:
+                    refs = [
+                        {'date': r[0], 'symbol': 'NIFTY', 'close': r[1]}
+                        for r in c.execute('select date,close from underlying where date>=? and date<=? order by date', (start, eff_end))
+                    ]
+                except sqlite3.OperationalError:
+                    pass
+        row_keys = set(rows[0].keys()) if rows else set()
         contracts = [
             {
                 'date': r['date'],
@@ -142,9 +233,13 @@ class NiftyBackup:
                 'expiry': r['expiry'],
                 'type': r['type'],
                 'strike': r['strike'],
+                'open': r['open'] if 'open' in row_keys else None,
+                'high': r['high'] if 'high' in row_keys else None,
+                'low': r['low'] if 'low' in row_keys else None,
                 'close': r['close'],
                 'lotSize': r['lot_size'],
                 'oi': r['oi'],
+                'oiChange': r['oi_change'] if 'oi_change' in row_keys else None,
                 'volume': r['volume'],
             }
             for r in rows
@@ -159,7 +254,7 @@ class NiftyBackup:
                 'backupResolution': 'daily',
                 'modelled': False,
                 'quoteTiming': 'End-of-day close, not live or minute data',
-                'warning': 'Some legacy reports omit lot size and underlying price. Missing source values remain unavailable.',
+                'warning': 'End-of-day NSE archive loaded for this historical window. Missing source values remain unavailable.',
             },
         }
         return {'dataset': raw, 'backup': True, 'resolution': 'daily', 'asOf': max(r['date'] for r in contracts)}

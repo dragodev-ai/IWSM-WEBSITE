@@ -31,4 +31,39 @@ class BackupTests(unittest.IsolatedAsyncioTestCase):
   with patch('nifty_backup.NiftyBackup',return_value=self.backup):
    r=await self.client.get(PREFIX+'/expiries',params={'underlying':'NIFTY','start':'2021-11-08','end':'2021-11-08'})
   self.assertEqual(r.status_code,200);self.assertEqual(r.json()['expiries'],['11NOV21']);self.assertTrue(r.json()['backup'])
+ async def test_multi_day_minute_stitching_and_17nov_expired_clamp(self):
+  day1={'source':'IWSM 1-Minute Intraday Option History','contracts':[{'symbol':'NIFTY','timestamp':'2026-11-16T09:15','expiry':'2026-11-17','type':'CE','strike':25300,'close':140.5,'lotSize':65,'oi':90000,'volume':130}],'underlying':[{'symbol':'NIFTY','timestamp':'2026-11-16T09:15','close':25310.0}]}
+  day2={'source':'IWSM 1-Minute Intraday Option History','contracts':[{'symbol':'NIFTY','timestamp':'2026-11-17T15:29','expiry':'2026-11-17','type':'CE','strike':25300,'close':22.4,'lotSize':65,'oi':110000,'volume':260}],'underlying':[{'symbol':'NIFTY','timestamp':'2026-11-17T15:29','close':25322.4}]}
+  self.backup.remember(day1,'minute');self.backup.remember(day2,'minute')
+  with patch('nifty_backup.NiftyBackup',return_value=self.backup):
+   r=await self.client.get(PREFIX+'/replay',params={'underlying':'NIFTY','expiry':'17NOV26','start':'2026-11-16','end':'2026-11-18'})
+  self.assertEqual(r.status_code,200,r.text);j=r.json()
+  self.assertEqual(j['resolution'],'minute')
+  stamps=sorted({c['timestamp'] for c in j['dataset']['contracts']})
+  self.assertEqual(stamps,['2026-11-16T09:15','2026-11-17T15:29'])
+ async def test_underlying_candles_1m_5m_13m_15m_16m_exact_session_math(self):
+  pts=[]
+  for off in range(376):
+   m=555+off
+   ts=f'2026-11-17T{m//60:02d}:{m%60:02d}'
+   pts.append({'symbol':'NIFTY','timestamp':ts,'close':round(25000.0+off,2)})
+  ds={'source':'IWSM 1-Minute Intraday Option History','contracts':[{'symbol':'NIFTY','timestamp':'2026-11-17T09:15','expiry':'2026-11-17','type':'CE','strike':25000,'close':120.0,'lotSize':65,'oi':65000,'volume':65}],'underlying':pts}
+  self.app.state.snapshots.remember_minute_replay(ds)
+  for tf,expected_cnt in [(1,376),(5,75),(13,29),(15,25),(16,24)]:
+   r=await self.client.get(PREFIX+'/underlying-candles',params={'underlying':'NIFTY','exch':'nse_fo','start':'2026-11-17','end':'2026-11-17','interval':tf})
+   self.assertEqual(r.status_code,200,r.text);j=r.json()
+   self.assertEqual(j['candleCount'],expected_cnt,f'tf={tf}')
+   self.assertEqual(j['candles'][0]['open'],25000.0)
+   self.assertEqual(j['candles'][-1]['close'],25375.0)
+   if tf==13:
+    self.assertEqual(j['candles'][-1]['openTime'],'2026-11-17T15:19')
+    self.assertTrue(j['candles'][-1]['partial'])
+   if tf==16:
+    self.assertEqual(j['candles'][-1]['openTime'],'2026-11-17T15:23')
+    self.assertTrue(j['candles'][-1]['partial'])
+  r_causal=await self.client.get(PREFIX+'/underlying-candles',params={'underlying':'NIFTY','exch':'nse_fo','start':'2026-11-17','end':'2026-11-17','interval':15,'up_to':'2026-11-17T09:35'})
+  jc=r_causal.json()
+  self.assertEqual(jc['candleCount'],2)
+  self.assertEqual(jc['candles'][-1]['closeTime'],'2026-11-17T09:35')
+  self.assertEqual(jc['candles'][-1]['close'],25020.0)
 if __name__=='__main__':unittest.main()

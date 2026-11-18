@@ -35,7 +35,9 @@
       let chainRows = [], symbols = ['NIFTY'], archiveDates = [], symbolDates = {}, loading = false;
       let symbolSearchQuery = '', chainSearchQuery = '', chainRangeCount = 25, showDetailCols = false, quickTrade = false;
       let serverMarketStatus = null, snapshotCoverage = null, parquetCoverage = null, brokerExpiryDetails = {};
-      let apiBase = '', apiProbePromise = null, brokerAuth = { connected: false };
+      let apiBase = '', apiProbePromise = null, backendProbedOnce = false, brokerAuth = { connected: false };
+      let activeTimeframe = 5, candleSeries = 'spot', candleVisibleCount = 90, candlePanPct = 100;
+      let availableExpiries = [], expirySyncKey = '', expirySwitchSeq = 0, tfSwitchSeq = 0;
 
       const settings = { initialBalance: 1000000, feePerOrder: 20, feeBps: 0, slippage: 0, marginRate: 0.2, rate: 6.5, dividend: 0 };
 
@@ -194,46 +196,157 @@
         return modal;
       }
 
+      function mergeRawPreservingEvents(prevD, prevS, incomingRaw) {
+        if (!prevD || !prevS || !prevS.events?.length || !incomingRaw?.contracts?.length) return incomingRaw;
+        const incomingSym = String(incomingRaw.contracts[0]?.symbol || '').toUpperCase();
+        if (!incomingSym || incomingSym !== prevS.symbol) return incomingRaw;
+        const incomingKind = incomingRaw.contracts[0]?.timestamp ? 'intraday' : 'daily';
+        if (prevD.kind !== incomingKind) return incomingRaw;
+
+        const heldKeys = new Set();
+        for (const ev of prevS.events) {
+          if (ev.spec?.expiry && ev.spec?.type) {
+            heldKeys.add([ev.spec.expiry, ev.spec.type, ev.spec.type === 'FUT' ? 0 : ev.spec.strike].join('|'));
+          }
+        }
+        if (!heldKeys.size) return incomingRaw;
+
+        const cMap = new Map();
+        for (const c of incomingRaw.contracts) {
+          const ts = c.timestamp || c.date;
+          cMap.set([c.symbol, ts, c.expiry, c.type, c.type === 'FUT' ? 0 : c.strike].join('|'), c);
+        }
+        const inDates = new Set(incomingRaw.contracts.map(c => String(c.timestamp || c.date || '').slice(0, 10)));
+        for (const c of prevD.contracts) {
+          if (c.symbol !== prevS.symbol) continue;
+          const hk = [c.expiry, c.type, c.type === 'FUT' ? 0 : c.strike].join('|');
+          if (!heldKeys.has(hk)) continue;
+          const ts = c.timestamp || c.date;
+          if (!inDates.has(String(ts).slice(0, 10))) continue;
+          const fullKey = [c.symbol, ts, c.expiry, c.type, c.type === 'FUT' ? 0 : c.strike].join('|');
+          if (!cMap.has(fullKey)) {
+            const { stamp, ...cleanRow } = c;
+            cMap.set(fullKey, cleanRow);
+          }
+        }
+        const uMap = new Map();
+        for (const u of incomingRaw.underlying || []) {
+          uMap.set(u.timestamp || u.date, u);
+        }
+        for (const u of prevD.underlying || []) {
+          const ts = u.timestamp || u.date;
+          if (inDates.has(String(ts).slice(0, 10)) && !uMap.has(ts)) {
+            uMap.set(ts, u);
+          }
+        }
+        return {
+          ...incomingRaw,
+          contracts: [...cMap.values()],
+          underlying: [...uMap.values()],
+        };
+      }
+
+      function rebindSessionIfCompatible(nextD, prevS) {
+        if (!prevS || !prevS.events?.length || !nextD.symbols.includes(prevS.symbol)) return null;
+        try {
+          const avail = [...(nextD.bySymbol.get(prevS.symbol) || [])].sort();
+          if (!avail.length) return null;
+          const newStart = avail[0].slice(0, 10);
+          const newEnd = avail.at(-1).slice(0, 10);
+          const frameSet = new Set(avail);
+          if (!prevS.events.every(e => frameSet.has(e.at))) return null;
+          const targetCursor = frameSet.has(prevS.cursor)
+            ? prevS.cursor
+            : avail.find(t => t >= prevS.cursor) || avail.at(-1);
+          const lastEvAt = prevS.events.at(-1)?.at || avail[0];
+          const targetFrontier = frameSet.has(prevS.frontier) && prevS.frontier >= targetCursor && prevS.frontier >= lastEvAt
+            ? prevS.frontier
+            : (targetCursor >= lastEvAt ? targetCursor : avail.at(-1));
+          return P.restore(nextD, {
+            ...prevS,
+            start: newStart,
+            end: newEnd,
+            cursor: targetCursor,
+            frontier: targetFrontier,
+            dataSignature: nextD.signature,
+          });
+        } catch {
+          return null;
+        }
+      }
+
       function adopt(raw, b = null, session = null, preservePositions = false) {
-        const next = M.prepareDataset(raw);
-        let state;
+        const preparedInput = preservePositions && d && s ? mergeRawPreservingEvents(d, s, raw) : raw;
+        const next = M.prepareDataset(preparedInput);
+        let state = null;
         if (session) {
           state = P.restore(next, session);
         } else if (preservePositions && s && s.symbol === next.symbols[0]) {
-          state = P.create(next, settings);
+          state = rebindSessionIfCompatible(next, s) || P.create(next, settings);
         } else {
           state = P.create(next, settings);
         }
         pause();
         generation++;
         if (s) persist();
+        const prevCursor = s?.cursor || '';
+        const prevSym = s?.symbol || '';
         d = next;
         s = state;
         bundle = b;
+        if (prevSym && prevSym !== s.symbol) {
+          availableExpiries = [];
+          expirySyncKey = '';
+        }
+        if (d.kind === 'daily') {
+          activeTimeframe = 1440;
+        } else if (activeTimeframe === 1440 && P.frames(d, s).length > 1) {
+          activeTimeframe = 5;
+        }
         if (!preservePositions) {
           viewExpiry = '';
           payoffDate = '';
           basis = 'spot';
+          candleSeries = 'spot';
           el('basis-toggle').checked = false;
           if (el('build-expiry')) el('build-expiry').innerHTML = '';
           if (el('build-strike')) el('build-strike').innerHTML = '';
         }
         if (!session && d.kind !== 'daily') {
           const allFrames = P.frames(d, s);
-          const countsByDay = {};
-          for (const t of allFrames) {
-            const dayKey = t.slice(0, 10);
-            countsByDay[dayKey] = (countsByDay[dayKey] || 0) + 1;
+          if (preservePositions && prevCursor && allFrames.includes(prevCursor)) {
+            if (s.cursor !== prevCursor) s = P.advance(d, s, prevCursor);
+          } else {
+            const countsByDay = {};
+            for (const t of allFrames) {
+              const dayKey = t.slice(0, 10);
+              countsByDay[dayKey] = (countsByDay[dayKey] || 0) + 1;
+            }
+            const multiFrameDays = Object.keys(countsByDay).sort().filter(dayKey => countsByDay[dayKey] > 1);
+            const candidateFrames = multiFrameDays.length ? multiFrameDays.flatMap(dayKey => allFrames.filter(t => t.startsWith(dayKey))) : allFrames;
+            const hasDenseChain = t => {
+              const sp = d.spots.get(s.symbol + '|' + t);
+              if (!Number.isFinite(sp)) return false;
+              const opts = (d.byFrame.get(s.symbol + '|' + t) || []).filter(q => q.type !== 'FUT' && q.volume !== 0 && q.lotSize > 0);
+              if (opts.length < 12) return false;
+              const ceSet = new Set(opts.filter(q => q.type === 'CE').map(q => q.strike));
+              const peSet = new Set(opts.filter(q => q.type === 'PE').map(q => q.strike));
+              const paired = [...ceSet].filter(k => peSet.has(k)).sort((a, b) => a - b);
+              if (paired.length < 7) return false;
+              const atmIdx = paired.reduce((best, k, idx) => (Math.abs(k - sp) < Math.abs(paired[best] - sp) ? idx : best), 0);
+              return atmIdx >= 3 && atmIdx <= paired.length - 4;
+            };
+            const at =
+              candidateFrames.find(hasDenseChain) ||
+              candidateFrames.find(
+                t => Number.isFinite(d.spots.get(s.symbol + '|' + t)) && (d.byFrame.get(s.symbol + '|' + t) || []).some(q => q.type !== 'FUT' && q.volume !== 0 && q.lotSize > 0)
+              );
+            if (at && at !== s.cursor) s = P.advance(d, s, at);
           }
-          const multiFrameDay = Object.keys(countsByDay).sort().find(dayKey => countsByDay[dayKey] > 1);
-          const candidateFrames = multiFrameDay ? allFrames.filter(t => t.startsWith(multiFrameDay)) : allFrames;
-          const at = candidateFrames.find(
-            t => Number.isFinite(d.spots.get(s.symbol + '|' + t)) && (d.byFrame.get(s.symbol + '|' + t) || []).some(q => q.type !== 'FUT' && q.volume !== 0 && q.lotSize > 0)
-          );
-          if (at && at !== s.cursor) s = P.advance(d, s, at);
         }
         render();
         persist();
+        syncAvailableExpiries();
       }
 
       function restore(raw) {
@@ -264,12 +377,16 @@
       function frameStep(minutes) {
         if (!s) return;
         const dir = Math.sign(minutes), amount = Math.abs(minutes), base = resolution();
-        if (amount !== 1440 && (d.kind === 'daily' || amount < base)) {
-          throw Error('Loaded dataset has ' + (d.kind === 'daily' ? 'daily' : base + '-minute') + ' resolution. Load 1-minute history or snapshots for finer steps.');
+        if (amount !== 1440 && (d.kind === 'daily' || P.frames(d, s).length < 2)) {
+          setTimeframe(amount, dir);
+          return;
+        }
+        if (amount !== 1440 && amount < base) {
+          throw Error('Loaded dataset has ' + base + '-minute resolution. Load 1-minute history for finer steps.');
         }
         const frames = P.frames(d, s);
         const target =
-          amount !== 1440 && ![1, 5, 15, 30, 60, 120].includes(amount)
+          amount !== 1440 && (amount < 1 || amount > 375)
             ? frames[Math.max(0, Math.min(frames.length - 1, frames.indexOf(s.cursor) + dir))]
             : M.step(d, s, dir, amount === 1440 ? 'day' : amount).cursor;
         if (target === s.cursor) {
@@ -279,7 +396,7 @@
         }
         change(P.advance(d, s, target));
         if (s.cursor === frames.at(-1)) pause();
-        msg('Simulation cursor: ' + s.cursor.replace('T', ' ') + ' IST' + (recording ? ' · Saved to browser study store.' : ''));
+        msg('Simulation cursor: ' + s.cursor.replace('T', ' ') + ' IST · ' + (activeTimeframe === 1440 ? '1D' : activeTimeframe + 'm') + ' timeframe' + (recording ? ' · Saved to browser study store.' : ''));
       }
 
       function addCalendarDays(isoDate, deltaDays) {
@@ -311,6 +428,7 @@
       async function probeLocalBackend() {
         if (apiBase) return apiBase;
         if (apiProbePromise) return apiProbePromise;
+        if (backendProbedOnce && /\.github\.io$/i.test(root.location?.hostname || '')) return '';
         const isFile = root.location?.protocol === 'file:';
         const isHttpsPage = root.location?.protocol === 'https:';
         apiProbePromise = (async () => {
@@ -319,14 +437,16 @@
               if (root.location?.origin === candidate) continue;
               const r = await fetch(candidate + '/api/aliceblue/health', {
                 credentials: isFile || isHttpsPage ? 'omit' : 'include',
-                signal: AbortSignal.timeout(3500),
+                signal: AbortSignal.timeout(2500),
               });
               if (r.ok && (r.headers.get('content-type') || '').includes('application/json')) {
                 apiBase = candidate;
+                backendProbedOnce = true;
                 return apiBase;
               }
             } catch {}
           }
+          backendProbedOnce = true;
           return '';
         })().finally(() => {
           apiProbePromise = null;
@@ -519,15 +639,19 @@
         }
         if (p === '/api/aliceblue/replay' || p === '/api/aliceblue/snapshot') {
           const sym = (q.get('underlying') || 'NIFTY').toUpperCase();
+          const reqExp = (q.get('expiry') || '').toUpperCase();
           const isSnap = p === '/api/aliceblue/snapshot';
-          const cacheKey = (isSnap ? 'snap:' : 'replay:') + sym;
+          const cacheKey = (isSnap ? 'snap:' : 'replay:') + sym + (reqExp ? ':' + reqExp : '');
           if (!staticReplayCache.has(cacheKey) && root.location?.protocol !== 'file:') {
             const urls = isSnap
               ? [
                   'assets/market-cache/snapshot-' + encodeURIComponent(sym) + '.json',
                   'assets/market-cache/replay-' + encodeURIComponent(sym) + '.json',
                 ]
-              : ['assets/market-cache/replay-' + encodeURIComponent(sym) + '.json'];
+              : [
+                  ...(reqExp ? ['assets/market-cache/replay-' + encodeURIComponent(sym) + '-' + encodeURIComponent(reqExp) + '.json'] : []),
+                  'assets/market-cache/replay-' + encodeURIComponent(sym) + '.json',
+                ];
             for (const u of urls) {
               try {
                 const r = await fetch(u);
@@ -547,6 +671,20 @@
             return jsonSynthResponse(unpacked);
           }
           return jsonSynthResponse({ detail: 'Option-chain dataset for ' + sym + ' requires local server for uncached symbols.' }, 404);
+        }
+        if (p === '/api/aliceblue/underlying-candles') {
+          const sym = (q.get('underlying') || 'NIFTY').toUpperCase();
+          const tf = Number(q.get('interval') || 5);
+          const upTo = q.get('up_to') || '';
+          const obs = (d?.underlying || []).filter(u => u.symbol === sym);
+          const candles = C.aggregateSessionCandles(obs, tf, { upTo });
+          return jsonSynthResponse({
+            symbol: sym,
+            exchange: q.get('exch') || 'nse_fo',
+            intervalMinutes: tf,
+            candleCount: candles.length,
+            candles,
+          });
         }
         if (p === '/api/nse-library') {
           const mode = q.get('mode') || 'catalog';
@@ -1045,12 +1183,439 @@
         return catalogueTask;
       }
 
+      function pickPreferredBrokerExpiry(expRes, preferIso = '', refEndIso = '') {
+        const list = expRes?.expiries || [];
+        if (!list.length) return '';
+        if (preferIso) {
+          const exact = list.find(x => brokerCodeToIso(x) === preferIso);
+          if (exact) return exact;
+        }
+        const cutoff = refEndIso || todayIST();
+        const nonExpired = list.find(x => {
+          const iso = brokerCodeToIso(x);
+          return iso && iso >= cutoff;
+        });
+        return nonExpired || list[0];
+      }
+
+      async function syncAvailableExpiries(force = false) {
+        if (!s || !d) return;
+        const exch = fnoExch();
+        const key = [exch, s.symbol, s.start, s.end].join('|');
+        if (!force && expirySyncKey === key && availableExpiries.length) return;
+        expirySyncKey = key;
+        try {
+          const j = await brokerApi('expiries?' + new URLSearchParams({ underlying: s.symbol, exch, start: s.start, end: s.end }));
+          if (!s || [fnoExch(), s.symbol, s.start, s.end].join('|') !== key) return;
+          if (Array.isArray(j.expiryDetails)) {
+            for (const item of j.expiryDetails) if (item.iso) brokerExpiryDetails[item.iso] = item;
+          }
+          const isos = (j.expiries || []).map(brokerCodeToIso).filter(Boolean);
+          availableExpiries = [...new Set(isos)].sort();
+          renderExpirySelectOnly();
+        } catch {}
+      }
+
+      function renderExpirySelectOnly() {
+        if (!s || !d || !el('expiry-select')) return;
+        const loadedExps = [...new Set(d.contracts.filter(q => q.symbol === s.symbol && q.type !== 'FUT').map(q => q.expiry))].sort();
+        const allExps = [...new Set([...loadedExps, ...availableExpiries])].sort();
+        if (!viewExpiry || !loadedExps.includes(viewExpiry)) viewExpiry = loadedExps[0] || allExps[0] || '';
+        const expMap = classifyExpiryMap(allExps, s.cursor.slice(0, 10));
+        const activeExpDetail = expMap[viewExpiry];
+        el('expiry-select').innerHTML =
+          allExps
+            .map(e => {
+              const tag = loadedExps.includes(e) ? '' : '';
+              return '<option value="' + esc(e) + '" ' + (e === viewExpiry ? 'selected' : '') + '>' + esc((expMap[e]?.label || e) + tag) + '</option>';
+            })
+            .join('') +
+          '<option value="__browse__">Browse historical archive expiries…</option>';
+        el('expiry-meta').textContent = activeExpDetail
+          ? (activeExpDetail.cycle === 'monthly' ? 'Monthly Contract' : 'Weekly Contract') +
+            ' · ' +
+            (activeExpDetail.dte < 0 ? 'Expired (' + activeExpDetail.iso + ')' : activeExpDetail.dte === 0 ? 'Expiry Day (15:30 IST settlement)' : activeExpDetail.dte + ' calendar days to expiry')
+          : 'Select Expiry';
+      }
+
+      async function setTimeframe(tf, pendingStepDir = 0) {
+        const nextTf = Number(tf);
+        if (![1, 5, 13, 15, 16, 30, 60, 120, 1440].includes(nextTf)) return;
+        const wasPlaying = Boolean(timer);
+        pause();
+        activeTimeframe = nextTf;
+        if (el('timeframe')) el('timeframe').value = String(nextTf);
+        host.querySelectorAll('[data-tf]').forEach(btn => {
+          const isMatch = +btn.dataset.tf === nextTf;
+          btn.classList.toggle('active', isMatch);
+          btn.setAttribute('aria-pressed', String(isMatch));
+        });
+
+        if (!s || !d) return;
+        const frames = P.frames(d, s);
+        const needIntradayUpgrade = nextTf < 1440 && (d.kind === 'daily' || frames.length < 2);
+        if (needIntradayUpgrade) {
+          const myTfSeq = ++tfSwitchSeq;
+          const reqGen = ++generation;
+          const sym = s.symbol;
+          const exch = fnoExch();
+          const anchorDay = s.cursor.slice(0, 10);
+          const now = todayIST();
+          const reqStart = anchorDay >= defaultMinuteStartIST(now) ? defaultMinuteStartIST(now) : anchorDay;
+          const rawEnd = addCalendarDays(reqStart, 4);
+          const reqEnd = rawEnd > now ? now : rawEnd;
+          msg('Loading 1-minute intraday ' + sym + ' data for ' + (nextTf === 1440 ? '1D' : nextTf + 'm') + ' timeframe…');
+          try {
+            const expRes = await brokerApi('expiries?' + new URLSearchParams({ underlying: sym, exch, start: reqStart, end: reqEnd }));
+            if (myTfSeq !== tfSwitchSeq || reqGen !== generation) return;
+            if (Array.isArray(expRes.expiryDetails)) {
+              for (const item of expRes.expiryDetails) if (item.iso) brokerExpiryDetails[item.iso] = item;
+            }
+            availableExpiries = [...new Set((expRes.expiries || []).map(brokerCodeToIso).filter(Boolean))].sort();
+            const chosenExp = pickPreferredBrokerExpiry(expRes, viewExpiry, reqEnd);
+            if (!chosenExp) throw Error('No option contracts found for ' + sym + ' in ' + reqStart + '..' + reqEnd);
+            const j = await brokerApi('replay?' + new URLSearchParams({ underlying: sym, exch, expiry: chosenExp, start: reqStart, end: reqEnd }));
+            if (myTfSeq !== tfSwitchSeq || reqGen !== generation) return;
+            if (j.dataset?.contracts?.[0]?.timestamp) {
+              activeTimeframe = nextTf;
+              adopt(j.dataset, null, null, true);
+              activeTimeframe = nextTf;
+              const matchDayFrame = P.frames(d, s).find(t => t.startsWith(anchorDay));
+              if (matchDayFrame && matchDayFrame !== s.cursor) {
+                s = P.advance(d, s, matchDayFrame);
+              }
+              if (pendingStepDir !== 0) {
+                frameStep(pendingStepDir * nextTf);
+                return;
+              }
+              render();
+              msg('Switched to ' + nextTf + 'm timeframe · Loaded genuine 1-minute ' + sym + ' (' + chosenExp + ') option-chain history.');
+              return;
+            }
+            render();
+            msg('1-minute intraday option bars are unavailable for ' + sym + ' on ' + anchorDay + '; showing verified NSE daily EOD closes without fabricating intraday prices.');
+            return;
+          } catch (err) {
+            if (myTfSeq !== tfSwitchSeq) return;
+            render();
+            msg('1-minute intraday bars unavailable for ' + sym + ' on ' + anchorDay + ' (' + (err.message || 'daily archive only') + '). Showing verified observations.');
+            return;
+          }
+        }
+
+        render();
+        if (wasPlaying && P.frames(d, s).length > 1) {
+          el('btn-play').click();
+        } else {
+          msg('Timeframe set to ' + (nextTf === 1440 ? '1 Day' : nextTf + ' Min') + ' · Chart, underlying & option chain synchronized at ' + s.cursor.replace('T', ' ') + ' IST.');
+        }
+      }
+
+      async function switchExpiry(targetIso) {
+        if (!s || !d || !targetIso) return;
+        pause();
+        stopAutoRefresh();
+        const myExpSeq = ++expirySwitchSeq;
+        const alreadyOnDay = (d.byFrame.get(s.symbol + '|' + s.cursor) || []).some(q => q.expiry === targetIso && q.type !== 'FUT');
+        if (alreadyOnDay) {
+          viewExpiry = targetIso;
+          host.dataset.centeredChainKey = '';
+          render();
+          msg('Option chain switched to expiry ' + isoToBrokerCode(targetIso) + ' (' + targetIso + ') at ' + s.cursor.replace('T', ' ') + ' IST.');
+          return;
+        }
+        const anyFrameInLoaded = P.frames(d, s).find(t => (d.byFrame.get(s.symbol + '|' + t) || []).some(q => q.expiry === targetIso && q.type !== 'FUT'));
+        if (anyFrameInLoaded) {
+          viewExpiry = targetIso;
+          host.dataset.centeredChainKey = '';
+          change(P.advance(d, s, anyFrameInLoaded));
+          msg('Moved cursor to ' + anyFrameInLoaded.replace('T', ' ') + ' IST for expiry ' + isoToBrokerCode(targetIso) + '.');
+          return;
+        }
+
+        const exch = fnoExch();
+        const sym = s.symbol;
+        const prevCursor = s.cursor;
+        const code = isoToBrokerCode(targetIso);
+        const now = todayIST();
+        let reqStart = s.start;
+        let reqEnd = s.end;
+        if (targetIso < reqStart) {
+          reqStart = defaultMinuteStartIST(targetIso);
+          reqEnd = targetIso;
+        } else if (reqEnd > targetIso) {
+          reqEnd = targetIso;
+        }
+        if (d.kind === 'daily' && targetIso >= '2020-03-02') {
+          reqStart = targetIso < now ? defaultMinuteStartIST(targetIso) : defaultMinuteStartIST(now);
+          reqEnd = targetIso < now ? targetIso : now;
+        }
+
+        const reqGen = ++generation;
+        chainRows = [];
+        el('chain-body').innerHTML = '<tr><td colspan="' + (showDetailCols ? 17 : 11) + '" class="opstra-empty">Loading ' + esc(sym + ' ' + code + ' (' + targetIso + ')') + ' option chain…</td></tr>';
+        msg('Loading ' + sym + ' ' + code + ' (' + targetIso + ') option chain…');
+        try {
+          const keepTf = activeTimeframe;
+          const j = await brokerApi('replay?' + new URLSearchParams({ underlying: sym, exch, expiry: code, start: reqStart, end: reqEnd }));
+          if (myExpSeq !== expirySwitchSeq || reqGen !== generation) return;
+          adopt(j.dataset, null, null, true);
+          viewExpiry = targetIso;
+          if (d.kind !== 'daily' && keepTf < 1440) activeTimeframe = keepTf;
+          const frames = P.frames(d, s);
+          const desiredTs = frames.includes(prevCursor)
+            ? prevCursor
+            : frames.find(t => t.slice(11) === prevCursor.slice(11) && t.slice(0, 10) <= targetIso) || frames.at(-1);
+          if (desiredTs && desiredTs !== s.cursor && desiredTs >= (s.events.at(-1)?.at || frames[0])) {
+            s = P.advance(d, s, desiredTs);
+          }
+          host.dataset.centeredChainKey = '';
+          render();
+          persist();
+          msg(j.notice || ('Loaded ' + sym + ' ' + code + ' (' + targetIso + ') option chain at ' + s.cursor.replace('T', ' ') + ' IST.'));
+        } catch (err) {
+          if (myExpSeq !== expirySwitchSeq) return;
+          render();
+          msg('Could not load expiry ' + code + ': ' + (err.message || String(err)));
+        }
+      }
+
+      function renderCandleChart(v) {
+        const panel = el('candle-panel');
+        const svgWrap = el('candle-svg-wrap');
+        const seriesSel = el('candle-series');
+        const headingEl = el('candle-heading');
+        const countEl = el('candle-count');
+        const ohlcSumEl = el('tf-ohlc-summary');
+        const tipEl = el('candle-tooltip');
+        const panInput = el('candle-pan');
+        if (!panel || !svgWrap || !C?.aggregateSessionCandles) return;
+
+        const fut = currentFuture();
+        const seriesOpts = [{ value: 'spot', label: 'Underlying Spot (' + s.symbol + ')' }];
+        if (fut) seriesOpts.push({ value: 'fut|' + fut.expiry, label: 'Futures (' + isoToBrokerCode(fut.expiry) + ')' });
+        for (const p of v.positions) {
+          if (p.type !== 'FUT') {
+            const key = ['opt', p.expiry, p.type, p.strike].join('|');
+            if (!seriesOpts.some(o => o.value === key)) {
+              seriesOpts.push({ value: key, label: isoToBrokerCode(p.expiry) + ' ' + p.strike + ' ' + p.type });
+            }
+          }
+        }
+        if (!seriesOpts.some(o => o.value === candleSeries)) candleSeries = 'spot';
+        seriesSel.innerHTML = seriesOpts.map(o => '<option value="' + esc(o.value) + '" ' + (o.value === candleSeries ? 'selected' : '') + '>' + esc(o.label) + '</option>').join('');
+
+        let rawObs = [];
+        let seriesTitle = s.symbol + ' Spot';
+        if (candleSeries === 'spot') {
+          rawObs = (d.underlying || []).filter(u => u.symbol === s.symbol);
+        } else if (candleSeries.startsWith('fut|')) {
+          const fExp = candleSeries.split('|')[1];
+          seriesTitle = s.symbol + ' ' + isoToBrokerCode(fExp) + ' FUT';
+          rawObs = d.contracts.filter(c => c.symbol === s.symbol && c.type === 'FUT' && c.expiry === fExp);
+        } else if (candleSeries.startsWith('opt|')) {
+          const [, oExp, oType, oStrike] = candleSeries.split('|');
+          seriesTitle = s.symbol + ' ' + isoToBrokerCode(oExp) + ' ' + oStrike + ' ' + oType;
+          rawObs = d.contracts.filter(c => c.symbol === s.symbol && c.expiry === oExp && c.type === oType && c.strike === +oStrike);
+        }
+
+        const effTf = d.kind === 'daily' ? 1440 : activeTimeframe;
+        const tfTag = effTf === 1440 ? '1D' : effTf + 'm';
+        const candles = C.aggregateSessionCandles(rawObs, effTf, { upTo: s.cursor });
+
+        headingEl.textContent = seriesTitle + ' · ' + (effTf === 1440 ? 'Daily (1D)' : effTf + ' Min') + ' Candlesticks (IST)';
+        countEl.textContent = candles.length + ' candle' + (candles.length === 1 ? '' : 's') + ' ≤ ' + s.cursor.slice(11) + ' IST';
+
+        const lastC = candles.at(-1);
+        if (lastC && ohlcSumEl) {
+          ohlcSumEl.textContent =
+            tfTag +
+            ' OHLC (' +
+            (effTf === 1440 ? lastC.timestamp.slice(0, 10) : lastC.openTime.slice(11) + '–' + lastC.closeTime.slice(11)) +
+            '): O ' +
+            numFixed(lastC.open, 2) +
+            ' · H ' +
+            numFixed(lastC.high, 2) +
+            ' · L ' +
+            numFixed(lastC.low, 2) +
+            ' · C ' +
+            numFixed(lastC.close, 2) +
+            (lastC.partial ? ' [Partial ' + lastC.barCount + '/' + effTf + 'm]' : '');
+        } else if (ohlcSumEl) {
+          ohlcSumEl.textContent = tfTag + ' OHLC: Unavailable at cursor';
+        }
+
+        if (!candles.length) {
+          svgWrap.innerHTML = '<p class="opstra-empty">No recorded underlying observations up to ' + esc(s.cursor) + ' IST.</p>';
+          return;
+        }
+
+        const total = candles.length;
+        const visCount = Math.max(1, Math.min(total, candleVisibleCount));
+        const maxStart = Math.max(0, total - visCount);
+        const startIdx = Math.round((maxStart * Math.max(0, Math.min(100, candlePanPct))) / 100);
+        const visible = candles.slice(startIdx, startIdx + visCount);
+        if (panInput) {
+          panInput.disabled = maxStart === 0;
+          if (maxStart === 0) panInput.value = '100';
+        }
+
+        // Map trade fills (entry / exit) up to s.cursor onto visible candle indices
+        const fillsUpToCursor = (s.fills || []).filter(f => f.at && f.at <= s.cursor);
+        const markersByIdx = new Map();
+        for (const fl of fillsUpToCursor) {
+          const pos = v.positions.find(p => p.id === fl.positionId);
+          const idx = visible.findIndex(c => {
+            if (effTf === 1440) return c.timestamp.slice(0, 10) === fl.at.slice(0, 10);
+            return c.openTime.slice(0, 10) === fl.at.slice(0, 10) && fl.at >= c.openTime && fl.at <= c.closeTime;
+          });
+          if (idx >= 0) {
+            const arr = markersByIdx.get(idx) || [];
+            arr.push({
+              kind: fl.kind,
+              side: pos?.side ?? 1,
+              label: (fl.kind === 'exit' ? 'EXIT ' : (pos?.side === -1 ? 'SELL ' : 'BUY ')) + (pos ? (pos.type === 'FUT' ? 'FUT' : pos.strike + pos.type) : '') + ' @ ₹' + numFixed(fl.price, 2),
+            });
+            markersByIdx.set(idx, arr);
+          }
+        }
+
+        const W = 880, H = 235, L = 14, R = 68, T = 18, B = 32;
+        const pw = W - L - R, ph = H - T - B;
+        let pMin = Math.min(...visible.map(c => c.low));
+        let pMax = Math.max(...visible.map(c => c.high));
+        if (pMax - pMin < 1e-4) {
+          const pad = Math.max(1, pMax * 0.002);
+          pMin -= pad;
+          pMax += pad;
+        } else {
+          const pad = (pMax - pMin) * 0.08;
+          pMin -= pad;
+          pMax += pad;
+        }
+
+        const y = val => T + (1 - (val - pMin) / (pMax - pMin || 1)) * ph;
+        const stepX = pw / Math.max(1, visible.length);
+        const bodyW = Math.max(2.5, Math.min(18, stepX * 0.66));
+        const xCenter = i => L + (i + 0.5) * stepX;
+
+        const gridLines = [0, 0.25, 0.5, 0.75, 1]
+          .map(f => {
+            const py = T + f * ph;
+            const val = pMax - f * (pMax - pMin);
+            return (
+              '<line x1="' + L + '" y1="' + py.toFixed(1) + '" x2="' + (W - R) + '" y2="' + py.toFixed(1) + '" stroke="var(--op-border,#cbd5e1)" stroke-opacity="0.45" stroke-dasharray="2 2"/>' +
+              '<text x="' + (W - R + 6) + '" y="' + (py + 3.5).toFixed(1) + '" fill="var(--op-muted,#64748b)" font-size="10.5">' + numFixed(val, 1) + '</text>'
+            );
+          })
+          .join('');
+
+        const multiDay = new Set(visible.map(c => c.timestamp.slice(0, 10))).size > 1;
+        const tickCount = Math.min(visible.length, 6);
+        const xTicks = [];
+        for (let k = 0; k < tickCount; k++) {
+          const idx = tickCount === 1 ? 0 : Math.round((k * (visible.length - 1)) / (tickCount - 1));
+          const c = visible[idx];
+          const lbl = effTf === 1440 ? c.timestamp.slice(0, 10) : multiDay ? c.openTime.slice(5, 10) + ' ' + c.openTime.slice(11) : c.openTime.slice(11);
+          xTicks.push('<text x="' + xCenter(idx).toFixed(1) + '" y="' + (H - 9) + '" text-anchor="middle" fill="var(--op-muted,#64748b)" font-size="10">' + esc(lbl) + '</text>');
+        }
+
+        const sessionSeps = visible
+          .map((c, i) => {
+            if (i === 0 || c.timestamp.slice(0, 10) === visible[i - 1].timestamp.slice(0, 10)) return '';
+            const sx = (L + i * stepX).toFixed(1);
+            return '<line x1="' + sx + '" y1="' + T + '" x2="' + sx + '" y2="' + (H - B) + '" stroke="#94a3b8" stroke-opacity="0.55" stroke-dasharray="4 3"/>';
+          })
+          .join('');
+
+        const lastCloseY = y(visible.at(-1).close).toFixed(1);
+        const lastLine =
+          '<line x1="' + L + '" y1="' + lastCloseY + '" x2="' + (W - R) + '" y2="' + lastCloseY + '" stroke="#0ea5e9" stroke-width="1" stroke-dasharray="3 3"/>' +
+          '<rect x="' + (W - R + 2) + '" y="' + (Number(lastCloseY) - 8).toFixed(1) + '" width="64" height="16" rx="3" fill="#0ea5e9"/>' +
+          '<text x="' + (W - R + 34) + '" y="' + (Number(lastCloseY) + 3.5).toFixed(1) + '" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="700">' + numFixed(visible.at(-1).close, 1) + '</text>';
+
+        const candleEls = visible
+          .map((c, i) => {
+            const cx = xCenter(i);
+            const bull = c.close >= c.open;
+            const col = bull ? '#16a34a' : '#dc2626';
+            const yHigh = y(c.high), yLow = y(c.low);
+            const yTop = y(Math.max(c.open, c.close)), yBot = y(Math.min(c.open, c.close));
+            const bh = Math.max(1.8, yBot - yTop);
+            const mks = markersByIdx.get(i) || [];
+            const mkSvg = mks
+              .map((m, mi) => {
+                const isExit = m.kind === 'exit';
+                const mCol = isExit ? '#f59e0b' : m.side === 1 ? '#16a34a' : '#dc2626';
+                const my = isExit ? Math.max(T + 8, yHigh - 8 - mi * 11) : m.side === 1 ? Math.min(H - B - 6, yLow + 11 + mi * 11) : Math.max(T + 8, yHigh - 8 - mi * 11);
+                const glyph = isExit ? '✕' : m.side === 1 ? '▲' : '▼';
+                return '<text x="' + cx.toFixed(1) + '" y="' + my.toFixed(1) + '" text-anchor="middle" fill="' + mCol + '" font-size="10" font-weight="800">' + glyph + '</text>';
+              })
+              .join('');
+            return (
+              '<g class="opstra-candle-item" data-cidx="' + i + '" data-close-ts="' + esc(c.closeTime) + '" style="cursor:pointer">' +
+              '<rect x="' + (L + i * stepX).toFixed(1) + '" y="' + T + '" width="' + stepX.toFixed(1) + '" height="' + ph + '" fill="transparent"/>' +
+              '<line x1="' + cx.toFixed(1) + '" y1="' + yHigh.toFixed(1) + '" x2="' + cx.toFixed(1) + '" y2="' + yLow.toFixed(1) + '" stroke="' + col + '" stroke-width="1.3"/>' +
+              '<rect x="' + (cx - bodyW / 2).toFixed(1) + '" y="' + yTop.toFixed(1) + '" width="' + bodyW.toFixed(1) + '" height="' + bh.toFixed(1) + '" fill="' + col + '" rx="0.8"/>' +
+              mkSvg +
+              '</g>'
+            );
+          })
+          .join('');
+
+        svgWrap.innerHTML =
+          '<svg id="opstra-candle-svg" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(seriesTitle + ' ' + tfTag + ' Candlestick Chart') + '">' +
+          gridLines +
+          sessionSeps +
+          candleEls +
+          lastLine +
+          xTicks.join('') +
+          '</svg>' +
+          (total === 1 && effTf < 1440
+            ? '<small class="opstra-helper-text" style="display:block;margin-top:4px;">At session start (' + esc(s.cursor.replace('T', ' ')) + ' IST) — step forward (+1m / +5m / +13m / +15m / +16m) or press PLAY to advance candles causally without future data leakage.</small>'
+            : '');
+
+        const svgNode = svgWrap.querySelector('#opstra-candle-svg');
+        if (svgNode && tipEl) {
+          svgNode.onmousemove = ev => {
+            const g = ev.target.closest('[data-cidx]');
+            if (!g) {
+              tipEl.hidden = true;
+              return;
+            }
+            const idx = +g.dataset.cidx;
+            const c = visible[idx];
+            if (!c) return;
+            const mks = markersByIdx.get(idx) || [];
+            tipEl.hidden = false;
+            tipEl.innerHTML =
+              '<strong>' + esc(effTf === 1440 ? c.timestamp.slice(0, 10) : c.openTime.replace('T', ' ') + ' – ' + c.closeTime.slice(11) + ' IST') + '</strong>' +
+              (c.partial ? ' <em>(Partial ' + c.barCount + 'm)</em>' : '') +
+              '<br>O: ' + numFixed(c.open, 2) + ' · H: ' + numFixed(c.high, 2) + ' · L: ' + numFixed(c.low, 2) + ' · C: <strong>' + numFixed(c.close, 2) + '</strong>' +
+              (c.volume !== null ? ' · Vol: ' + num(c.volume, 0) : '') +
+              (mks.length ? '<br>' + mks.map(m => esc(m.label)).join(' · ') : '');
+          };
+          svgNode.onmouseleave = () => { tipEl.hidden = true; };
+          svgNode.onclick = guard(ev => {
+            const g = ev.target.closest('[data-close-ts]');
+            if (!g) return;
+            const targetTs = g.dataset.closeTs;
+            if (targetTs && P.frames(d, s).includes(targetTs) && targetTs !== s.cursor) {
+              pause();
+              change(P.advance(d, s, targetTs));
+              msg('Jumped cursor to candle close ' + targetTs.replace('T', ' ') + ' IST.');
+            }
+          });
+        }
+      }
+
       function render() {
         if (!s || !d) return;
         const exch = fnoExch();
         const all = d.byFrame.get(s.symbol + '|' + s.cursor) || [];
-        const expiries = [...new Set(d.contracts.filter(q => q.symbol === s.symbol && q.type !== 'FUT').map(q => q.expiry))].sort();
-        if (!expiries.includes(viewExpiry)) viewExpiry = expiries[0] || '';
+        const loadedExpiries = [...new Set(d.contracts.filter(q => q.symbol === s.symbol && q.type !== 'FUT').map(q => q.expiry))].sort();
+        if (!loadedExpiries.includes(viewExpiry)) viewExpiry = loadedExpiries[0] || '';
+        const expiries = [...new Set([...loadedExpiries, ...availableExpiries])].sort();
         chainRows = all.filter(q => q.expiry === viewExpiry);
 
         const spot = d.spots.get(s.symbol + '|' + s.cursor);
@@ -1078,19 +1643,12 @@
           instMeta?.underlying || s.symbol,
           instMeta?.instrumentType || (instMeta?.kind === 'stock' ? 'Stock F&O' : 'Index F&O'),
           strikeDiffs ? 'Strike Step: ' + strikeDiffs : null,
-          expiries.length ? expiries.length + ' Expir' + (expiries.length === 1 ? 'y' : 'ies') + ' Loaded' : 'No Active Expiries',
+          expiries.length ? expiries.length + ' Expir' + (expiries.length === 1 ? 'y' : 'ies') + ' Available' : 'No Active Expiries',
           instMeta?.chainAvailable === false ? '⚠ Live Chain Unavailable' : null,
         ].filter(Boolean).join(' · ');
 
         // Expiry selector with Weekly / Monthly & DTE labels
-        el('expiry-select').innerHTML =
-          expiries.map(e => '<option value="' + esc(e) + '" ' + (e === viewExpiry ? 'selected' : '') + '>' + esc(expMap[e]?.label || e) + '</option>').join('') +
-          '<option value="__browse__">Browse historical archive expiries…</option>';
-        el('expiry-meta').textContent = activeExpDetail
-          ? (activeExpDetail.cycle === 'monthly' ? 'Monthly Contract' : 'Weekly Contract') +
-            ' · ' +
-            (activeExpDetail.dte < 0 ? 'Expired' : activeExpDetail.dte === 0 ? 'Expiry Day (15:30 IST settlement)' : activeExpDetail.dte + ' calendar days to expiry')
-          : 'Select Expiry';
+        renderExpirySelectOnly();
 
         // Market info badges
         el('val-spot').textContent = Number.isFinite(spot) ? numFixed(spot, 2) : 'Unavailable';
@@ -1116,36 +1674,53 @@
         updateMarketBadges();
 
         el('chain-title').textContent = (activeExpDetail ? activeExpDetail.code + ' (' + viewExpiry + ')' : viewExpiry) + ' · Option Chain';
+        const syncMetaEl = el('chain-sync-meta');
+        if (syncMetaEl) {
+          syncMetaEl.textContent =
+            s.symbol +
+            ' Spot ' +
+            (Number.isFinite(spot) ? numFixed(spot, 2) : '—') +
+            ' · Exp ' +
+            isoToBrokerCode(viewExpiry) +
+            ' · ' +
+            s.cursor.replace('T', ' ') +
+            ' IST · TF ' +
+            (d.kind === 'daily' ? '1D' : activeTimeframe + 'm');
+        }
         el('sim-clock').textContent = s.cursor.replace('T', ' ') + ' IST';
         el('replay-date').value = s.cursor.slice(0, 10);
         el('replay-date').min = s.start;
         el('replay-date').max = s.end;
         el('observed-time').innerHTML = options(frames.filter(t => t.startsWith(s.cursor.slice(0, 10))).map(t => t.slice(11)), s.cursor.slice(11));
 
-        // Playback state & timeframe buttons
-        const playback = root.IWSMSimulatorPlayback.describe({ kind: d.kind, frames, cursor: s.cursor, exchange: exch, base });
+        // Playback state & ALWAYS-CLICKABLE Timeframe controls (1m, 5m, 13m, 15m, 16m, 30m, 60m, 1D)
+        const effTf = d.kind === 'daily' ? 1440 : activeTimeframe;
+        const playback = root.IWSMSimulatorPlayback.describe({ kind: d.kind, frames, cursor: s.cursor, exchange: exch, base, activeTimeframe: effTf });
         el('playback-explanation').textContent = playback.notice;
-        el('resolution-note').textContent = d.kind === 'daily' ? 'Daily archive loaded (1D steps).' : 'Intraday replay active (' + frames.length + ' timestamps).';
+        el('resolution-note').textContent = d.kind === 'daily' ? 'Daily archive loaded (1D steps).' : 'Intraday replay active (' + frames.length + ' timestamps · ' + effTf + 'm chart).';
 
-        const supported = playback.supported, oldTf = +el('timeframe').value;
-        el('timeframe').innerHTML = playback.single
-          ? '<option value="">Single snapshot</option>'
-          : [1, 5, 15, 30, 60, 120, 1440]
-              .map(n => '<option value="' + n + '" ' + (!supported.includes(n) ? 'disabled' : '') + '>' + (n === 1440 ? '1 Day' : n + ' Min') + '</option>')
-              .join('');
-        if (!playback.single) el('timeframe').value = String(supported.includes(oldTf) ? oldTf : supported[0]);
-        el('timeframe').disabled = el('speed').disabled = playback.single;
+        const tfChoices = [1, 5, 13, 15, 16, 30, 60, 120, 1440];
+        el('timeframe').innerHTML = tfChoices
+          .map(n => '<option value="' + n + '" ' + (n === effTf ? 'selected' : '') + '>' + (n === 1440 ? '1 Day' : n + ' Min') + '</option>')
+          .join('');
+        el('timeframe').value = String(effTf);
+        el('timeframe').disabled = false;
+        el('speed').disabled = false;
+        host.querySelectorAll('[data-tf]').forEach(btn => {
+          const isMatch = +btn.dataset.tf === effTf;
+          btn.classList.toggle('active', isMatch);
+          btn.setAttribute('aria-pressed', String(isMatch));
+          btn.disabled = false;
+        });
         el('btn-rewind').disabled = frames.length < 2 || s.cursor === frames[0];
 
         host.querySelectorAll('[data-mins]').forEach(b => {
           const n = +b.dataset.mins, amount = Math.abs(n);
-          b.disabled =
-            (n < 0 ? s.cursor === frames[0] : s.cursor === frames.at(-1)) ||
-            (amount !== 1440 && (d.kind === 'daily' || amount < base));
-          b.title = playback.single
-            ? playback.notice
-            : amount !== 1440 && d.kind === 'daily'
-            ? 'Daily archive loaded. Open New Simulation to load 1-minute candles or recorded snapshots.'
+          const atBoundary = frames.length >= 2 && (n < 0 ? s.cursor === frames[0] : s.cursor === frames.at(-1));
+          const finerThanMultiMinSource = d.kind === 'intraday' && frames.length >= 2 && amount !== 1440 && amount < base;
+          b.disabled = atBoundary || finerThanMultiMinSource;
+          b.title = playback.single || d.kind === 'daily'
+            ? 'Click to auto-load 1-minute intraday data and step ' + (amount === 1440 ? '1 day' : amount + ' minutes')
             : '';
           b.setAttribute('aria-label', (n < 0 ? 'Back ' : 'Forward ') + (amount === 1440 ? '1 day' : amount + ' minutes'));
         });
@@ -1369,6 +1944,7 @@
         }
 
         el('save-candles').hidden = !bundle || bundle.synthetic === true;
+        renderCandleChart(v);
         renderChart(a);
         renderTools(v);
       }
@@ -2160,7 +2736,12 @@
       el('btn-reset').onclick = guard(() => {
         pause();
         persist();
-        change(P.create(d, { symbol: s.symbol, start: s.start, end: s.end, ...s.settings }));
+        const prevCursor = s.cursor;
+        let fresh = P.create(d, { symbol: s.symbol, start: s.start, end: s.end, ...s.settings });
+        if (prevCursor && P.frames(d, fresh).includes(prevCursor) && fresh.cursor !== prevCursor) {
+          fresh = P.advance(d, fresh, prevCursor);
+        }
+        change(fresh);
         msg('Strategy positions cleared. Previous study remains saved in Simulations.');
       });
 
@@ -2357,7 +2938,54 @@
         timer = setInterval(guard(() => frameStep(+el('timeframe').value)), +el('speed').value);
       };
 
-      el('timeframe').onchange = pause;
+      el('timeframe').onchange = guard(() => setTimeframe(+el('timeframe').value));
+      if (el('tf-pills')) {
+        el('tf-pills').onclick = guard(e => {
+          const btn = e.target.closest('[data-tf]');
+          if (!btn) return;
+          setTimeframe(+btn.dataset.tf);
+        });
+      }
+      if (el('candle-series')) {
+        el('candle-series').onchange = () => {
+          candleSeries = el('candle-series').value || 'spot';
+          renderCandleChart(P.valuation(d, s));
+        };
+      }
+      if (el('candle-zoom-in')) {
+        el('candle-zoom-in').onclick = () => {
+          candleVisibleCount = Math.max(15, Math.round(candleVisibleCount * 0.65));
+          renderCandleChart(P.valuation(d, s));
+        };
+      }
+      if (el('candle-zoom-out')) {
+        el('candle-zoom-out').onclick = () => {
+          candleVisibleCount = Math.min(800, Math.round(candleVisibleCount * 1.5));
+          renderCandleChart(P.valuation(d, s));
+        };
+      }
+      if (el('candle-zoom-reset')) {
+        el('candle-zoom-reset').onclick = () => {
+          candleVisibleCount = 800;
+          candlePanPct = 100;
+          if (el('candle-pan')) el('candle-pan').value = '100';
+          renderCandleChart(P.valuation(d, s));
+        };
+      }
+      if (el('candle-pan')) {
+        el('candle-pan').oninput = () => {
+          candlePanPct = +el('candle-pan').value;
+          renderCandleChart(P.valuation(d, s));
+        };
+      }
+      if (el('btn-toggle-candles')) {
+        el('btn-toggle-candles').onclick = () => {
+          const cp = el('candle-panel');
+          if (!cp) return;
+          cp.hidden = !cp.hidden;
+          el('btn-toggle-candles').setAttribute('aria-expanded', String(!cp.hidden));
+        };
+      }
       el('speed').onchange = () => {
         const was = timer;
         pause();
@@ -2387,17 +3015,7 @@
           expiryBrowser();
           return;
         }
-        viewExpiry = val;
-        const frames = P.frames(d, s), current = d.byFrame.get(s.symbol + '|' + s.cursor) || [];
-        if (!current.some(q => q.expiry === viewExpiry)) {
-          const at = frames.find(t => (d.byFrame.get(s.symbol + '|' + t) || []).some(q => q.expiry === viewExpiry));
-          if (at) {
-            change(P.advance(d, s, at));
-            msg('Moved cursor to first recorded timestamp for expiry ' + viewExpiry + '.');
-            return;
-          }
-        }
-        render();
+        await switchExpiry(val);
       });
 
       function expiryBrowser() {
@@ -2487,7 +3105,8 @@
           if (Array.isArray(exp.expiryDetails)) {
             for (const item of exp.expiryDetails) if (item.iso) brokerExpiryDetails[item.iso] = item;
           }
-          const chosenExp = exp.expiries?.find(x => brokerCodeToIso(x) === viewExpiry) || exp.expiries?.[0];
+          availableExpiries = [...new Set((exp.expiries || []).map(brokerCodeToIso).filter(Boolean))].sort();
+          const chosenExp = pickPreferredBrokerExpiry(exp, viewExpiry, clampedEnd);
           if (chosenExp) {
             const j = await brokerApi('replay?' + new URLSearchParams({ underlying: s.symbol, exch, expiry: chosenExp, start: day, end: clampedEnd }));
             if (reqGen !== generation) return;
@@ -2558,6 +3177,16 @@
             reqStart = defaultStart;
             reqEnd = now;
           }
+          if (choice.exchange === 'bse_fo' && !brokerAuth.connected && mode !== 'snapshot') {
+            try {
+              const stBse = await brokerApi('market-status?' + new URLSearchParams({ underlying: choice.symbol, exch: 'bse_fo' }));
+              const pqLatest = stBse.parquetCoverage?.symbols?.[0]?.latestDate;
+              if (pqLatest && reqEnd > pqLatest) {
+                reqEnd = pqLatest;
+                reqStart = addCalendarDays(pqLatest, -2);
+              }
+            } catch {}
+          }
           const exp = await brokerApi(
             'expiries?' +
               new URLSearchParams({
@@ -2570,7 +3199,8 @@
           if (Array.isArray(exp.expiryDetails)) {
             for (const item of exp.expiryDetails) if (item.iso) brokerExpiryDetails[item.iso] = item;
           }
-          const selected = exp.expiries.find(x => brokerCodeToIso(x) === viewExpiry) || exp.expiries[0];
+          availableExpiries = [...new Set((exp.expiries || []).map(brokerCodeToIso).filter(Boolean))].sort();
+          const selected = pickPreferredBrokerExpiry(exp, isDifferentSymbol ? '' : viewExpiry, reqEnd);
           if (!selected) throw Error('No available expiry for ' + choice.symbol);
           let j;
           try {
@@ -2599,12 +3229,35 @@
           }
           if (mySwitch !== switchSeq || request !== generation) return;
           adopt(j.dataset);
-          const at = P.frames(d, s).find(t => t >= cursor && Number.isFinite(d.spots.get(s.symbol + '|' + t)));
-          if (at && at !== s.cursor) change(P.advance(d, s, at));
+          if (!isDifferentSymbol) {
+            const at = P.frames(d, s).find(t => t >= cursor && Number.isFinite(d.spots.get(s.symbol + '|' + t)));
+            if (at && at !== s.cursor) change(P.advance(d, s, at));
+          }
           refreshMarketAndCoverage(choice.symbol);
           msg(j.notice || (choice.symbol + ' ' + (mode === 'snapshot' ? 'option chain' : '1-minute option chain') + ' loaded · ' + s.cursor.replace('T', ' ') + ' IST.'));
         } catch (e) {
           if (mySwitch !== switchSeq || request !== generation) return;
+          if (choice.exchange === 'bse_fo') {
+            try {
+              const st = await brokerApi('market-status?' + new URLSearchParams({ underlying: choice.symbol, exch: 'bse_fo' }));
+              const pqSym = st.parquetCoverage?.symbols?.[0];
+              if (pqSym?.latestDate) {
+                const pqEnd = pqSym.latestDate;
+                const pqStart = addCalendarDays(pqEnd, -2);
+                const expPq = await brokerApi('expiries?' + new URLSearchParams({ underlying: choice.symbol, exch: 'bse_fo', start: pqStart, end: pqEnd }));
+                if (expPq.expiries?.length) {
+                  availableExpiries = [...new Set(expPq.expiries.map(brokerCodeToIso).filter(Boolean))].sort();
+                  const jPq = await brokerApi('replay?' + new URLSearchParams({ underlying: choice.symbol, exch: 'bse_fo', expiry: expPq.expiries[0], start: pqStart, end: pqEnd }));
+                  if (mySwitch === switchSeq) {
+                    adopt(jPq.dataset);
+                    refreshMarketAndCoverage(choice.symbol);
+                    msg(jPq.notice || ('Loaded verified 1-minute historical ' + choice.symbol + ' archive (' + s.cursor.replace('T', ' ') + ' IST).'));
+                    return;
+                  }
+                }
+              }
+            } catch {}
+          }
           if (choice.exchange === 'nse_fo') {
             try {
               const win = resolveArchiveWindow(choice.symbol, start, end);
@@ -2687,8 +3340,8 @@
         onError: e => msg(e.message + ' · Included recorded data remains available.'),
       })
         .then(async () => {
-          if (!s || P.valuation(d, s).positions.length > 0) return;
-          if (restoredFromStorage && d.kind !== 'daily') return;
+          if (!s) return;
+          if (restoredFromStorage && d.kind !== 'daily' && P.frames(d, s).length > 1) return;
           const postInitGen = generation;
           const targetSym = s.symbol || 'NIFTY';
           const targetExch = fnoExch();
@@ -2700,7 +3353,9 @@
             if (Array.isArray(exp.expiryDetails)) {
               for (const item of exp.expiryDetails) if (item.iso) brokerExpiryDetails[item.iso] = item;
             }
-            const j = await brokerApi('replay?' + new URLSearchParams({ underlying: targetSym, exch: targetExch, expiry: exp.expiries[0], start, end: now }));
+            availableExpiries = [...new Set((exp.expiries || []).map(brokerCodeToIso).filter(Boolean))].sort();
+            const chosenExp = pickPreferredBrokerExpiry(exp, '', now);
+            const j = await brokerApi('replay?' + new URLSearchParams({ underlying: targetSym, exch: targetExch, expiry: chosenExp, start, end: now }));
             if (generation !== postInitGen) return;
             adopt(j.dataset);
             msg(j.notice || ('Intraday 1-minute ' + targetSym + ' option chain loaded (' + s.cursor.replace('T', ' ') + ' IST).'));

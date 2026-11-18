@@ -10,6 +10,7 @@ from cryptography.fernet import Fernet, InvalidToken
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, RedirectResponse
+from snapshot_store import iso_to_broker_expiry, normalize_expiry_iso
 
 BASE = 'https://a3.aliceblueonline.com'
 EXCHANGES = {'nse_fo', 'bse_fo', 'mcx_fo'}
@@ -28,6 +29,7 @@ PUBLIC_GET_PATHS = {
     PREFIX + '/snapshots/coverage',
     PREFIX + '/snapshots/replay',
     PREFIX + '/recorder/status',
+    PREFIX + '/underlying-candles',
 }
 
 logger = logging.getLogger('iwsm.aliceblue')
@@ -790,26 +792,46 @@ def create_app(config, db, transport=None, snapshot_db=None, local_owner_mode: b
     async def underlyings(req: Request, exch: str = 'nse_fo'):
         return await market(req, 'underlyings', exch)
 
+    def _sort_broker_expiries(codes, min_start_iso: str = '') -> list:
+        by_iso = {}
+        for raw in codes or []:
+            try:
+                iso = normalize_expiry_iso(raw)
+                if min_start_iso and re.fullmatch(r'\d{4}-\d{2}-\d{2}', min_start_iso) and iso < min_start_iso:
+                    continue
+                if iso not in by_iso:
+                    by_iso[iso] = raw if re.fullmatch(r'\d{2}[A-Z]{3}\d{2}', str(raw).upper()) else iso_to_broker_expiry(iso)
+            except ValueError:
+                continue
+        return [by_iso[k] for k in sorted(by_iso)]
+
     @app.get(PREFIX + '/expiries')
     async def expiries(req: Request, underlying: str, exch: str = 'nse_fo', start: str = '', end: str = ''):
         from nifty_backup import NiftyBackup
 
         local = []
+        nifty_min_exps = []
         snap_exps = []
+        snap_min_exps = []
         parquet_exps = []
         nse_exps = []
         try:
             snap_exps = snapshots.expiries(underlying, exch, start, end)
+            snap_min_exps = snapshots.minute_expiries(underlying, exch, start, end)
         except (ValueError, OSError, sqlite3.Error):
             snap_exps = []
+            snap_min_exps = []
         if parquet_store.supports(underlying, exch) and (start or end):
             try:
                 parquet_exps = await asyncio.to_thread(parquet_store.expiries, underlying, exch, start, end)
             except (ValueError, OSError):
                 parquet_exps = []
-        if underlying == 'NIFTY' and exch == 'nse_fo' and not parquet_exps:
+        if underlying == 'NIFTY' and exch == 'nse_fo':
             try:
-                local = NiftyBackup().expiries(start, end)
+                nb = NiftyBackup()
+                nifty_min_exps = nb.minute_expiries(start, end)
+                if not parquet_exps:
+                    local = nb.expiries(start, end)
             except (ValueError, OSError, sqlite3.Error):
                 pass
         if not local and not parquet_exps and exch == 'nse_fo' and nse_archive.available():
@@ -818,9 +840,10 @@ def create_app(config, db, transport=None, snapshot_db=None, local_owner_mode: b
             except (ValueError, OSError, sqlite3.Error):
                 nse_exps = []
 
-        combined_local = list(dict.fromkeys([*snap_exps, *parquet_exps, *local, *nse_exps]))
+        minute_exps = _sort_broker_expiries([*snap_min_exps, *parquet_exps, *nifty_min_exps], start)
+        has_minute_hist = bool(minute_exps or snap_exps)
+        combined_local = _sort_broker_expiries([*snap_exps, *parquet_exps, *nifty_min_exps, *local, *nse_exps], start)
         today_ist = market_status_ist()['dateIST']
-        # Check if start is an older historical date whose contracts have already expired vs active contracts
         pub_exps = []
         if not start or start >= today_ist or not combined_local:
             try:
@@ -828,7 +851,6 @@ def create_app(config, db, transport=None, snapshot_db=None, local_owner_mode: b
             except Exception:
                 pub_exps = []
         else:
-            # Even when start < today_ist (e.g. yesterday or last week), check if current listed contracts cover start
             try:
                 days_ago = (datetime.strptime(today_ist, '%Y-%m-%d').date() - datetime.strptime(start, '%Y-%m-%d').date()).days
             except ValueError:
@@ -839,24 +861,23 @@ def create_app(config, db, transport=None, snapshot_db=None, local_owner_mode: b
                 except Exception:
                     pub_exps = []
 
-        # If historical date (>6 days ago, e.g. 2026-02-02) has local historical archive expiries, return them directly!
         if combined_local and start and start < today_ist and not pub_exps:
-            has_minute_hist = bool(snap_exps or parquet_exps)
             src_label = (
                 f'Verified 1-Minute Historical Options Archive ({underlying})'
                 if parquet_exps
                 else (
-                    'Recorded snapshots & local NSE archive'
-                    if snap_exps
-                    else ('Local NIFTY daily backup expiry list' if local else f'Local verified NSE archive ({underlying})')
+                    'Recorded 1-minute & snapshot option-chain archive'
+                    if has_minute_hist
+                    else ('Local NIFTY 5-year historical archive' if local else f'Local verified NSE archive ({underlying})')
                 )
             )
             return {
                 'expiries': combined_local,
+                'minuteExpiries': minute_exps,
                 'expiryDetails': classify_expiries(combined_local, start),
                 'backup': True,
                 'historicalOnly': not has_minute_hist,
-                'parquetMinuteAvailable': bool(parquet_exps),
+                'parquetMinuteAvailable': has_minute_hist,
                 'dataSourceStatus': 'HISTORICAL',
                 'marketStatus': market_status_ist(),
                 'source': src_label,
@@ -866,9 +887,15 @@ def create_app(config, db, transport=None, snapshot_db=None, local_owner_mode: b
             try:
                 nse_live_exps = await app.state.nse_live.fetch_expiries(underlying)
                 if nse_live_exps:
-                    merged_nse = list(dict.fromkeys([*nse_live_exps, *combined_local])) if (start and start < today_ist and combined_local) else nse_live_exps
+                    merged_nse = (
+                        _sort_broker_expiries([*nse_live_exps, *combined_local], start)
+                        if (start and start < today_ist and combined_local)
+                        else _sort_broker_expiries(nse_live_exps, start)
+                    )
                     return {
                         'expiries': merged_nse,
+                        'minuteExpiries': _sort_broker_expiries([*nse_live_exps, *minute_exps], start),
+                        'parquetMinuteAvailable': True,
                         'expiryDetails': classify_expiries(merged_nse, start),
                         'marketStatus': market_status_ist(),
                         'source': 'NSE Live Option Chain',
@@ -880,17 +907,32 @@ def create_app(config, db, transport=None, snapshot_db=None, local_owner_mode: b
             result = await market(req, 'expiries', exch, underlying)
             live_list = result.get('expiries', [])
             if start and start < today_ist and combined_local:
-                merged = list(dict.fromkeys([*live_list, *combined_local]))
-                return {**result, 'expiries': merged, 'expiryDetails': classify_expiries(merged, start)}
+                merged = _sort_broker_expiries([*live_list, *combined_local], start)
+                return {
+                    **result,
+                    'expiries': merged,
+                    'minuteExpiries': _sort_broker_expiries([*live_list, *minute_exps], start),
+                    'parquetMinuteAvailable': True,
+                    'expiryDetails': classify_expiries(merged, start),
+                }
+            sorted_live = _sort_broker_expiries(live_list, start) if start else live_list
             if start:
-                result = {**result, 'expiryDetails': classify_expiries(live_list, start)}
+                result = {
+                    **result,
+                    'expiries': sorted_live,
+                    'minuteExpiries': _sort_broker_expiries([*sorted_live, *minute_exps], start),
+                    'parquetMinuteAvailable': True,
+                    'expiryDetails': classify_expiries(sorted_live, start),
+                }
             return result
         except HTTPException as e:
             if e.status_code in (401, 403, 429, 502, 503, 504):
-                fallback_list = list(dict.fromkeys([*pub_exps, *combined_local]))
+                fallback_list = _sort_broker_expiries([*pub_exps, *combined_local], start)
                 if fallback_list:
                     return {
                         'expiries': fallback_list,
+                        'minuteExpiries': _sort_broker_expiries([*pub_exps, *minute_exps], start),
+                        'parquetMinuteAvailable': bool(pub_exps or has_minute_hist),
                         'expiryDetails': classify_expiries(fallback_list, start),
                         'backup': not bool(pub_exps),
                         'publicMaster': bool(pub_exps),
@@ -898,7 +940,7 @@ def create_app(config, db, transport=None, snapshot_db=None, local_owner_mode: b
                         'source': (
                             'Exchange Contract Directory'
                             if pub_exps
-                            else ('Recorded snapshots & local archive' if snap_exps else f'Local verified NSE archive ({underlying})')
+                            else ('Recorded 1-minute & snapshot archive' if has_minute_hist else f'Local verified NSE archive ({underlying})')
                         ),
                     }
             raise

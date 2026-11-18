@@ -352,6 +352,23 @@ class SnapshotStore:
             'contractCount': len(contract_tuples),
         }
 
+    def minute_expiries(self, symbol: str, exchange: str = 'nse_fo', start: str = '', end: str = '') -> list:
+        symbol = str(symbol or '').strip().upper()
+        exchange = str(exchange or 'nse_fo').strip().lower()
+        params = [symbol, exchange]
+        clauses = ['symbol = ?', 'exchange = ?']
+        if start:
+            clauses.append('end_date >= ?')
+            clauses.append('expiry >= ?')
+            params.extend([start, start])
+        if end:
+            clauses.append('start_date <= ?')
+            params.append(end)
+        sql = f"SELECT DISTINCT expiry FROM minute_captures WHERE {' AND '.join(clauses)} ORDER BY expiry ASC"
+        with closing(self._connect()) as conn:
+            rows = conn.execute(sql, params).fetchall()
+        return [iso_to_broker_expiry(r['expiry']) for r in rows]
+
     def expiries(self, symbol: str, exchange: str = 'nse_fo', start: str = '', end: str = '') -> list:
         symbol = str(symbol or '').strip().upper()
         exchange = str(exchange or 'nse_fo').strip().lower()
@@ -359,14 +376,32 @@ class SnapshotStore:
         clauses = ['symbol = ?', 'exchange = ?']
         if start:
             clauses.append('substr(timestamp, 1, 10) >= ?')
-            params.append(start)
+            clauses.append('expiry >= ?')
+            params.extend([start, start])
         if end:
             clauses.append('substr(timestamp, 1, 10) <= ?')
             params.append(end)
         sql = f"SELECT DISTINCT expiry, expiry_code FROM snapshot_frames WHERE {' AND '.join(clauses)} ORDER BY expiry ASC"
+        min_params = [symbol, exchange]
+        min_clauses = ['symbol = ?', 'exchange = ?']
+        if start:
+            min_clauses.append('end_date >= ?')
+            min_clauses.append('expiry >= ?')
+            min_params.extend([start, start])
+        if end:
+            min_clauses.append('start_date <= ?')
+            min_params.append(end)
+        min_sql = f"SELECT DISTINCT expiry FROM minute_captures WHERE {' AND '.join(min_clauses)} ORDER BY expiry ASC"
         with closing(self._connect()) as conn:
             rows = conn.execute(sql, params).fetchall()
-        return [r['expiry_code'] or iso_to_broker_expiry(r['expiry']) for r in rows]
+            min_rows = conn.execute(min_sql, min_params).fetchall()
+        by_iso = {}
+        for r in rows:
+            by_iso[r['expiry']] = r['expiry_code'] or iso_to_broker_expiry(r['expiry'])
+        for r in min_rows:
+            if r['expiry'] not in by_iso:
+                by_iso[r['expiry']] = iso_to_broker_expiry(r['expiry'])
+        return [by_iso[k] for k in sorted(by_iso)]
 
     def coverage(self, symbol: str = '', exchange: str = '', expiry: str = '') -> dict:
         clauses = []
@@ -619,24 +654,55 @@ class SnapshotStore:
         symbol = str(symbol or '').strip().upper()
         exchange = str(exchange or 'nse_fo').strip().lower()
         exp_iso = normalize_expiry_iso(expiry)
+        eff_end = min(end, exp_iso) if (end and exp_iso < end and (not start or start <= exp_iso)) else end
         with closing(self._connect()) as conn:
-            row = conn.execute(
+            rows = conn.execute(
                 """
                 SELECT payload FROM minute_captures
                 WHERE symbol = ? AND exchange = ? AND expiry = ?
                   AND start_date <= ? AND end_date >= ?
-                ORDER BY saved_at DESC LIMIT 1
+                ORDER BY saved_at ASC
                 """,
-                (symbol, exchange, exp_iso, start, end),
-            ).fetchone()
-        if not row:
+                (symbol, exchange, exp_iso, eff_end, start),
+            ).fetchall()
+        if not rows:
             raise LookupError('No cached minute replay for selection')
-        raw = json.loads(gzip.decompress(row['payload']).decode('utf-8'))
-        raw['contracts'] = [r for r in raw.get('contracts', []) if start <= str(r.get('timestamp', ''))[:10] <= end]
-        raw['underlying'] = [r for r in raw.get('underlying', []) if start <= str(r.get('timestamp', ''))[:10] <= end]
-        if not any(r.get('type') != 'FUT' for r in raw['contracts']):
+
+        merged_contracts = {}
+        merged_underlying = {}
+        base_meta = {}
+        source_label = 'IWSM 1-Minute Intraday Option History'
+        for row in rows:
+            raw = json.loads(gzip.decompress(row['payload']).decode('utf-8'))
+            if raw.get('source'):
+                source_label = raw['source']
+            if isinstance(raw.get('metadata'), dict):
+                base_meta.update(raw['metadata'])
+            for r in raw.get('contracts', []):
+                ts = str(r.get('timestamp', ''))
+                if len(ts) >= 10 and start <= ts[:10] <= eff_end:
+                    k = (ts, r.get('expiry'), r.get('type'), 0 if r.get('type') == 'FUT' else float(r.get('strike', 0)))
+                    merged_contracts[k] = r
+            for u in raw.get('underlying', []):
+                ts = str(u.get('timestamp', ''))
+                if len(ts) >= 10 and start <= ts[:10] <= eff_end:
+                    merged_underlying[ts] = u
+
+        contracts_list = [merged_contracts[k] for k in sorted(merged_contracts)]
+        if not any(r.get('type') != 'FUT' for r in contracts_list):
             raise LookupError('No option contracts in cached minute window')
-        raw['metadata'] = {**raw.get('metadata', {}), 'backup': True, 'backupResolution': 'minute'}
-        as_of = max(str(r.get('timestamp', '')) for r in raw['contracts'])
-        return {'dataset': raw, 'backup': True, 'resolution': 'minute', 'asOf': as_of}
+        underlying_list = [merged_underlying[ts] for ts in sorted(merged_underlying)]
+        active_stamps = sorted({str(r.get('timestamp', '')) for r in contracts_list if r.get('type') != 'FUT' and r.get('timestamp')})
+        out_raw = {
+            'source': source_label,
+            'contracts': contracts_list,
+            'underlying': underlying_list,
+            'metadata': {
+                **base_meta,
+                'backup': True,
+                'backupResolution': 'minute',
+                'frameCount': len(active_stamps),
+            },
+        }
+        return {'dataset': out_raw, 'backup': True, 'resolution': 'minute', 'asOf': active_stamps[-1]}
 

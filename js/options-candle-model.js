@@ -109,5 +109,112 @@
     for(let d=0;d<dates.length;d++)for(let i=1;i<=375;i++){const m=555+i,close=22000+d*55+i*.08+45*Math.sin(i/32)+18*Math.sin(i/9);rows.push({timestamp:dates[d]+'T'+String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'),symbol:'NIFTY',open:previous,high:Math.max(previous,close)+3,low:Math.min(previous,close)-3,close,volume:null});previous=close;}
     return {...normalizeCandles(rows,{source:'Synthetic teaching candles (generated; not exchange history)',intervalMinutes:1}),synthetic:true};
   }
-  return {parseCandles,normalizeCandles,resample,buildDataset,demo};
+  function aggregateSessionCandles(observations,intervalMinutes=5,options={}){
+    if(intervalMinutes!==1440&&(!Number.isInteger(intervalMinutes)||intervalMinutes<1||intervalMinutes>375))throw Error('Unsupported candle timeframe interval: '+intervalMinutes);
+    if(!Array.isArray(observations)||!observations.length)return [];
+    const upTo=typeof options.upTo==='string'&&options.upTo.trim()?options.upTo.trim().slice(0,16):'';
+    const byStamp=new Map();
+    for(const raw of observations){
+      if(!raw||typeof raw!=='object')continue;
+      const rawTs=String(raw.timestamp??raw.datetime??raw.date??'').trim();
+      if(!rawTs)continue;
+      const isDateOnly=validDate(rawTs);
+      let stamp='';
+      if(isDateOnly)stamp=rawTs+'T15:30';
+      else{
+        const m=/^(\d{4}-\d{2}-\d{2})[T ](\d{2}):(\d{2})/.exec(rawTs);
+        if(!m||!validDate(m[1]))continue;
+        stamp=m[1]+'T'+m[2]+':'+m[3];
+      }
+      if(upTo&&stamp>upTo)continue;
+      const mins=minute(stamp);
+      if(!isDateOnly&&intervalMinutes!==1440&&(mins<555||mins>930))continue;
+      const c=numeric(raw.close);
+      if(!finite(c)||c<=0||c>1e7)continue;
+      const oRaw=numeric(raw.open),hRaw=numeric(raw.high),lRaw=numeric(raw.low),vRaw=raw.volume===undefined||raw.volume===null||raw.volume===''?null:numeric(raw.volume);
+      const o=finite(oRaw)&&oRaw>0?oRaw:c;
+      const h=finite(hRaw)&&hRaw>0?Math.max(hRaw,o,c):Math.max(o,c);
+      const l=finite(lRaw)&&lRaw>0?Math.min(lRaw,o,c):Math.min(o,c);
+      const vol=vRaw!==null&&finite(vRaw)&&vRaw>=0?vRaw:null;
+      byStamp.set(stamp,{timestamp:stamp,open:o,high:h,low:l,close:c,volume:vol,distinctOhlc:!(o===h&&h===l&&l===c)});
+    }
+    const points=[...byStamp.values()].sort((a,b)=>a.timestamp.localeCompare(b.timestamp));
+    if(!points.length)return [];
+    if(intervalMinutes===1440){
+      const byDay=new Map();
+      for(const p of points){const dKey=p.timestamp.slice(0,10);if(!byDay.has(dKey))byDay.set(dKey,[]);byDay.get(dKey).push(p);}
+      const out=[];
+      for(const [dKey,grp]of byDay.entries()){
+        const vols=grp.filter(r=>r.volume!==null).map(r=>r.volume);
+        out.push({
+          timestamp:dKey+'T15:30',
+          openTime:dKey+'T09:15',
+          closeTime:grp.at(-1).timestamp,
+          open:Math.round(grp[0].open*100)/100,
+          high:Math.round(Math.max(...grp.map(r=>r.high))*100)/100,
+          low:Math.round(Math.min(...grp.map(r=>r.low))*100)/100,
+          close:Math.round(grp.at(-1).close*100)/100,
+          volume:vols.length?vols.reduce((a,b)=>a+b,0):null,
+          barCount:grp.length,
+          expectedMinutes:375,
+          partial:false
+        });
+      }
+      return out;
+    }
+    if(intervalMinutes===1){
+      const out=[];let prevDay='',prevClose=null;
+      for(const p of points){
+        const dKey=p.timestamp.slice(0,10);
+        const o=(p.distinctOhlc||dKey!==prevDay||prevClose===null)?p.open:prevClose;
+        const c=p.close,h=Math.max(p.high,o,c),l=Math.min(p.low,o,c);
+        out.push({
+          timestamp:p.timestamp,
+          openTime:p.timestamp,
+          closeTime:p.timestamp,
+          open:Math.round(o*100)/100,
+          high:Math.round(h*100)/100,
+          low:Math.round(l*100)/100,
+          close:Math.round(c*100)/100,
+          volume:p.volume,
+          barCount:1,
+          expectedMinutes:1,
+          partial:false
+        });
+        prevDay=dKey;prevClose=c;
+      }
+      return out;
+    }
+    const buckets=new Map();
+    for(const p of points){
+      const dKey=p.timestamp.slice(0,10),offset=minute(p.timestamp)-555;
+      if(offset<0||offset>375)continue;
+      const bIdx=Math.floor(Math.min(offset,374)/intervalMinutes),key=dKey+'|'+String(bIdx).padStart(3,'0');
+      if(!buckets.has(key))buckets.set(key,{dKey,bIdx,rows:[]});
+      buckets.get(key).rows.push(p);
+    }
+    const out=[];
+    for(const {dKey,bIdx,rows}of [...buckets.entries()].sort((a,b)=>a[0].localeCompare(b[0])).map(e=>e[1])){
+      const openMin=555+bIdx*intervalMinutes;
+      const openTs=dKey+'T'+String(Math.floor(openMin/60)).padStart(2,'0')+':'+String(openMin%60).padStart(2,'0');
+      const closeTs=rows.at(-1).timestamp;
+      const vols=rows.filter(r=>r.volume!==null).map(r=>r.volume);
+      const expected=Math.min(intervalMinutes,375-bIdx*intervalMinutes);
+      out.push({
+        timestamp:closeTs,
+        openTime:openTs,
+        closeTime:closeTs,
+        open:Math.round(rows[0].open*100)/100,
+        high:Math.round(Math.max(...rows.map(r=>r.high))*100)/100,
+        low:Math.round(Math.min(...rows.map(r=>r.low))*100)/100,
+        close:Math.round(rows.at(-1).close*100)/100,
+        volume:vols.length?vols.reduce((a,b)=>a+b,0):null,
+        barCount:rows.length,
+        expectedMinutes:expected,
+        partial:expected<intervalMinutes||rows.length<expected
+      });
+    }
+    return out;
+  }
+  return {parseCandles,normalizeCandles,resample,buildDataset,demo,aggregateSessionCandles};
 });

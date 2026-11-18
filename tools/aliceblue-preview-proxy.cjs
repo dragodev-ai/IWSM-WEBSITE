@@ -21,6 +21,7 @@ const allowed = new Set([
   'snapshots/record',
   'recorder/status',
   'recorder/configure',
+  'underlying-candles',
 ]);
 
 const HOP_HEADERS = new Set(['connection', 'keep-alive', 'transfer-encoding', 'upgrade', 'proxy-authenticate', 'proxy-authorization', 'te', 'trailer']);

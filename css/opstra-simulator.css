@@ -1896,3 +1896,216 @@ html[data-theme=dark] #options-simulator .opstra-chain-table tbody td.opstra-td-
 html[data-theme=dark] #options-simulator .opstra-chain-table tbody tr:hover td {
   filter: brightness(1.18);
 }
+
+/* ==========================================================================
+   Multi-Timeframe Selector Bar (1m, 5m, 13m, 15m, 16m, 30m, 60m, 1D) &
+   Synchronized Intraday OHLC Candlestick Chart Panel (Light & Dark Themes)
+   ========================================================================== */
+#options-simulator .opstra-tf-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  padding: 8px 10px;
+  margin-bottom: 10px;
+  border-radius: 6px;
+  background: #f3f8f5;
+  border: 1px solid #d2e4da;
+}
+html[data-theme=dark] #options-simulator .opstra-tf-bar {
+  background: #102030;
+  border-color: #243b55;
+}
+
+#options-simulator .opstra-tf-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #154731;
+}
+html[data-theme=dark] #options-simulator .opstra-tf-label {
+  color: #93c5fd;
+}
+
+#options-simulator .opstra-tf-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+#options-simulator .opstra-tf-pill {
+  background: #ffffff !important;
+  color: #1e293b !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 5px !important;
+  padding: 5px 11px !important;
+  font-size: 11.5px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  transition: all 0.14s ease;
+}
+#options-simulator .opstra-tf-pill:hover {
+  border-color: #126744 !important;
+  color: #126744 !important;
+  background: #ecfdf5 !important;
+}
+#options-simulator .opstra-tf-pill.active,
+#options-simulator .opstra-tf-pill[aria-pressed="true"] {
+  background: #126744 !important;
+  color: #ffffff !important;
+  border-color: #0e5236 !important;
+  box-shadow: 0 1px 4px rgba(18, 103, 68, 0.28);
+}
+
+html[data-theme=dark] #options-simulator .opstra-tf-pill {
+  background: #17283b !important;
+  color: #e2e8f0 !important;
+  border-color: #334e68 !important;
+}
+html[data-theme=dark] #options-simulator .opstra-tf-pill:hover {
+  border-color: #34d399 !important;
+  color: #6ee7b7 !important;
+  background: #13312d !important;
+}
+html[data-theme=dark] #options-simulator .opstra-tf-pill.active,
+html[data-theme=dark] #options-simulator .opstra-tf-pill[aria-pressed="true"] {
+  background: #10b981 !important;
+  color: #052e16 !important;
+  border-color: #34d399 !important;
+}
+
+#options-simulator .opstra-tf-ohlc-summary {
+  margin-left: auto;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #334155;
+  font-variant-numeric: tabular-nums;
+}
+html[data-theme=dark] #options-simulator .opstra-tf-ohlc-summary {
+  color: #cbd5e1;
+}
+
+#options-simulator .opstra-candle-panel {
+  border: 1px solid var(--op-border, #dee2e6);
+  border-radius: 6px;
+  background: var(--op-card, #ffffff);
+  padding: 10px 14px 12px;
+  margin-bottom: 16px;
+}
+html[data-theme=dark] #options-simulator .opstra-candle-panel {
+  background: #0d1826;
+  border-color: #233852;
+}
+
+#options-simulator .opstra-candle-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--op-border, #e9ecef);
+}
+html[data-theme=dark] #options-simulator .opstra-candle-toolbar {
+  border-bottom-color: #1e324a;
+}
+
+#options-simulator .opstra-candle-left,
+#options-simulator .opstra-candle-right {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+#options-simulator .opstra-candle-heading {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--op-ink, #1e293b);
+}
+html[data-theme=dark] #options-simulator .opstra-candle-heading {
+  color: #f1f5f9;
+}
+
+#options-simulator .opstra-candle-series-select {
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  padding: 3px 8px !important;
+  border-radius: 4px !important;
+  border: 1px solid #cbd5e1 !important;
+  background: #f8fafc !important;
+  color: #0f172a !important;
+}
+html[data-theme=dark] #options-simulator .opstra-candle-series-select {
+  background: #17283b !important;
+  color: #f8fafc !important;
+  border-color: #334e68 !important;
+}
+
+#options-simulator .opstra-candle-count-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #e2f2ea;
+  color: #0d5c3a;
+}
+html[data-theme=dark] #options-simulator .opstra-candle-count-badge {
+  background: #13312d;
+  color: #6ee7b7;
+}
+
+#options-simulator .opstra-candle-pan-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--op-muted, #64748b);
+}
+#options-simulator .opstra-candle-pan-wrap input[type="range"] {
+  width: 110px !important;
+  cursor: pointer;
+}
+
+#options-simulator .opstra-candle-zoom-group {
+  display: inline-flex;
+  gap: 4px;
+}
+
+#options-simulator .opstra-candle-stage {
+  position: relative;
+  width: 100%;
+  min-height: 235px;
+}
+
+#options-simulator .opstra-candle-svg-wrap svg {
+  width: 100%;
+  height: 235px;
+  display: block;
+  user-select: none;
+}
+
+#options-simulator .opstra-candle-tooltip {
+  position: absolute;
+  top: 8px;
+  left: 12px;
+  z-index: 15;
+  padding: 6px 10px;
+  border-radius: 5px;
+  background: rgba(15, 23, 42, 0.92);
+  color: #f8fafc;
+  font-size: 11px;
+  line-height: 1.45;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22);
+  font-variant-numeric: tabular-nums;
+}
+
+#options-simulator .opstra-chain-sync-meta {
+  font-weight: 700;
+  color: #0d5c3a;
+}
+html[data-theme=dark] #options-simulator .opstra-chain-sync-meta {
+  color: #6ee7b7;
+}

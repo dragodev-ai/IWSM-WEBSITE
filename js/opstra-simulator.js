@@ -1,4 +1,4 @@
-/* IWSM Options Simulator shell. Market data, snapshot recording, analytics, and execution are driven by IWSMOpstraReplay. */
+/* IWSM Options Simulator shell. Market data, snapshot recording, multi-timeframe candlesticks, analytics, and execution are driven by IWSMOpstraReplay. */
 (function (root) {
   'use strict';
 
@@ -69,7 +69,7 @@
           </div>
         </div>
 
-        <!-- Expiry, Live Refresh & Playback Toolbar -->
+        <!-- Expiry, Timeframe Selector & Playback Toolbar -->
         <section class="opstra-controls-section" aria-label="Simulation and Timeframe Controls">
           <div class="opstra-expiry-row">
             <div class="opstra-expiry-left">
@@ -97,12 +97,30 @@
             </div>
           </div>
 
+          <!-- Always-Clickable Multi-Timeframe Selector Bar (1m, 5m, 13m, 15m, 16m, 30m, 60m, 1D) -->
+          <div class="opstra-tf-bar" role="group" aria-label="Intraday and Daily Timeframe Selector">
+            <span class="opstra-tf-label">TIMEFRAME:</span>
+            <div class="opstra-tf-pills" id="opstra-tf-pills">
+              <button type="button" class="opstra-tf-pill" data-tf="1" aria-pressed="false">1 Min</button>
+              <button type="button" class="opstra-tf-pill active" data-tf="5" aria-pressed="true">5 Min</button>
+              <button type="button" class="opstra-tf-pill" data-tf="13" aria-pressed="false">13 Min</button>
+              <button type="button" class="opstra-tf-pill" data-tf="15" aria-pressed="false">15 Min</button>
+              <button type="button" class="opstra-tf-pill" data-tf="16" aria-pressed="false">16 Min</button>
+              <button type="button" class="opstra-tf-pill" data-tf="30" aria-pressed="false">30 Min</button>
+              <button type="button" class="opstra-tf-pill" data-tf="60" aria-pressed="false">60 Min</button>
+              <button type="button" class="opstra-tf-pill" data-tf="1440" aria-pressed="false">1 Day</button>
+            </div>
+            <span class="opstra-tf-ohlc-summary" id="opstra-tf-ohlc-summary">Candle OHLC: —</span>
+          </div>
+
           <div class="opstra-playback-bar">
             <div class="opstra-playback-group" role="group" aria-label="Step backward">
               <button type="button" class="opstra-btn-step-back" data-mins="-1440">1 DAY &lt;</button>
               <button type="button" class="opstra-btn-step-back" data-mins="-60">60 MIN &lt;-</button>
               <button type="button" class="opstra-btn-step-back" data-mins="-30">30 MIN &lt;-</button>
+              <button type="button" class="opstra-btn-step-back" data-mins="-16">16 MIN &lt;-</button>
               <button type="button" class="opstra-btn-step-back" data-mins="-15">15 MIN &lt;-</button>
+              <button type="button" class="opstra-btn-step-back" data-mins="-13">13 MIN &lt;-</button>
               <button type="button" class="opstra-btn-step-back" data-mins="-5">5 MIN &lt;-</button>
               <button type="button" class="opstra-btn-step-back" data-mins="-1">1 MIN &lt;-</button>
             </div>
@@ -114,7 +132,9 @@
                 <select id="opstra-timeframe" aria-label="Timeframe">
                   <option value="1">1 Min</option>
                   <option value="5" selected>5 Min</option>
+                  <option value="13">13 Min</option>
                   <option value="15">15 Min</option>
+                  <option value="16">16 Min</option>
                   <option value="30">30 Min</option>
                   <option value="60">60 Min</option>
                   <option value="1440">1 Day</option>
@@ -141,7 +161,9 @@
             <div class="opstra-playback-group" role="group" aria-label="Step forward">
               <button type="button" class="opstra-btn-step-fwd opstra-step-terracotta" data-mins="1">-&gt; 1 MIN</button>
               <button type="button" class="opstra-btn-step-fwd opstra-step-terracotta" data-mins="5">-&gt; 5 MIN</button>
+              <button type="button" class="opstra-btn-step-fwd opstra-step-slate" data-mins="13">-&gt; 13 MIN</button>
               <button type="button" class="opstra-btn-step-fwd opstra-step-slate" data-mins="15">-&gt; 15 MIN</button>
+              <button type="button" class="opstra-btn-step-fwd opstra-step-slate" data-mins="16">-&gt; 16 MIN</button>
               <button type="button" class="opstra-btn-step-fwd opstra-step-mednavy" data-mins="30">-&gt; 30 MIN</button>
               <button type="button" class="opstra-btn-step-fwd opstra-step-mednavy" data-mins="60">-&gt; 60 MIN</button>
               <button type="button" class="opstra-btn-step-fwd opstra-step-darknavy" data-mins="1440">&gt; 1 DAY</button>
@@ -152,9 +174,38 @@
             <div class="opstra-clock-jump"></div>
             <div class="opstra-sim-clock" id="opstra-sim-clock">Loading replay…</div>
             <div class="opstra-clock-actions">
+              <button type="button" class="opstra-btn-soft" id="opstra-btn-toggle-candles" aria-expanded="true">CANDLE CHART</button>
               <button type="button" class="opstra-btn-navy" id="opstra-btn-strategies">STRATEGIES</button>
               <button type="button" class="opstra-btn-navy" id="opstra-btn-get-chain" aria-expanded="true">OPTION CHAIN</button>
             </div>
+          </div>
+        </section>
+
+        <!-- Synchronized Intraday OHLC Candlestick Chart Panel -->
+        <section class="opstra-candle-panel" id="opstra-candle-panel" aria-label="Historical Intraday Candlestick Chart">
+          <div class="opstra-candle-toolbar">
+            <div class="opstra-candle-left">
+              <strong class="opstra-candle-heading" id="opstra-candle-heading">NIFTY · 5m Intraday Chart</strong>
+              <select id="opstra-candle-series" class="opstra-candle-series-select" aria-label="Chart instrument or option leg">
+                <option value="spot">Underlying Spot</option>
+              </select>
+              <span class="opstra-candle-count-badge" id="opstra-candle-count">0 candles</span>
+            </div>
+            <div class="opstra-candle-right">
+              <label class="opstra-candle-pan-wrap" title="Scroll earlier / later candles within causal window">
+                <span>Scroll</span>
+                <input type="range" id="opstra-candle-pan" min="0" max="100" value="100" aria-label="Scroll historical candles">
+              </label>
+              <div class="opstra-candle-zoom-group" role="group" aria-label="Chart zoom controls">
+                <button type="button" class="opstra-btn-soft" id="opstra-candle-zoom-in" title="Zoom in (fewer candles)">＋</button>
+                <button type="button" class="opstra-btn-soft" id="opstra-candle-zoom-out" title="Zoom out (more candles)">－</button>
+                <button type="button" class="opstra-btn-soft" id="opstra-candle-zoom-reset" title="Fit all causal candles up to simulation cursor">Fit All</button>
+              </div>
+            </div>
+          </div>
+          <div class="opstra-candle-stage" id="opstra-candle-stage">
+            <div class="opstra-candle-tooltip" id="opstra-candle-tooltip" hidden></div>
+            <div id="opstra-candle-svg-wrap" class="opstra-candle-svg-wrap"></div>
           </div>
         </section>
 
@@ -311,6 +362,7 @@
             <span><i class="opstra-swatch-itm"></i> ITM</span>
             <span><i class="opstra-swatch-atm"></i> ATM Strike</span>
             <span><i class="opstra-swatch-pos"></i> Active Strategy Strike</span>
+            <span class="opstra-chain-sync-meta" id="opstra-chain-sync-meta"></span>
             <span class="opstra-greeks-attribution">IV &amp; Greeks: Calculated (European BSM / Black-76, ACT/365) unless exchange-attributed</span>
           </div>
 

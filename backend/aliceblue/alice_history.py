@@ -318,12 +318,22 @@ def install_history(app, session_fn, broker, market, prefix, snapshots: Snapshot
 
     async def fallback(error, underlying, exch, expiry, start='', end='', kind='minute'):
         today_ist_str = datetime.now(IST).strftime('%Y-%m-%d')
-        includes_live_day = (not end) or (end >= today_ist_str)
+        try:
+            exp_iso = normalize_expiry_iso(expiry) if expiry else ''
+        except ValueError:
+            exp_iso = ''
+        if exp_iso and start and start > exp_iso:
+            raise HTTPException(
+                422,
+                f'Contract {expiry} ({exp_iso}) expired before {start}. Set Start Date on or before {exp_iso}.',
+            )
+        eff_end = min(end, exp_iso) if (end and exp_iso and exp_iso < end) else end
+        includes_live_day = (not eff_end) or (eff_end >= today_ist_str)
 
-        # 1. Check genuinely recorded SnapshotStore frames first (for past windows or explicit snapshot queries)
-        if start and end and not includes_live_day:
+        # 1. Check genuinely recorded SnapshotStore frames & minute_captures first for past/expired windows
+        if start and eff_end and not includes_live_day:
             try:
-                snap_res = snap_store.load_replay(underlying, exch, expiry, start, end)
+                snap_res = snap_store.load_replay(underlying, exch, expiry, start, eff_end)
                 snap_res['notice'] = (
                     f"Showing genuinely recorded IWSM option-chain snapshots ({snap_res['dataset']['metadata']['frameCount']} timestamps)."
                 )
@@ -332,12 +342,22 @@ def install_history(app, session_fn, broker, market, prefix, snapshots: Snapshot
                 pass
             if kind == 'minute':
                 try:
-                    min_res = snap_store.load_minute_replay(underlying, exch, expiry, start, end)
+                    min_res = snap_store.load_minute_replay(underlying, exch, expiry, start, eff_end)
                     if (min_res.get('dataset', {}).get('metadata', {}).get('frameCount') or len(min_res.get('dataset', {}).get('underlying', []))) > 1:
-                        min_res['notice'] = f"Showing saved 1-minute intraday option-chain bars as of {min_res['asOf']}."
+                        min_res['dataset'].setdefault('metadata', {})['dataSourceStatus'] = 'HISTORICAL'
+                        min_res['notice'] = f"Showing saved 1-minute intraday option-chain bars for {underlying} ({expiry}) as of {min_res['asOf']} IST."
                         return min_res
                 except (LookupError, ValueError, OSError, sqlite3.Error):
                     pass
+                if underlying == 'NIFTY' and exch == 'nse_fo':
+                    try:
+                        nb_min = backup.load(expiry, start, eff_end, 'minute')
+                        if nb_min.get('resolution') == 'minute':
+                            nb_min['dataset'].setdefault('metadata', {})['dataSourceStatus'] = 'HISTORICAL'
+                            nb_min['notice'] = f"Showing verified 1-minute NIFTY ({expiry}) option-chain archive as of {nb_min['asOf']} IST."
+                            return nb_min
+                    except (LookupError, ValueError, OSError, sqlite3.Error):
+                        pass
 
         # 2. In hybrid/NSE live mode, fetch genuine 1-minute intraday option-chain + futures + spot + VIX from NSE official feeds!
         if (
@@ -345,17 +365,18 @@ def install_history(app, session_fn, broker, market, prefix, snapshots: Snapshot
             and exch == 'nse_fo'
             and getattr(app.state, 'local_owner_mode', False)
             and not getattr(broker, '_has_mock_transport', False)
+            and (not exp_iso or exp_iso >= today_ist_str)
         ):
-            opt_lot, fut_iso, fut_lot = await resolve_nfo_contract_meta(underlying, expiry, end)
+            opt_lot, fut_iso, fut_lot = await resolve_nfo_contract_meta(underlying, expiry, eff_end)
             if kind == 'minute':
                 try:
-                    end_dt = datetime.strptime(end, '%Y-%m-%d').date() if end else datetime.now(IST).date()
+                    end_dt = datetime.strptime(eff_end, '%Y-%m-%d').date() if eff_end else datetime.now(IST).date()
                     if (datetime.now(IST).date() - end_dt).days <= 4:
                         nse_ds = await nse_live.intraday_minute_dataset(
                             underlying,
                             expiry,
                             start=start,
-                            end=end,
+                            end=eff_end,
                             lot_size=opt_lot,
                             futures_expiry_iso=fut_iso,
                             futures_lot_size=fut_lot,
@@ -454,9 +475,9 @@ def install_history(app, session_fn, broker, market, prefix, snapshots: Snapshot
                     pass
 
         # 3. Check SnapshotStore (also for single-frame or current-day fallbacks in mock/offline mode)
-        if start and end and includes_live_day:
+        if start and eff_end and includes_live_day:
             try:
-                snap_res = snap_store.load_replay(underlying, exch, expiry, start, end)
+                snap_res = snap_store.load_replay(underlying, exch, expiry, start, eff_end)
                 snap_res['notice'] = (
                     f"Broker live history unavailable ({error.detail}). "
                     f"Showing genuinely recorded IWSM option-chain snapshots ({snap_res['dataset']['metadata']['frameCount']} timestamps)."
@@ -466,7 +487,7 @@ def install_history(app, session_fn, broker, market, prefix, snapshots: Snapshot
                 pass
             if kind == 'minute':
                 try:
-                    min_res = snap_store.load_minute_replay(underlying, exch, expiry, start, end)
+                    min_res = snap_store.load_minute_replay(underlying, exch, expiry, start, eff_end)
                     min_res['dataset'].setdefault('metadata', {})['dataSourceStatus'] = 'HISTORICAL'
                     min_res['notice'] = f"Showing saved 1-minute intraday option-chain bars as of {min_res['asOf']}."
                     return min_res
@@ -478,12 +499,12 @@ def install_history(app, session_fn, broker, market, prefix, snapshots: Snapshot
             parquet_store
             and parquet_store.supports(underlying, exch)
             and start
-            and end
-            and start <= end <= today_ist_str
+            and eff_end
+            and start <= eff_end <= today_ist_str
             and error.status_code in (401, 403, 404, 422, 429, 500, 502, 503, 504)
         ):
             try:
-                pq_res = await asyncio.to_thread(parquet_store.load_replay, underlying, exch, expiry, start, end, 30)
+                pq_res = await asyncio.to_thread(parquet_store.load_replay, underlying, exch, expiry, start, eff_end, 30)
                 pq_res['notice'] = (
                     f"Showing verified 1-minute historical option-chain archive for {underlying} ({expiry}) "
                     f"as of {pq_res['asOf']} IST."
@@ -495,7 +516,7 @@ def install_history(app, session_fn, broker, market, prefix, snapshots: Snapshot
         # 4. Check local 5-year NIFTY SQLite backup
         if underlying == 'NIFTY' and exch == 'nse_fo' and error.status_code in (401, 403, 404, 422, 429, 500, 502, 503, 504):
             try:
-                result = backup.load(expiry, start, end, kind)
+                result = backup.load(expiry, start, eff_end, kind)
                 result['dataset'].setdefault('metadata', {})['dataSourceStatus'] = 'HISTORICAL'
                 result['notice'] = 'Showing local ' + result['resolution'] + ' option-chain archive as of ' + result['asOf'] + '.'
                 return result
@@ -505,8 +526,8 @@ def install_history(app, session_fn, broker, market, prefix, snapshots: Snapshot
         # 5. Check local verified NSE derivatives archive (covers all 218+ NSE F&O stocks & indices)
         if exch == 'nse_fo' and nse_archive and nse_archive.available() and error.status_code in (401, 403, 404, 422, 429, 500, 502, 503, 504):
             try:
-                nse_res = await asyncio.to_thread(nse_archive.load, underlying, expiry, start, end)
-                opt_lot, _, _ = await resolve_nfo_contract_meta(underlying, expiry, end)
+                nse_res = await asyncio.to_thread(nse_archive.load, underlying, expiry, start, eff_end)
+                opt_lot, _, _ = await resolve_nfo_contract_meta(underlying, expiry, eff_end)
                 if opt_lot:
                     for c in nse_res.get('dataset', {}).get('contracts', []):
                         if not c.get('lotSize'):
@@ -1053,6 +1074,242 @@ def install_history(app, session_fn, broker, market, prefix, snapshots: Snapshot
         except HTTPException as e:
             return await fallback(e, underlying, exch, expiry, kind='snapshot')
 
+    underlying_candles_cache = {}
+
+    def _aggregate_ist_candles(points: list, interval_minutes: int) -> list:
+        if not points:
+            return []
+        if interval_minutes == 1440:
+            by_day = {}
+            for p in points:
+                d_s = p['timestamp'][:10]
+                by_day.setdefault(d_s, []).append(p)
+            out_d = []
+            for d_s in sorted(by_day):
+                grp = by_day[d_s]
+                vols = [r['volume'] for r in grp if r.get('volume') is not None]
+                out_d.append({
+                    'timestamp': f'{d_s}T15:30',
+                    'openTime': f'{d_s}T09:15',
+                    'closeTime': f'{d_s}T15:30',
+                    'open': round(grp[0]['open'], 2),
+                    'high': round(max(r['high'] for r in grp), 2),
+                    'low': round(min(r['low'] for r in grp), 2),
+                    'close': round(grp[-1]['close'], 2),
+                    'volume': round(sum(vols), 2) if vols else None,
+                    'barCount': len(grp),
+                    'expectedMinutes': 375,
+                    'partial': False,
+                })
+            return out_d
+
+        if interval_minutes == 1:
+            out_1 = []
+            prev_day = ''
+            prev_close = None
+            for p in points:
+                ts = p['timestamp']
+                d_s = ts[:10]
+                has_distinct_ohlc = not (p['open'] == p['high'] == p['low'] == p['close'])
+                o_val = p['open'] if (has_distinct_ohlc or d_s != prev_day or prev_close is None) else prev_close
+                c_val = p['close']
+                h_val = max(p['high'], o_val, c_val)
+                l_val = min(p['low'], o_val, c_val)
+                out_1.append({
+                    'timestamp': ts,
+                    'openTime': ts,
+                    'closeTime': ts,
+                    'open': round(o_val, 2),
+                    'high': round(h_val, 2),
+                    'low': round(l_val, 2),
+                    'close': round(c_val, 2),
+                    'volume': p.get('volume'),
+                    'barCount': 1,
+                    'expectedMinutes': 1,
+                    'partial': False,
+                })
+                prev_day = d_s
+                prev_close = c_val
+            return out_1
+
+        buckets = {}
+        for p in points:
+            ts = p['timestamp']
+            d_s = ts[:10]
+            mins = int(ts[11:13]) * 60 + int(ts[14:16])
+            offset = mins - 555
+            if offset < 0 or offset > 375:
+                continue
+            b_idx = min(offset, 374) // interval_minutes
+            buckets.setdefault((d_s, b_idx), []).append(p)
+
+        out = []
+        for (d_s, b_idx) in sorted(buckets):
+            grp = buckets[(d_s, b_idx)]
+            open_min = 555 + b_idx * interval_minutes
+            open_ts = f'{d_s}T{open_min // 60:02d}:{open_min % 60:02d}'
+            close_ts = grp[-1]['timestamp']
+            vols = [r['volume'] for r in grp if r.get('volume') is not None]
+            expected = min(interval_minutes, 375 - b_idx * interval_minutes)
+            out.append({
+                'timestamp': close_ts,
+                'openTime': open_ts,
+                'closeTime': close_ts,
+                'open': round(grp[0]['open'], 2),
+                'high': round(max(r['high'] for r in grp), 2),
+                'low': round(min(r['low'] for r in grp), 2),
+                'close': round(grp[-1]['close'], 2),
+                'volume': round(sum(vols), 2) if vols else None,
+                'barCount': len(grp),
+                'expectedMinutes': expected,
+                'partial': (expected < interval_minutes) or (len(grp) < expected),
+            })
+        return out
+
+    @app.get(prefix + '/underlying-candles')
+    async def underlying_candles(
+        underlying: str = 'NIFTY',
+        exch: str = 'nse_fo',
+        start: str = '',
+        end: str = '',
+        interval: int = 5,
+        up_to: str = '',
+    ):
+        sym = str(underlying or 'NIFTY').strip().upper()
+        exch_norm = str(exch or 'nse_fo').strip().lower()
+        supported_intervals = {1, 5, 13, 15, 16, 30, 60, 120, 1440}
+        if interval not in supported_intervals:
+            raise HTTPException(422, f'Unsupported timeframe interval {interval}m. Supported: 1, 5, 13, 15, 16, 30, 60, 120, 1440.')
+        today_iso = datetime.now(IST).strftime('%Y-%m-%d')
+        s_iso = start or today_iso
+        e_iso = end or s_iso
+        if not re.fullmatch(r'\d{4}-\d{2}-\d{2}', s_iso) or not re.fullmatch(r'\d{4}-\d{2}-\d{2}', e_iso) or s_iso > e_iso:
+            raise HTTPException(422, 'Provide valid YYYY-MM-DD start and end dates with start <= end.')
+
+        ckey = (sym, exch_norm, s_iso, e_iso, interval, up_to)
+        cached_hit = underlying_candles_cache.get(ckey)
+        if cached_hit and time.monotonic() - cached_hit[0] < 30:
+            return cached_hit[1]
+
+        by_ts = {}
+        sources_used = []
+
+        # 1. Parquet 1-minute spot store (NIFTY, BANKNIFTY, SENSEX)
+        if parquet_store and parquet_store.root:
+            spot_file = parquet_store.root / 'spot' / f'underlying={sym}' / 'spot_1min.parquet'
+            if spot_file.is_file():
+                try:
+                    import polars as pl
+                    d_lo = datetime.strptime(s_iso, '%Y-%m-%d').date()
+                    d_hi = datetime.strptime(e_iso, '%Y-%m-%d').date()
+                    sp_df = (
+                        pl.scan_parquet(str(spot_file))
+                        .filter((pl.col('ts').dt.date() >= d_lo) & (pl.col('ts').dt.date() <= d_hi))
+                        .select(
+                            pl.col('ts').dt.convert_time_zone('Asia/Kolkata').dt.strftime('%Y-%m-%dT%H:%M').alias('stamp'),
+                            pl.col('spot').cast(pl.Float64).round(2).alias('spot'),
+                        )
+                        .collect()
+                    )
+                    added_pq = 0
+                    for st_s, val in zip(sp_df['stamp'].to_list(), sp_df['spot'].to_list()):
+                        if val is not None and val > 0 and '09:15' <= st_s[11:16] <= '15:30':
+                            by_ts[st_s] = {'timestamp': st_s, 'open': val, 'high': val, 'low': val, 'close': val, 'volume': None}
+                            added_pq += 1
+                    if added_pq:
+                        sources_used.append('Verified 1m Spot Parquet')
+                except Exception:
+                    pass
+
+        # 2. SnapshotStore minute_captures
+        try:
+            from contextlib import closing as _closing
+            with _closing(sqlite3.connect(str(snap_store.path), timeout=10)) as sconn:
+                mrows = sconn.execute(
+                    'SELECT payload FROM minute_captures WHERE symbol=? AND exchange=? AND start_date<=? AND end_date>=? ORDER BY saved_at ASC',
+                    (sym, exch_norm, e_iso, s_iso),
+                ).fetchall()
+            added_mc = 0
+            for (blob,) in mrows:
+                raw_mc = json.loads(gzip.decompress(blob).decode('utf-8'))
+                for u in raw_mc.get('underlying', []):
+                    ts = str(u.get('timestamp', ''))
+                    cl = u.get('close')
+                    if len(ts) >= 16 and s_iso <= ts[:10] <= e_iso and '09:15' <= ts[11:16] <= '15:30' and isinstance(cl, (int, float)) and cl > 0:
+                        val = round(float(cl), 2)
+                        by_ts[ts] = {'timestamp': ts, 'open': val, 'high': val, 'low': val, 'close': val, 'volume': None}
+                        added_mc += 1
+            if added_mc:
+                sources_used.append('Saved 1m Intraday Captures')
+        except Exception:
+            pass
+
+        # 3. NIFTY backup captures & daily underlying_ohlc (when interval == 1440 or no 1m available)
+        if sym == 'NIFTY' and exch_norm == 'nse_fo':
+            try:
+                with backup.connect() as nconn:
+                    if interval < 1440:
+                        crows = nconn.execute(
+                            "SELECT payload FROM captures WHERE kind='minute' AND start<=? AND end>=? ORDER BY saved ASC",
+                            (e_iso, s_iso),
+                        ).fetchall()
+                        added_nb = 0
+                        for (blob,) in crows:
+                            raw_nb = json.loads(gzip.decompress(blob).decode('utf-8'))
+                            for u in raw_nb.get('underlying', []):
+                                ts = str(u.get('timestamp', ''))
+                                cl = u.get('close')
+                                if len(ts) >= 16 and s_iso <= ts[:10] <= e_iso and '09:15' <= ts[11:16] <= '15:30' and isinstance(cl, (int, float)) and cl > 0 and ts not in by_ts:
+                                    val = round(float(cl), 2)
+                                    by_ts[ts] = {'timestamp': ts, 'open': val, 'high': val, 'low': val, 'close': val, 'volume': None}
+                                    added_nb += 1
+                        if added_nb:
+                            sources_used.append('NIFTY 1m Backup Captures')
+                    else:
+                        drows = nconn.execute(
+                            'SELECT date, open, high, low, close FROM underlying_ohlc WHERE date>=? AND date<=? ORDER BY date ASC',
+                            (s_iso, e_iso),
+                        ).fetchall()
+                        for r in drows:
+                            ts_d = f"{r['date']}T15:30"
+                            by_ts[ts_d] = {
+                                'timestamp': ts_d,
+                                'open': float(r['open']),
+                                'high': float(r['high']),
+                                'low': float(r['low']),
+                                'close': float(r['close']),
+                                'volume': None,
+                            }
+                        if drows:
+                            sources_used.append('NIFTY 5-Year Daily OHLC')
+            except Exception:
+                pass
+
+        points = [by_ts[k] for k in sorted(by_ts) if not up_to or k <= up_to]
+        if not points:
+            raise HTTPException(
+                404,
+                f'No genuine {"daily" if interval == 1440 else "1-minute intraday"} underlying candles available for {sym} in {s_iso}..{e_iso}.',
+            )
+        candles = _aggregate_ist_candles(points, interval)
+        payload = {
+            'symbol': sym,
+            'exchange': exch_norm,
+            'intervalMinutes': interval,
+            'start': s_iso,
+            'end': e_iso,
+            'upTo': up_to or None,
+            'candleCount': len(candles),
+            'rawMinuteCount': len(points),
+            'source': ' + '.join(dict.fromkeys(sources_used)) or 'Verified Market Archive',
+            'timezone': 'Asia/Kolkata',
+            'candles': candles,
+        }
+        if len(underlying_candles_cache) >= 64:
+            underlying_candles_cache.pop(next(iter(underlying_candles_cache)))
+        underlying_candles_cache[ckey] = (time.monotonic(), payload)
+        return payload
+
     @app.get(prefix + '/replay')
     async def replay(
         req: Request,
@@ -1064,19 +1321,29 @@ def install_history(app, session_fn, broker, market, prefix, snapshots: Snapshot
         interval: int = 25,
         source: str = 'auto',
     ):
+        try:
+            exp_iso_chk = normalize_expiry_iso(expiry) if expiry else ''
+        except ValueError:
+            exp_iso_chk = ''
+        if exp_iso_chk and start and start > exp_iso_chk:
+            raise HTTPException(
+                422,
+                f'Contract {expiry} ({exp_iso_chk}) expired before {start}. Set Start Date on or before {exp_iso_chk}.',
+            )
+        eff_end = min(end, exp_iso_chk) if (end and exp_iso_chk and exp_iso_chk < end) else end
         if source == 'snapshots':
             try:
-                return snap_store.load_replay(underlying, exch, expiry, start, end)
+                return snap_store.load_replay(underlying, exch, expiry, start, eff_end)
             except LookupError as exc:
                 raise HTTPException(404, str(exc)) from None
             except ValueError as exc:
                 raise HTTPException(422, str(exc)) from None
         try:
-            res = remember(await live_replay(req, underlying, expiry, start, end, exch, interval=interval), 'minute')
+            res = remember(await live_replay(req, underlying, expiry, start, eff_end, exch, interval=interval), 'minute')
             accept_enc = req.headers.get('accept-encoding', '')
             if res.get('cached'):
                 _, auth = await get_session(req)
-                ckey = (hashlib.sha256(auth['token'].encode()).hexdigest(), exch, underlying, expiry, start, end, interval)
+                ckey = (hashlib.sha256(auth['token'].encode()).hexdigest(), exch, underlying, expiry, start, eff_end, interval)
                 pre = serialized_replay_cache.get(ckey)
                 if pre:
                     raw_b, gz_b = pre
@@ -1091,7 +1358,7 @@ def install_history(app, session_fn, broker, market, prefix, snapshots: Snapshot
                 return Response(content=raw_fresh, media_type='application/json')
             return res
         except HTTPException as e:
-            return await fallback(e, underlying, exch, expiry, start, end)
+            return await fallback(e, underlying, exch, expiry, start, eff_end)
 
     @app.get(prefix + '/snapshots/coverage')
     async def snapshots_coverage(underlying: str = '', exch: str = '', expiry: str = ''):
