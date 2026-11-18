@@ -1,0 +1,375 @@
+/* ==========================================================================
+   IWSM Counselling Form Contrast (Light & Dark + Autofill) & Party Popper Modal
+   ========================================================================== */
+
+:root {
+  color-scheme: dark;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+}
+
+/* --- 1. High-Contrast, Easy-to-Click Form Controls (Dark Mode Default) --- */
+.hero-form-panel .form-group {
+  margin-bottom: 14px;
+}
+
+.hero-form-panel .form-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #e2edff;
+  margin-bottom: 6px;
+  cursor: pointer;
+}
+
+.hero-form-panel .form-input,
+.hero-form-panel .form-select,
+.lead-form .form-input,
+.lead-form .form-select {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background-color: #0d1c36 !important;
+  border: 1.5px solid rgba(148, 163, 184, 0.38) !important;
+  color: #f8fafc !important;
+  -webkit-text-fill-color: #f8fafc !important;
+  caret-color: #68a8ff;
+  font-size: 0.98rem;
+  font-weight: 500;
+  line-height: 1.4;
+  cursor: text;
+  pointer-events: auto;
+  user-select: text;
+  transition: border-color 0.16s ease, background-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.hero-form-panel .form-select,
+.lead-form .form-select {
+  cursor: pointer;
+}
+
+.lead-form .form-input::placeholder {
+  color: #8ea4c2 !important;
+  -webkit-text-fill-color: #8ea4c2 !important;
+  opacity: 1;
+}
+
+.lead-form .form-input:hover,
+.lead-form .form-select:hover {
+  border-color: #7eb4ff !important;
+  background-color: #102344 !important;
+}
+
+.lead-form .form-input:focus,
+.lead-form .form-select:focus,
+.lead-form .form-input:focus-visible,
+.lead-form .form-select:focus-visible {
+  outline: none !important;
+  background-color: #112649 !important;
+  border-color: #68a8ff !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  box-shadow: 0 0 0 3px rgba(104, 168, 255, 0.25) !important;
+}
+
+/* Dark Mode Chrome/Edge Autofill Override — never greyed-out */
+:root:not([data-theme="light"]) .lead-form .form-input:-webkit-autofill,
+:root:not([data-theme="light"]) .lead-form .form-input:-webkit-autofill:hover,
+:root:not([data-theme="light"]) .lead-form .form-input:-webkit-autofill:focus,
+:root:not([data-theme="light"]) .lead-form .form-input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #102344 inset !important;
+  -webkit-text-fill-color: #f8fafc !important;
+  caret-color: #f8fafc !important;
+  border: 1.5px solid #68a8ff !important;
+  transition: background-color 9999s ease-out 0s;
+}
+
+/* --- 2. Light Mode Form Controls — Crisp Dark Text on Clean White Surface --- */
+[data-theme="light"] .hero-form-panel {
+  background: #ffffff !important;
+  border: 1px solid #d0ded7 !important;
+  box-shadow: 0 18px 44px rgba(15, 35, 26, 0.08) !important;
+}
+
+[data-theme="light"] .hero-form-panel .form-title {
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .hero-form-panel .form-desc,
+[data-theme="light"] .hero-form-panel .form-privacy-note {
+  color: #475569 !important;
+}
+
+[data-theme="light"] .hero-form-panel .form-label {
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .hero-form-panel .form-input,
+[data-theme="light"] .hero-form-panel .form-select,
+[data-theme="light"] .lead-form .form-input,
+[data-theme="light"] .lead-form .form-select {
+  background-color: #f8fafc !important;
+  border: 1.5px solid #94a3b8 !important;
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+  caret-color: #126744;
+}
+
+[data-theme="light"] .lead-form .form-input::placeholder {
+  color: #64748b !important;
+  -webkit-text-fill-color: #64748b !important;
+  opacity: 1;
+}
+
+[data-theme="light"] .lead-form .form-input:hover,
+[data-theme="light"] .lead-form .form-select:hover {
+  background-color: #ffffff !important;
+  border-color: #475569 !important;
+}
+
+[data-theme="light"] .lead-form .form-input:focus,
+[data-theme="light"] .lead-form .form-select:focus,
+[data-theme="light"] .lead-form .form-input:focus-visible,
+[data-theme="light"] .lead-form .form-select:focus-visible {
+  outline: none !important;
+  background-color: #ffffff !important;
+  border-color: #126744 !important;
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+  box-shadow: 0 0 0 3px rgba(18, 103, 68, 0.18) !important;
+}
+
+[data-theme="light"] .lead-form .form-select option {
+  background-color: #ffffff;
+  color: #0f172a;
+}
+
+/* Light Mode Chrome/Edge Autofill Override — eliminates grey box + faint white text */
+[data-theme="light"] .lead-form .form-input:-webkit-autofill,
+[data-theme="light"] .lead-form .form-input:-webkit-autofill:hover,
+[data-theme="light"] .lead-form .form-input:-webkit-autofill:focus,
+[data-theme="light"] .lead-form .form-input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+  -webkit-text-fill-color: #0f172a !important;
+  caret-color: #0f172a !important;
+  border: 1.5px solid #126744 !important;
+  transition: background-color 9999s ease-out 0s;
+}
+
+.lead-form .submission-status {
+  margin-top: 10px;
+  font-size: 0.86rem;
+  font-weight: 500;
+  line-height: 1.45;
+  text-align: center;
+  color: #93c5fd;
+}
+
+.lead-form .submission-status[role="alert"] {
+  color: #fca5a5;
+}
+
+[data-theme="light"] .lead-form .submission-status {
+  color: #126744;
+}
+
+[data-theme="light"] .lead-form .submission-status[role="alert"] {
+  color: #b91c1c;
+}
+
+/* --- 3. Party Popper Celebration Modal (Light & Dark Mode) --- */
+.lead-confirm-modal .confirmation-modal-card {
+  position: relative;
+  overflow: hidden;
+  max-width: 460px;
+  width: calc(100% - 32px);
+  padding: 36px 30px 30px;
+  border-radius: 24px;
+  text-align: center;
+  background: linear-gradient(180deg, #0d1d36 0%, #081326 100%);
+  border: 1px solid rgba(104, 168, 255, 0.28);
+  box-shadow: 0 28px 70px rgba(2, 8, 23, 0.72);
+}
+
+[data-theme="light"] .lead-confirm-modal .confirmation-modal-card {
+  background: linear-gradient(180deg, #ffffff 0%, #f4fbf7 100%);
+  border: 1px solid #b9decb;
+  box-shadow: 0 28px 70px rgba(15, 23, 42, 0.22);
+}
+
+.confetti-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.lead-confirm-modal .confirmation-modal-card > *:not(.confetti-canvas) {
+  position: relative;
+  z-index: 2;
+}
+
+.party-popper-stage {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  margin: 0 auto 16px;
+  display: grid;
+  place-items: center;
+}
+
+.party-popper-glow {
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(251, 191, 36, 0.32) 0%, rgba(16, 185, 129, 0.18) 52%, transparent 74%);
+  opacity: 0;
+}
+
+.lead-confirm-modal.active .party-popper-glow {
+  animation: partyGlowPulse 2.2s ease-in-out infinite;
+}
+
+.party-popper-badge {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 52%, #fde68a 100%);
+  border: 3px solid rgba(251, 191, 36, 0.65);
+  box-shadow: 0 12px 30px rgba(245, 158, 11, 0.3);
+  display: grid;
+  place-items: center;
+  transform: scale(0) rotate(-18deg);
+}
+
+[data-theme="light"] .party-popper-badge {
+  box-shadow: 0 12px 28px rgba(18, 103, 68, 0.18);
+  border-color: #f59e0b;
+}
+
+.lead-confirm-modal.active .party-popper-badge {
+  animation: partyPopperBounce 0.55s cubic-bezier(0.22, 1.38, 0.36, 1) 0.04s forwards;
+}
+
+.party-popper-emoji {
+  font-size: 2.55rem;
+  line-height: 1;
+  transform: translateY(1px);
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.14));
+}
+
+.confirm-eyebrow-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  margin-bottom: 12px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: #6ee7b7;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(52, 211, 153, 0.32);
+}
+
+[data-theme="light"] .confirm-eyebrow-pill {
+  color: #0b5034;
+  background: #e6f6ee;
+  border-color: #a7dfc2;
+}
+
+.lead-confirm-modal .phonepe-title {
+  font-size: 1.62rem;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+  margin: 0 0 10px;
+  animation: phonepeFadeUp 0.32s ease 0.1s both;
+}
+
+[data-theme="light"] .lead-confirm-modal .phonepe-title {
+  color: #0f172a;
+}
+
+.lead-confirm-modal .phonepe-desc {
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.6;
+  color: #dbe7f8;
+  margin: 0 0 14px;
+  animation: phonepeFadeUp 0.32s ease 0.16s both;
+}
+
+[data-theme="light"] .lead-confirm-modal .phonepe-desc {
+  color: #334155;
+}
+
+.confirm-course-pill {
+  display: inline-block;
+  max-width: 100%;
+  padding: 7px 14px;
+  margin: 0 auto 20px;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: #bfdbfe;
+  background: rgba(30, 58, 104, 0.55);
+  border: 1px solid rgba(104, 168, 255, 0.25);
+  animation: phonepeFadeUp 0.32s ease 0.2s both;
+}
+
+[data-theme="light"] .confirm-course-pill {
+  color: #174a34;
+  background: #eef8f3;
+  border-color: #c2e5d3;
+}
+
+@keyframes partyPopperBounce {
+  0% {
+    transform: scale(0) rotate(-24deg);
+    opacity: 0;
+  }
+  62% {
+    transform: scale(1.16) rotate(8deg);
+    opacity: 1;
+  }
+  82% {
+    transform: scale(0.95) rotate(-3deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+@keyframes partyGlowPulse {
+  0%, 100% {
+    transform: scale(0.96);
+    opacity: 0.72;
+  }
+  50% {
+    transform: scale(1.12);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lead-confirm-modal.active .party-popper-badge,
+  .lead-confirm-modal.active .party-popper-glow,
+  .lead-confirm-modal .phonepe-title,
+  .lead-confirm-modal .phonepe-desc,
+  .confirm-course-pill {
+    animation: none !important;
+    transform: none !important;
+    opacity: 1 !important;
+  }
+}

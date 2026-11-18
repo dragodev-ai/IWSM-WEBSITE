@@ -52,6 +52,9 @@
 <link rel="stylesheet" href="css/mobile-refinements.css?v=mobile-quality-1"><link rel="stylesheet" href="css/collaboration-credit.css?v=3"><link rel="stylesheet" href="css/seo-faq.css?v=2"><meta name="robots" content="index,follow,max-image-preview:large"><meta property="og:site_name" content="Institute of World Stock Market (IWSM)">
 <link rel="stylesheet" href="css/anthem.css?v=minimal-2"><script src="js/anthem.js?v=mobile-autoplay-2" defer></script><link rel="stylesheet" href="css/editorial-type.css?v=3"><link rel="stylesheet" href="css/device-layout.css?v=1"><link rel="stylesheet" href="css/nav-drag.css?v=1"><script src="js/nav-drag.js?v=1" defer></script>  <link rel="stylesheet" href="css/algo-results.css?v=20261117-r2">
 <link rel="stylesheet" href="css/responsive-polish.css?v=20261113">
+  <link rel="preconnect" href="https://script.google.com" crossorigin>
+  <link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
+  <link rel="stylesheet" href="css/form-celebration.css?v=20261118-r1">
 </head>
 <body class="iwsm-home">
   <a class="skip-to-content" href="#main-content">Skip to main content</a>
@@ -2201,35 +2204,29 @@
   <!-- 3. Lead Confirmation Modal -->
   <div class="modal-overlay lead-confirm-modal" id="lead-modal">
     <div class="confirmation-modal-card glass-panel-deep">
-      <div class="phonepe-success-wrapper">
-        <div class="phonepe-ripple phonepe-ripple-1"></div>
-        <div class="phonepe-ripple phonepe-ripple-2"></div>
-        <div class="phonepe-circle">
-          <svg class="phonepe-checkmark" viewBox="0 0 52 52">
-            <path class="phonepe-check-path" fill="none" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
-          </svg>
+      <canvas class="confetti-canvas" id="iwsm-confetti-canvas" aria-hidden="true"></canvas>
+      <div class="party-popper-stage" aria-hidden="true">
+        <div class="party-popper-glow"></div>
+        <div class="party-popper-badge">
+          <span class="party-popper-emoji">🎉</span>
         </div>
-        <div class="phonepe-sparkle p-sparkle-1"></div>
-        <div class="phonepe-sparkle p-sparkle-2"></div>
-        <div class="phonepe-sparkle p-sparkle-3"></div>
-        <div class="phonepe-sparkle p-sparkle-4"></div>
-        <div class="phonepe-sparkle p-sparkle-5"></div>
-        <div class="phonepe-sparkle p-sparkle-6"></div>
       </div>
-      <h3 class="phonepe-title">Thank you for choosing us.</h3>
+      <span class="confirm-eyebrow-pill">Enquiry Confirmed</span>
+      <h3 class="phonepe-title">You Are on the Right Path!</h3>
       <p id="confirm-details-text" class="phonepe-desc">
-        Thank you! Your details have been submitted. An IWSM Senior Market Counselor will call you soon.
+        Please have patience — the IWSM team will contact you soon.
       </p>
+      <div id="confirm-course-pill" class="confirm-course-pill" hidden></div>
       <div id="confirm-whatsapp-actions" style="margin-bottom: 16px;"></div>
-      <button class="btn btn-gold confirm-modal-close" style="width:100%;">Great, Thank You!</button>
+      <button class="btn btn-gold confirm-modal-close" style="width:100%;">Awesome, Thank You!</button>
     </div>
   </div>
 
   <!-- Scripts -->
   
 
-  <script src="js/squeeze-gallery.js"></script>
-  <script src="js/reviews-3d.js?v=phone-2"></script>
+  <script src="js/squeeze-gallery.js" defer></script>
+  <script src="js/reviews-3d.js?v=phone-2" defer></script>
   <script id="gamma-reveal-observer">
     (() => {
       const card = document.querySelector('.gamma-vip-card');
@@ -2241,8 +2238,8 @@
       observer.observe(card);
     })();
   </script>
-  <script src="js/main.js?v=audit-20261117"></script>
-  <script src="js/lead-form.js?v=confirmed-save-3" defer></script>
+  <script src="js/main.js?v=audit-20261117" defer></script>
+  <script src="js/lead-form.js?v=party-fast-1" defer></script>
   <script src="js/portfolio-phone.js" defer></script>
 <script src="js/campus-gallery.js?v=continuous-gallery-6" defer></script>
 

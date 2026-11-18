@@ -196,6 +196,10 @@ function doPost(e) {
   if (input['bot-field']) return failure_('invalid_request');
   const secret = properties_().getProperty('SUBMISSION_TOKEN');
   const hasServerSecret = Boolean(secret && input.secret === secret);
+  if (input.public_form === PUBLIC_FORM_KEY && input.action === 'deliver_pending') {
+    try { refreshCurrentExcel(); } catch (err) { console.error('Background Excel/email delivery deferred to scheduled trigger.'); }
+    return response_({ success: true, status: 'delivered' });
+  }
   const isLogin = input.record_type === 'login';
   const isPublicEnquiry = !isLogin && input.public_form === PUBLIC_FORM_KEY;
   if (!hasServerSecret && !isPublicEnquiry) return failure_('unauthorized');
@@ -204,16 +208,13 @@ function doPost(e) {
   if (!data) return failure_('invalid_details');
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(REQUEST_LOCK_MS)) return failure_('storage_busy');
-  let outResponse = null;
-  let shouldDeliverNow = false;
   try {
     const now = new Date(), key = monthKey_(now), stamp = Utilities.formatDate(now, REPORT_ZONE, 'yyyy-MM-dd HH:mm:ss');
     if (!data.login) {
       const existing = findSubmission_(key, data);
       if (existing) {
         if (!existing.same) return failure_('submission_conflict');
-        outResponse = saved_(data, existing.month, true);
-        return outResponse;
+        return saved_(data, existing.month, true);
       }
     }
     const book = book_(key);
@@ -228,24 +229,16 @@ function doPost(e) {
       const sheet = book.getSheetByName('Course Enquiries') || book.getSheets()[0];
       const row = data.fields.concat([stamp, data.submission_id]).map(safeText_).concat([fingerprint_(data.fields)]);
       sheet.getRange(sheet.getLastRow() + 1, 1, 1, 7).setNumberFormat('@').setValues([row]);
-      shouldDeliverNow = true;
     }
     SpreadsheetApp.flush();
-    outResponse = saved_(data, key, false);
+    // Return immediately (<1s) so visitor UI confirms without waiting on Drive/Gmail I/O.
+    return saved_(data, key, false);
   } catch (error) {
     console.error('Monthly register storage did not confirm completion.');
     return failure_('storage_unavailable');
   } finally {
     lock.releaseLock();
   }
-  if (shouldDeliverNow) {
-    try {
-      refreshCurrentExcel();
-    } catch (syncError) {
-      console.error('Immediate Excel/email sync deferred to scheduled maintenance.');
-    }
-  }
-  return outResponse;
 }
 function monthKeys_() {
   return Object.keys(properties_().getProperties()).filter(key => /^SHEET_\d{4}-\d{2}$/.test(key)).map(key => key.slice(6)).sort();
@@ -388,7 +381,7 @@ function setupMonthlyReports() {
   // Create replacements before removing working triggers. Failed creation preserves retries.
   const created = [];
   try {
-    created.push(ScriptApp.newTrigger('refreshCurrentExcel').timeBased().everyMinutes(5).create());
+    created.push(ScriptApp.newTrigger('refreshCurrentExcel').timeBased().everyMinutes(1).create());
     created.push(ScriptApp.newTrigger('deliverMonthlyReport').timeBased().everyDays(1).atHour(9).inTimezone(REPORT_ZONE).create());
   } catch (error) {
     created.forEach(trigger => { try { ScriptApp.deleteTrigger(trigger); } catch (ignored) {} });
