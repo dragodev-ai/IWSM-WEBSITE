@@ -6,7 +6,6 @@
   var modal = document.querySelector('.lead-confirm-modal');
   var closeButton = document.querySelector('.confirm-modal-close');
   var details = document.querySelector('#confirm-details-text');
-  var coursePill = document.querySelector('#confirm-course-pill');
   var confettiCanvas = document.querySelector('#iwsm-confetti-canvas');
   var whatsappActions = document.querySelector('#confirm-whatsapp-actions');
   var previousFocus = null;
@@ -332,10 +331,6 @@
 
         if (details) {
           details.textContent = 'Please have patience — the IWSM team will contact you soon.';
-        }
-        if (coursePill) {
-          coursePill.textContent = name + ' • ' + course;
-          coursePill.hidden = false;
         }
         if (whatsappActions) { whatsappActions.replaceChildren(); whatsappActions.style.display = 'none'; }
         if (modal) {
