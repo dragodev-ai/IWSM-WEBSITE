@@ -67,14 +67,26 @@ function parseNum(str) {
       () => {
         const sel = document.getElementById('opstra-symbol-select');
         const rows = document.querySelectorAll('#opstra-chain-body tr');
-        const tf13 = document.querySelector('#opstra-tf-pills button[data-tf="13"]');
-        return sel && sel.options.length > 50 && rows.length > 5 && tf13 && !tf13.disabled;
+        const tf1 = document.querySelector('#opstra-tf-pills button[data-tf="1"]');
+        const src = document.getElementById('opstra-source-note')?.textContent || '';
+        return sel && sel.options.length > 50 && rows.length > 5 && tf1 && !tf1.disabled && src.includes('1-min bars');
       },
       { timeout: 25000 }
     );
 
+    // Verify 1 Min is the default active timeframe out of the box!
+    const initial1mState = await page.evaluate(() => ({
+      tfVal: document.getElementById('opstra-timeframe')?.value,
+      activePill: document.querySelector('#opstra-tf-pills button.active')?.getAttribute('data-tf'),
+      statusTxt: document.getElementById('opstra-status')?.textContent || '',
+      sourceTxt: document.getElementById('opstra-source-note')?.textContent || '',
+    }));
+    assert.equal(initial1mState.tfVal, '1', 'Default timeframe dropdown on startup must be 1 Min');
+    assert.equal(initial1mState.activePill, '1', 'Default active timeframe pill on startup must be 1 Min');
+    assert.ok(initial1mState.sourceTxt.includes('1-min bars'), `Startup loaded genuine 1-min bars: ${initial1mState.sourceTxt}`);
+
     // =========================================================================
-    // TEST A.1: Reproduce & Verify Fix for Saved-Daily-Study Greyed-Out Bug
+    // TEST A.1: Reproduce & Verify Exact User Bug: 2026-11-02 Daily Study -> Click 1 Min -> Step 1m & PLAY
     // =========================================================================
     const dailyBugStudy = await page.evaluate(() => {
       const M = window.IWSMSimulator;
@@ -114,6 +126,54 @@ function parseNum(str) {
     assert.equal(disabledControlsOnDaily.disabledPills, 0, 'Zero timeframe pills disabled even on daily study');
     assert.equal(disabledControlsOnDaily.disabledSelectOpts, 0, 'Zero timeframe <option> elements disabled');
     assert.equal(disabledControlsOnDaily.tfSelectDisabled, false, '#opstra-timeframe select is enabled');
+
+    // CRITICAL: Click 1 Min while on 2026-11-02 and verify it upgrades cleanly to genuine 1-minute NIFTY bars!
+    await page.locator('#opstra-tf-pills button[data-tf="1"]').click();
+    await page.waitForFunction(
+      () => {
+        const tfVal = document.getElementById('opstra-timeframe')?.value;
+        const src = document.getElementById('opstra-source-note')?.textContent || '';
+        return tfVal === '1' && src.includes('1-min bars');
+      },
+      { timeout: 20000 }
+    );
+    const after1mUpgrade = await page.evaluate(() => ({
+      status: document.getElementById('opstra-status')?.textContent || '',
+      tfVal: document.getElementById('opstra-timeframe')?.value,
+      activePill: document.querySelector('#opstra-tf-pills button.active')?.getAttribute('data-tf'),
+      clock: document.getElementById('opstra-sim-clock')?.textContent?.trim() || '',
+      candleHeading: document.getElementById('opstra-candle-heading')?.textContent?.trim() || '',
+    }));
+    assert.doesNotMatch(after1mUpgrade.status, /unavailable for NIFTY on 2026-11-02/i, `Must never fail on 2026-11-02: ${after1mUpgrade.status}`);
+    assert.equal(after1mUpgrade.tfVal, '1', 'Timeframe select stays on 1 Min after upgrading from 2026-11-02');
+    assert.equal(after1mUpgrade.activePill, '1', '1 Min pill stays active after upgrading from 2026-11-02');
+    assert.ok(after1mUpgrade.candleHeading.includes('1 Min'), `Candlestick heading shows 1 Min: ${after1mUpgrade.candleHeading}`);
+
+    // Step forward 5 exact 1-minute increments (+1m each) & backward (-1m) & test PLAY/PAUSE on 1 Min
+    const toEpochMin = clk => {
+      const m = /^(\d{4}-\d{2}-\d{2})\s+(\d{2}):(\d{2})/.exec(clk);
+      return m ? Date.parse(`${m[1]}T${m[2]}:${m[3]}:00Z`) / 60000 : NaN;
+    };
+    let prevMin = toEpochMin(after1mUpgrade.clock);
+    for (let stepIdx = 1; stepIdx <= 5; stepIdx++) {
+      await page.locator('button[data-mins="1"]').click();
+      const curClk = await page.locator('#opstra-sim-clock').innerText();
+      const curMin = toEpochMin(curClk);
+      assert.equal(curMin - prevMin, 1, `1 Min step #${stepIdx} advanced exact 1 minute (${curClk})`);
+      prevMin = curMin;
+    }
+    await page.locator('button[data-mins="-1"]').click();
+    const backClk = await page.locator('#opstra-sim-clock').innerText();
+    assert.equal(toEpochMin(backClk), prevMin - 1, `1 MIN <- stepped back exact 1 minute (${backClk})`);
+
+    await page.locator('#opstra-speed').selectOption('500');
+    const prePlayMin = toEpochMin(backClk);
+    await page.locator('#opstra-btn-play').click();
+    await page.waitForTimeout(750);
+    await page.locator('#opstra-btn-play').click(); // Pause
+    const postPlayClk = await page.locator('#opstra-sim-clock').innerText();
+    assert.ok(toEpochMin(postPlayClk) > prePlayMin, `1 Min Auto-PLAY advanced minute-by-minute (${backClk} -> ${postPlayClk})`);
+    console.log('PASS A.0: Exact 2026-11-02 -> 1 Min upgrade, 5x +1m steps, -1m step, and 1m PLAY/PAUSE verified!');
 
     // =========================================================================
     // TEST C.1 & TEST A.2: Select 17 November 2026 (17NOV26) & Validate All 5 Timeframes (1m, 5m, 13m, 15m, 16m)
@@ -450,6 +510,51 @@ function parseNum(str) {
     assert.equal(report.pageErrors.length, 0, `Zero uncaught page errors: ${JSON.stringify(report.pageErrors)}`);
     assert.equal(report.consoleErrors.length, 0, `Zero console errors: ${JSON.stringify(report.consoleErrors)}`);
     assert.equal(report.failedRequests.length, 0, `Zero failed HTTP requests: ${JSON.stringify(report.failedRequests)}`);
+
+    // =========================================================================
+    // TEST H: Pure Static / GitHub Pages Mode (API Blocked -> Static CDN Cache)
+    // =========================================================================
+    {
+      const staticCtx = await browser.newContext({
+        viewport: { width: 1440, height: 920 },
+        timezoneId: 'Asia/Kolkata',
+      });
+      const sPage = await staticCtx.newPage();
+      await sPage.route('**/api/**', route => route.abort());
+      await sPage.goto(`${BASE_URL}/strategy-builder.html#options-simulator`, { waitUntil: 'domcontentloaded' });
+      await sPage.waitForFunction(
+        () => {
+          const tfVal = document.getElementById('opstra-timeframe')?.value;
+          const src = document.getElementById('opstra-source-note')?.textContent || '';
+          const rows = document.querySelectorAll('#opstra-chain-body tr').length;
+          return tfVal === '1' && src.includes('1-min bars') && rows > 5;
+        },
+        { timeout: 25000 }
+      );
+      // Restore 2026-11-02 daily study in pure static mode & click 1 Min!
+      await sPage.locator('.opstra-history-tools summary').click();
+      await sPage.locator('#opstra-restore').setInputFiles({
+        name: 'daily-repro-static.json',
+        mimeType: 'application/json',
+        buffer: Buffer.from(dailyBugStudy),
+      });
+      await sPage.waitForFunction(() => (document.getElementById('opstra-sim-clock')?.textContent || '').includes('2026-11-02'), { timeout: 10000 });
+      await sPage.locator('#opstra-tf-pills button[data-tf="1"]').click();
+      await sPage.waitForFunction(
+        () => {
+          const tfVal = document.getElementById('opstra-timeframe')?.value;
+          const src = document.getElementById('opstra-source-note')?.textContent || '';
+          return tfVal === '1' && src.includes('1-min bars');
+        },
+        { timeout: 20000 }
+      );
+      const stBefore = await sPage.locator('#opstra-sim-clock').innerText();
+      await sPage.locator('button[data-mins="1"]').click();
+      const stAfter = await sPage.locator('#opstra-sim-clock').innerText();
+      assert.notEqual(stAfter, stBefore, `Pure Static GitHub Pages 1 Min stepped forward (${stBefore} -> ${stAfter})`);
+      await staticCtx.close();
+      console.log('PASS H: Pure Static GitHub Pages mode 1 Min startup + 2026-11-02 -> 1 Min upgrade + 1m step verified!');
+    }
 
     const outReportPath = path.resolve(__dirname, '../market-data/nifty-backup/e2e_simulator_audit_results.json');
     fs.writeFileSync(outReportPath, JSON.stringify(report, null, 2));

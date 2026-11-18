@@ -36,8 +36,8 @@
       let symbolSearchQuery = '', chainSearchQuery = '', chainRangeCount = 25, showDetailCols = false, quickTrade = false;
       let serverMarketStatus = null, snapshotCoverage = null, parquetCoverage = null, brokerExpiryDetails = {};
       let apiBase = '', apiProbePromise = null, backendProbedOnce = false, brokerAuth = { connected: false };
-      let activeTimeframe = 5, candleSeries = 'spot', candleVisibleCount = 90, candlePanPct = 100;
-      let availableExpiries = [], expirySyncKey = '', expirySwitchSeq = 0, tfSwitchSeq = 0;
+      let activeTimeframe = 1, preferredIntradayTf = 1, candleSeries = 'spot', candleVisibleCount = 90, candlePanPct = 100;
+      let availableExpiries = [], expirySyncKey = '', expirySwitchSeq = 0, tfSwitchSeq = 0, manualLoadSeq = 0;
 
       const settings = { initialBalance: 1000000, feePerOrder: 20, feeBps: 0, slippage: 0, marginRate: 0.2, rate: 6.5, dividend: 0 };
 
@@ -275,6 +275,38 @@
         }
       }
 
+      function rawHasSubdayBars(raw, sym = '') {
+        if (!raw?.contracts?.length || raw.metadata?.resolution === 'daily close') return false;
+        const target = String(sym || '').toUpperCase();
+        const stamps = new Set();
+        for (const c of raw.contracts) {
+          if (!c.timestamp) return false;
+          if (!target || String(c.symbol || '').toUpperCase() === target) {
+            stamps.add(c.timestamp);
+            if (stamps.size >= 6) break;
+          }
+        }
+        if (stamps.size < 2) return false;
+        const sorted = [...stamps].sort();
+        for (let i = 1; i < sorted.length; i++) {
+          if (sorted[i].slice(0, 10) === sorted[i - 1].slice(0, 10)) return true;
+        }
+        return false;
+      }
+
+      function hasGenuineSubdayBars(ds = d, sess = s) {
+        if (!ds || !sess || ds.kind === 'daily' || ds.metadata?.resolution === 'daily close') return false;
+        const fr = P.frames(ds, sess);
+        if (fr.length < 2) return false;
+        for (let i = 1; i < fr.length; i++) {
+          if (fr[i].slice(0, 10) === fr[i - 1].slice(0, 10)) {
+            const diffMin = (M.instant(fr[i]) - M.instant(fr[i - 1])) / 60000;
+            if (diffMin > 0 && diffMin <= 60) return true;
+          }
+        }
+        return false;
+      }
+
       function adopt(raw, b = null, session = null, preservePositions = false) {
         const preparedInput = preservePositions && d && s ? mergeRawPreservingEvents(d, s, raw) : raw;
         const next = M.prepareDataset(preparedInput);
@@ -298,14 +330,16 @@
           availableExpiries = [];
           expirySyncKey = '';
         }
-        if (d.kind === 'daily') {
+        if (d.kind === 'daily' || d.metadata?.resolution === 'daily close') {
           activeTimeframe = 1440;
-        } else if (activeTimeframe === 1440 && P.frames(d, s).length > 1) {
-          activeTimeframe = 5;
+        } else if (activeTimeframe === 1440 && hasGenuineSubdayBars(d, s)) {
+          activeTimeframe = preferredIntradayTf || 1;
+        }
+        if (!preservePositions || (payoffDate && payoffDate < s.cursor.slice(0, 10))) {
+          payoffDate = '';
         }
         if (!preservePositions) {
           viewExpiry = '';
-          payoffDate = '';
           basis = 'spot';
           candleSeries = 'spot';
           el('basis-toggle').checked = false;
@@ -377,12 +411,9 @@
       function frameStep(minutes) {
         if (!s) return;
         const dir = Math.sign(minutes), amount = Math.abs(minutes), base = resolution();
-        if (amount !== 1440 && (d.kind === 'daily' || P.frames(d, s).length < 2)) {
+        if (amount !== 1440 && (!hasGenuineSubdayBars(d, s) || amount < base)) {
           setTimeframe(amount, dir);
           return;
-        }
-        if (amount !== 1440 && amount < base) {
-          throw Error('Loaded dataset has ' + base + '-minute resolution. Load 1-minute history for finer steps.');
         }
         const frames = P.frames(d, s);
         const target =
@@ -431,28 +462,44 @@
         if (backendProbedOnce && /\.github\.io$/i.test(root.location?.hostname || '')) return '';
         const isFile = root.location?.protocol === 'file:';
         const isHttpsPage = root.location?.protocol === 'https:';
-        apiProbePromise = (async () => {
-          for (const candidate of ['http://127.0.0.1:4174', 'http://localhost:4174']) {
-            try {
-              if (root.location?.origin === candidate) continue;
-              const r = await fetch(candidate + '/api/aliceblue/health', {
-                credentials: isFile || isHttpsPage ? 'omit' : 'include',
-                signal: AbortSignal.timeout(2500),
-              });
-              if (r.ok && (r.headers.get('content-type') || '').includes('application/json')) {
-                apiBase = candidate;
-                backendProbedOnce = true;
-                return apiBase;
-              }
-            } catch {}
-          }
+        const candidates = ['http://127.0.0.1:4174', 'http://localhost:4174'].filter(c => root.location?.origin !== c);
+        if (!candidates.length) {
           backendProbedOnce = true;
           return '';
-        })().finally(() => {
-          apiProbePromise = null;
-        });
+        }
+        apiProbePromise = Promise.any(
+          candidates.map(async candidate => {
+            const r = await fetch(candidate + '/api/aliceblue/health', {
+              credentials: isFile || isHttpsPage ? 'omit' : 'include',
+              signal: AbortSignal.timeout(750),
+            });
+            if (r.ok && (r.headers.get('content-type') || '').includes('application/json')) {
+              return candidate;
+            }
+            throw Error('unavailable');
+          })
+        )
+          .then(found => {
+            apiBase = found;
+            backendProbedOnce = true;
+            return apiBase;
+          })
+          .catch(() => {
+            backendProbedOnce = true;
+            return '';
+          })
+          .finally(() => {
+            apiProbePromise = null;
+          });
         return apiProbePromise;
       }
+
+      const STATIC_REPLAY_SYMS = new Set([
+        'ADANIGREEN', 'AXISBANK', 'BAJFINANCE', 'BANKNIFTY', 'FINNIFTY',
+        'HDFCBANK', 'ICICIBANK', 'IDEA', 'INFY', 'LT', 'MIDCPNIFTY',
+        'NIFTY', 'NIFTYNXT50', 'RELIANCE', 'SBIN', 'SENSEX', 'TCS',
+      ]);
+      const STATIC_SNAP_SYMS = new Set(['ADANIGREEN', 'BANKNIFTY', 'NIFTY', 'RELIANCE']);
 
       let staticInstCache = null;
       let staticExpCache = null;
@@ -596,9 +643,6 @@
           const sym = (q.get('underlying') || 'NIFTY').toUpperCase();
           const exch = (q.get('exch') || 'nse_fo').toLowerCase();
           const start = q.get('start') || '';
-          if (start && start < '2026-11-01' && sym === 'NIFTY' && root.IWSMNSEHistory) {
-            return jsonSynthResponse({ expiries: [], expiryDetails: [], historicalOnly: true, backup: true, source: 'Bundled Historical Archive' });
-          }
           if (!staticExpCache) {
             const r = await fetch('assets/market-cache/expiries.json');
             staticExpCache = r.ok ? await r.json() : {};
@@ -643,15 +687,18 @@
           const isSnap = p === '/api/aliceblue/snapshot';
           const cacheKey = (isSnap ? 'snap:' : 'replay:') + sym + (reqExp ? ':' + reqExp : '');
           if (!staticReplayCache.has(cacheKey) && root.location?.protocol !== 'file:') {
-            const urls = isSnap
-              ? [
-                  'assets/market-cache/snapshot-' + encodeURIComponent(sym) + '.json',
-                  'assets/market-cache/replay-' + encodeURIComponent(sym) + '.json',
-                ]
-              : [
-                  ...(reqExp ? ['assets/market-cache/replay-' + encodeURIComponent(sym) + '-' + encodeURIComponent(reqExp) + '.json'] : []),
-                  'assets/market-cache/replay-' + encodeURIComponent(sym) + '.json',
-                ];
+            const urls = [];
+            if (isSnap) {
+              if (STATIC_SNAP_SYMS.has(sym)) urls.push('assets/market-cache/snapshot-' + encodeURIComponent(sym) + '.json');
+              if (STATIC_REPLAY_SYMS.has(sym)) urls.push('assets/market-cache/replay-' + encodeURIComponent(sym) + '.json');
+            } else {
+              if (sym === 'NIFTY' && (reqExp === '17NOV26' || reqExp === '2026-11-17')) {
+                urls.push('assets/market-cache/replay-NIFTY-17NOV26.json');
+              }
+              if (STATIC_REPLAY_SYMS.has(sym)) {
+                urls.push('assets/market-cache/replay-' + encodeURIComponent(sym) + '.json');
+              }
+            }
             for (const u of urls) {
               try {
                 const r = await fetch(u);
@@ -749,6 +796,10 @@
             if (!apiBase && (r.status === 404 || r.status === 405 || !(r.headers.get('content-type') || '').includes('application/json'))) {
               const discovered = await probeLocalBackend();
               if (discovered) return await fetch(discovered + urlPath, buildOpts(discovered));
+              if (!initOpts.method || initOpts.method === 'GET') {
+                const fallbackRes = await staticGithubPagesFetch(urlPath);
+                if (fallbackRes.ok) return fallbackRes;
+              }
             }
             return r;
           }
@@ -1238,12 +1289,81 @@
           : 'Select Expiry';
       }
 
+      async function fetchBestIntradayReplay({ sym, exch, anchorDay = '', preferExpiryIso = '', hasOpenLegs = false }) {
+        const now = todayIST();
+        const recentStart = defaultMinuteStartIST(now);
+        const isLocalOrigin = /^(127\.0\.0\.1|localhost)$/i.test(root.location?.hostname || '');
+        const hasLiveApi = isLocalOrigin || Boolean(await probeLocalBackend());
+
+        async function tryWindow(winStart, winEnd, prefExp) {
+          if (!winStart || !winEnd || winStart > winEnd) return null;
+          try {
+            const expRes = await brokerApi('expiries?' + new URLSearchParams({ underlying: sym, exch, start: winStart, end: winEnd }));
+            if (Array.isArray(expRes?.expiryDetails)) {
+              for (const item of expRes.expiryDetails) if (item.iso) brokerExpiryDetails[item.iso] = item;
+            }
+            if (expRes?.historicalOnly && !expRes?.parquetMinuteAvailable && !(expRes?.minuteExpiries && expRes.minuteExpiries.length)) {
+              return null;
+            }
+            const minutePool = expRes?.minuteExpiries?.length ? { ...expRes, expiries: expRes.minuteExpiries } : expRes;
+            const chosenExp = pickPreferredBrokerExpiry(minutePool, prefExp, winEnd);
+            if (!chosenExp) return null;
+            const j = await brokerApi('replay?' + new URLSearchParams({ underlying: sym, exch, expiry: chosenExp, start: winStart, end: winEnd }));
+            if (rawHasSubdayBars(j?.dataset, sym)) {
+              return {
+                dataset: j.dataset,
+                chosenExp,
+                expRes,
+                notice: j.notice,
+                winStart,
+                winEnd,
+                switchedFromAnchor: Boolean(anchorDay && (anchorDay < winStart || anchorDay > winEnd)),
+              };
+            }
+          } catch {}
+          return null;
+        }
+
+        // 1. Try exact anchorDay window first when local backend is reachable and anchorDay precedes recentStart
+        if (hasLiveApi && anchorDay && anchorDay < recentStart && !(exch === 'bse_fo' && !brokerAuth.connected && anchorDay > '2026-10-23')) {
+          const rawEnd = addCalendarDays(anchorDay, 4);
+          const reqEnd = rawEnd > now ? now : rawEnd;
+          const hitAnchor = await tryWindow(anchorDay, reqEnd, preferExpiryIso);
+          if (hitAnchor) return hitAnchor;
+        }
+
+        // 2. Try active recent 1-minute window (e.g. captured 1-minute chains + live sessions)
+        if (!(hasLiveApi && exch === 'bse_fo' && !brokerAuth.connected)) {
+          const prefForRecent = preferExpiryIso && (preferExpiryIso >= now || (hasOpenLegs && preferExpiryIso >= recentStart)) ? preferExpiryIso : '';
+          const hitRecent = await tryWindow(recentStart, now, prefForRecent);
+          if (hitRecent) return hitRecent;
+          if (prefForRecent) {
+            const hitRecentDefault = await tryWindow(recentStart, now, '');
+            if (hitRecentDefault) return hitRecentDefault;
+          }
+        }
+
+        // 3. Try latest verified 1-minute Parquet archive window (covers 220+ NSE & BSE F&O symbols)
+        if (hasLiveApi) {
+          try {
+            const st = await brokerApi('market-status?' + new URLSearchParams({ underlying: sym, exch }));
+            const pqLatest = st.parquetCoverage?.symbols?.[0]?.latestDate || '2026-10-23';
+            const pqStart = addCalendarDays(pqLatest, -3);
+            const hitParquet = await tryWindow(pqStart, pqLatest, '');
+            if (hitParquet) return hitParquet;
+          } catch {}
+        }
+
+        return null;
+      }
+
       async function setTimeframe(tf, pendingStepDir = 0) {
         const nextTf = Number(tf);
         if (![1, 5, 13, 15, 16, 30, 60, 120, 1440].includes(nextTf)) return;
         const wasPlaying = Boolean(timer);
         pause();
         activeTimeframe = nextTf;
+        if (nextTf < 1440) preferredIntradayTf = nextTf;
         if (el('timeframe')) el('timeframe').value = String(nextTf);
         host.querySelectorAll('[data-tf]').forEach(btn => {
           const isMatch = +btn.dataset.tf === nextTf;
@@ -1252,55 +1372,53 @@
         });
 
         if (!s || !d) return;
-        const frames = P.frames(d, s);
-        const needIntradayUpgrade = nextTf < 1440 && (d.kind === 'daily' || frames.length < 2);
+        const base = resolution();
+        const needIntradayUpgrade = nextTf < 1440 && (!hasGenuineSubdayBars(d, s) || nextTf < base);
         if (needIntradayUpgrade) {
           const myTfSeq = ++tfSwitchSeq;
-          const reqGen = ++generation;
           const sym = s.symbol;
           const exch = fnoExch();
           const anchorDay = s.cursor.slice(0, 10);
-          const now = todayIST();
-          const reqStart = anchorDay >= defaultMinuteStartIST(now) ? defaultMinuteStartIST(now) : anchorDay;
-          const rawEnd = addCalendarDays(reqStart, 4);
-          const reqEnd = rawEnd > now ? now : rawEnd;
+          const hadOpenLegs = Boolean(s.events?.length);
           msg('Loading 1-minute intraday ' + sym + ' data for ' + (nextTf === 1440 ? '1D' : nextTf + 'm') + ' timeframe…');
-          try {
-            const expRes = await brokerApi('expiries?' + new URLSearchParams({ underlying: sym, exch, start: reqStart, end: reqEnd }));
-            if (myTfSeq !== tfSwitchSeq || reqGen !== generation) return;
-            if (Array.isArray(expRes.expiryDetails)) {
-              for (const item of expRes.expiryDetails) if (item.iso) brokerExpiryDetails[item.iso] = item;
+          const res = await fetchBestIntradayReplay({
+            sym,
+            exch,
+            anchorDay,
+            preferExpiryIso: viewExpiry,
+            hasOpenLegs: hadOpenLegs,
+          });
+          if (myTfSeq !== tfSwitchSeq) return;
+          if (res?.dataset) {
+            availableExpiries = [...new Set((res.expRes?.expiries || []).map(brokerCodeToIso).filter(Boolean))].sort();
+            activeTimeframe = nextTf;
+            adopt(res.dataset, null, null, true);
+            activeTimeframe = nextTf;
+            const matchDayFrame = P.frames(d, s).find(t => t.startsWith(anchorDay));
+            if (matchDayFrame && matchDayFrame !== s.cursor) {
+              s = P.advance(d, s, matchDayFrame);
             }
-            availableExpiries = [...new Set((expRes.expiries || []).map(brokerCodeToIso).filter(Boolean))].sort();
-            const chosenExp = pickPreferredBrokerExpiry(expRes, viewExpiry, reqEnd);
-            if (!chosenExp) throw Error('No option contracts found for ' + sym + ' in ' + reqStart + '..' + reqEnd);
-            const j = await brokerApi('replay?' + new URLSearchParams({ underlying: sym, exch, expiry: chosenExp, start: reqStart, end: reqEnd }));
-            if (myTfSeq !== tfSwitchSeq || reqGen !== generation) return;
-            if (j.dataset?.contracts?.[0]?.timestamp) {
-              activeTimeframe = nextTf;
-              adopt(j.dataset, null, null, true);
-              activeTimeframe = nextTf;
-              const matchDayFrame = P.frames(d, s).find(t => t.startsWith(anchorDay));
-              if (matchDayFrame && matchDayFrame !== s.cursor) {
-                s = P.advance(d, s, matchDayFrame);
-              }
-              if (pendingStepDir !== 0) {
-                frameStep(pendingStepDir * nextTf);
-                return;
-              }
-              render();
-              msg('Switched to ' + nextTf + 'm timeframe · Loaded genuine 1-minute ' + sym + ' (' + chosenExp + ') option-chain history.');
+            if (pendingStepDir !== 0) {
+              frameStep(pendingStepDir * nextTf);
               return;
             }
             render();
-            msg('1-minute intraday option bars are unavailable for ' + sym + ' on ' + anchorDay + '; showing verified NSE daily EOD closes without fabricating intraday prices.');
-            return;
-          } catch (err) {
-            if (myTfSeq !== tfSwitchSeq) return;
-            render();
-            msg('1-minute intraday bars unavailable for ' + sym + ' on ' + anchorDay + ' (' + (err.message || 'daily archive only') + '). Showing verified observations.');
+            msg(
+              'Switched to ' +
+                nextTf +
+                ' Min timeframe · Loaded genuine 1-minute ' +
+                sym +
+                ' (' +
+                res.chosenExp +
+                ') option-chain bars at ' +
+                s.cursor.replace('T', ' ') +
+                ' IST.'
+            );
             return;
           }
+          render();
+          msg('1-minute intraday bars are unavailable for ' + sym + ' in the current offline cache; start local preview server for 220-symbol 1-minute archive.');
+          return;
         }
 
         render();
@@ -1419,7 +1537,8 @@
           rawObs = d.contracts.filter(c => c.symbol === s.symbol && c.expiry === oExp && c.type === oType && c.strike === +oStrike);
         }
 
-        const effTf = d.kind === 'daily' ? 1440 : activeTimeframe;
+        const isDailyOnly = d.kind === 'daily' || d.metadata?.resolution === 'daily close';
+        const effTf = isDailyOnly ? 1440 : activeTimeframe;
         const tfTag = effTf === 1440 ? '1D' : effTf + 'm';
         const candles = C.aggregateSessionCandles(rawObs, effTf, { upTo: s.cursor });
 
@@ -1694,7 +1813,8 @@
         el('observed-time').innerHTML = options(frames.filter(t => t.startsWith(s.cursor.slice(0, 10))).map(t => t.slice(11)), s.cursor.slice(11));
 
         // Playback state & ALWAYS-CLICKABLE Timeframe controls (1m, 5m, 13m, 15m, 16m, 30m, 60m, 1D)
-        const effTf = d.kind === 'daily' ? 1440 : activeTimeframe;
+        const isDailyOnly = d.kind === 'daily' || d.metadata?.resolution === 'daily close';
+        const effTf = isDailyOnly ? 1440 : activeTimeframe;
         const playback = root.IWSMSimulatorPlayback.describe({ kind: d.kind, frames, cursor: s.cursor, exchange: exch, base, activeTimeframe: effTf });
         el('playback-explanation').textContent = playback.notice;
         el('resolution-note').textContent = d.kind === 'daily' ? 'Daily archive loaded (1D steps).' : 'Intraday replay active (' + frames.length + ' timestamps · ' + effTf + 'm chart).';
@@ -1716,10 +1836,11 @@
 
         host.querySelectorAll('[data-mins]').forEach(b => {
           const n = +b.dataset.mins, amount = Math.abs(n);
-          const atBoundary = frames.length >= 2 && (n < 0 ? s.cursor === frames[0] : s.cursor === frames.at(-1));
-          const finerThanMultiMinSource = d.kind === 'intraday' && frames.length >= 2 && amount !== 1440 && amount < base;
+          const needsAutoUpgrade = amount !== 1440 && !hasGenuineSubdayBars(d, s);
+          const atBoundary = !needsAutoUpgrade && frames.length >= 2 && (n < 0 ? s.cursor === frames[0] : s.cursor === frames.at(-1));
+          const finerThanMultiMinSource = !needsAutoUpgrade && d.kind === 'intraday' && frames.length >= 2 && amount !== 1440 && amount < base;
           b.disabled = atBoundary || finerThanMultiMinSource;
-          b.title = playback.single || d.kind === 'daily'
+          b.title = needsAutoUpgrade
             ? 'Click to auto-load 1-minute intraday data and step ' + (amount === 1440 ? '1 day' : amount + ' minutes')
             : '';
           b.setAttribute('aria-label', (n < 0 ? 'Back ' : 'Forward ') + (amount === 1440 ? '1 day' : amount + ' minutes'));
@@ -2454,6 +2575,7 @@
       }
 
       function newSimulation(preferred) {
+        manualLoadSeq++;
         generation++;
         pause();
         stopAutoRefresh();
@@ -2928,8 +3050,10 @@
         }
         stopAutoRefresh();
         const frames = P.frames(d, s);
-        if (frames.length < 2) {
-          msg('Single snapshot loaded. Open New Simulation to load a multi-bar window for playback.');
+        if (frames.length < 2 || (activeTimeframe < 1440 && !hasGenuineSubdayBars(d, s))) {
+          setTimeframe(activeTimeframe < 1440 ? activeTimeframe : 1).then(() => {
+            if (P.frames(d, s).length >= 2 && !timer) el('btn-play').click();
+          });
           return;
         }
         if (s.cursor === frames.at(-1)) change(P.advance(d, s, frames[0]));
@@ -3301,6 +3425,7 @@
       el('restore').onchange = guard(async e => {
         const file = e.target.files[0];
         if (!file) return;
+        manualLoadSeq++;
         generation++;
         restore(JSON.parse(await file.text()));
       });
@@ -3341,24 +3466,28 @@
       })
         .then(async () => {
           if (!s) return;
-          if (restoredFromStorage && d.kind !== 'daily' && P.frames(d, s).length > 1) return;
-          const postInitGen = generation;
+          if (restoredFromStorage && hasGenuineSubdayBars(d, s)) return;
+          const startManual = manualLoadSeq;
+          if (tfSwitchSeq > 0 || switchSeq > 0 || expirySwitchSeq > 0) return;
           const targetSym = s.symbol || 'NIFTY';
           const targetExch = fnoExch();
           try {
-            const now = todayIST();
-            const start = defaultMinuteStartIST(now);
-            const exp = await brokerApi('expiries?' + new URLSearchParams({ underlying: targetSym, exch: targetExch, start, end: now }));
-            if (generation !== postInitGen || !exp.expiries?.length) return;
-            if (Array.isArray(exp.expiryDetails)) {
-              for (const item of exp.expiryDetails) if (item.iso) brokerExpiryDetails[item.iso] = item;
-            }
-            availableExpiries = [...new Set((exp.expiries || []).map(brokerCodeToIso).filter(Boolean))].sort();
-            const chosenExp = pickPreferredBrokerExpiry(exp, '', now);
-            const j = await brokerApi('replay?' + new URLSearchParams({ underlying: targetSym, exch: targetExch, expiry: chosenExp, start, end: now }));
-            if (generation !== postInitGen) return;
-            adopt(j.dataset);
-            msg(j.notice || ('Intraday 1-minute ' + targetSym + ' option chain loaded (' + s.cursor.replace('T', ' ') + ' IST).'));
+            const keepTf = preferredIntradayTf || 1;
+            const res = await fetchBestIntradayReplay({
+              sym: targetSym,
+              exch: targetExch,
+              anchorDay: todayIST(),
+              preferExpiryIso: '',
+              hasOpenLegs: false,
+            });
+            if (!res?.dataset) return;
+            if (manualLoadSeq !== startManual || tfSwitchSeq > 0 || switchSeq > 0 || expirySwitchSeq > 0 || hasGenuineSubdayBars(d, s)) return;
+            availableExpiries = [...new Set((res.expRes?.expiries || []).map(brokerCodeToIso).filter(Boolean))].sort();
+            activeTimeframe = keepTf;
+            adopt(res.dataset);
+            activeTimeframe = keepTf;
+            render();
+            msg(res.notice || ('Intraday 1-minute ' + targetSym + ' (' + res.chosenExp + ') option chain loaded (' + s.cursor.replace('T', ' ') + ' IST).'));
           } catch {}
         })
         .catch(e => msg(e.message));

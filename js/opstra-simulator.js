@@ -101,8 +101,8 @@
           <div class="opstra-tf-bar" role="group" aria-label="Intraday and Daily Timeframe Selector">
             <span class="opstra-tf-label">TIMEFRAME:</span>
             <div class="opstra-tf-pills" id="opstra-tf-pills">
-              <button type="button" class="opstra-tf-pill" data-tf="1" aria-pressed="false">1 Min</button>
-              <button type="button" class="opstra-tf-pill active" data-tf="5" aria-pressed="true">5 Min</button>
+              <button type="button" class="opstra-tf-pill active" data-tf="1" aria-pressed="true">1 Min</button>
+              <button type="button" class="opstra-tf-pill" data-tf="5" aria-pressed="false">5 Min</button>
               <button type="button" class="opstra-tf-pill" data-tf="13" aria-pressed="false">13 Min</button>
               <button type="button" class="opstra-tf-pill" data-tf="15" aria-pressed="false">15 Min</button>
               <button type="button" class="opstra-tf-pill" data-tf="16" aria-pressed="false">16 Min</button>
@@ -130,8 +130,8 @@
 
               <div class="opstra-select-with-sub">
                 <select id="opstra-timeframe" aria-label="Timeframe">
-                  <option value="1">1 Min</option>
-                  <option value="5" selected>5 Min</option>
+                  <option value="1" selected>1 Min</option>
+                  <option value="5">5 Min</option>
                   <option value="13">13 Min</option>
                   <option value="15">15 Min</option>
                   <option value="16">16 Min</option>
