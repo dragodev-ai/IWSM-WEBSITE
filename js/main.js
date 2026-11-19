@@ -33,10 +33,12 @@
 
   // Sticky header on scroll
   window.addEventListener('scroll', () => {
-    if (window.scrollY > 40) {
-      header.classList.add('scrolled');
-    } else {
-      header.classList.remove('scrolled');
+    if (header) {
+      if (window.scrollY > 40) {
+        header.classList.add('scrolled');
+      } else {
+        header.classList.remove('scrolled');
+      }
     }
 
     // Scrollspy for active nav links
@@ -63,19 +65,29 @@
   function openDrawer() {
     if (mobileDrawer) mobileDrawer.classList.add('open');
     if (drawerBackdrop) drawerBackdrop.classList.add('active');
+    if (hamburgerBtn) hamburgerBtn.setAttribute('aria-expanded', 'true');
     document.body.style.overflow = 'hidden';
   }
 
   function closeDrawer() {
     if (mobileDrawer) mobileDrawer.classList.remove('open');
     if (drawerBackdrop) drawerBackdrop.classList.remove('active');
-    document.body.style.overflow = 'auto';
+    if (hamburgerBtn) hamburgerBtn.setAttribute('aria-expanded', 'false');
+    document.body.style.overflow = '';
   }
 
-  if (hamburgerBtn) hamburgerBtn.addEventListener('click', openDrawer);
+  if (hamburgerBtn) {
+    hamburgerBtn.setAttribute('aria-expanded', 'false');
+    hamburgerBtn.addEventListener('click', openDrawer);
+  }
   if (drawerCloseBtn) drawerCloseBtn.addEventListener('click', closeDrawer);
   if (drawerBackdrop) drawerBackdrop.addEventListener('click', closeDrawer);
   drawerLinks.forEach((link) => link.addEventListener('click', closeDrawer));
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && mobileDrawer && mobileDrawer.classList.contains('open')) {
+      closeDrawer();
+    }
+  });
 
   // --------------------------------------------------------------------------
   // 2. Top-Left Light / Dark Theme Switcher (Mobile & Web)
@@ -206,31 +218,31 @@
   if (statsSection) statsObserver.observe(statsSection);
 
   // --------------------------------------------------------------------------
-  // 7. Dedicated Bottom Video Masterclass Reel (22 Local MP4 Videos)
+  // 7. Dedicated Bottom Video Masterclass Reel (22 Local MP4 Videos + Real Thumbnails)
   // --------------------------------------------------------------------------
   const videoData = [
-    { id: 1, file: 'iwsm.official-20260918-0001.mp4', title: 'IWSM Live Market Trading Room & Setup Guidance', category: 'floor', tag: 'Trading Floor' },
-    { id: 2, file: 'iwsm.official-20260918-0002.mp4', title: 'Student Journey & Institutional Options Framework', category: 'reviews', tag: 'Student Story' },
-    { id: 3, file: 'iwsm.official-20260918-0003.mp4', title: 'Technical Analysis Breakdown & Market Structure', category: 'lessons', tag: 'Masterclass' },
-    { id: 4, file: 'iwsm.official-20260918-0004.mp4', title: 'Trading Carnival: Live Strategy Battles & Mentors', category: 'floor', tag: 'Carnival' },
-    { id: 5, file: 'iwsm.official-20260918-0005.mp4', title: 'From Losses to Consistency: Student Review', category: 'reviews', tag: 'Student Story' },
-    { id: 6, file: 'iwsm.official-20260918-0006.mp4', title: 'SMC & Liquidity Concepts Explained by Faculty', category: 'lessons', tag: 'Masterclass' },
-    { id: 7, file: 'iwsm.official-20260918-0007.mp4', title: 'Classroom Practical Lab: Live Order Execution', category: 'floor', tag: 'Trading Floor' },
-    { id: 8, file: 'iwsm.official-20260918-0008.mp4', title: 'Options Buying vs Selling: Institutional Logic', category: 'lessons', tag: 'Masterclass' },
-    { id: 9, file: 'iwsm.official-20260918-0009.mp4', title: 'Risk Management & Trading Journal Discipline', category: 'lessons', tag: 'Masterclass' },
-    { id: 10, file: 'iwsm.official-20260918-0010.mp4', title: 'Jaipur Trading Community Event & Insights', category: 'floor', tag: 'Community' },
-    { id: 11, file: 'iwsm.official-20260918-0011.mp4', title: 'Homemaker to Confident MCX Commodity Trader', category: 'reviews', tag: 'Student Story' },
-    { id: 12, file: 'iwsm.official-20260918-0012.mp4', title: 'Gamma 100-Day Program: Mentorship Experience', category: 'reviews', tag: 'Student Story' },
-    { id: 13, file: 'iwsm.official-20260918-0013.mp4', title: 'Breakout Strategies & Volume Confirmation', category: 'lessons', tag: 'Masterclass' },
-    { id: 14, file: 'iwsm.official-20260918-0014.mp4', title: 'Live Candlestick Psychology & False Moves', category: 'lessons', tag: 'Masterclass' },
-    { id: 15, file: 'iwsm.official-20260918-0015.mp4', title: 'SEBI RA Mentor Practical Session in Jaipur HQ', category: 'floor', tag: 'Trading Floor' },
-    { id: 16, file: 'iwsm.official-20260918-0016.mp4', title: 'Student Q&A: Overcoming Fear of Losses', category: 'reviews', tag: 'Psychology' },
-    { id: 17, file: 'iwsm.official-20260918-0017.mp4', title: 'Annual Trading Carnival Trophy & Celebrations', category: 'floor', tag: 'Carnival' },
-    { id: 18, file: 'iwsm.official-20260918-0018.mp4', title: 'Why Multi-Timeframe Analysis Works', category: 'lessons', tag: 'Masterclass' },
-    { id: 19, file: 'iwsm.official-20260918-0019.mp4', title: 'Managing ₹85 Crore Fund: Mentor Principles', category: 'reviews', tag: 'Case Study' },
-    { id: 20, file: 'iwsm.official-20260918-0020.mp4', title: 'Introductory Advice for Complete Beginners', category: 'lessons', tag: 'Beginner' },
-    { id: 21, file: 'iwsm.official-20260918-0021.mp4', title: 'Sector Rotation & Institutional Money Flow', category: 'lessons', tag: 'Masterclass' },
-    { id: 22, file: 'iwsm.official-20260918-0022.mp4', title: 'IWSM Vision: Professionalizing Stock Market Education', category: 'floor', tag: 'IWSM Vision' }
+    { id: 1, file: 'iwsm.official-20260918-0001.mp4', thumb: 'assets/VIDEOS/thumbs/reel-01.webp', duration: '0:37', orientation: 'portrait', title: 'IWSM Live Market Trading Room & Setup Guidance', category: 'floor', tag: 'Trading Floor' },
+    { id: 2, file: 'iwsm.official-20260918-0002.mp4', thumb: 'assets/VIDEOS/thumbs/reel-02.webp', duration: '0:39', orientation: 'landscape', title: 'Student Journey & Institutional Options Framework', category: 'reviews', tag: 'Student Story' },
+    { id: 3, file: 'iwsm.official-20260918-0003.mp4', thumb: 'assets/VIDEOS/thumbs/reel-03.webp', duration: '0:48', orientation: 'landscape', title: 'Technical Analysis Breakdown & Market Structure', category: 'lessons', tag: 'Masterclass' },
+    { id: 4, file: 'iwsm.official-20260918-0004.mp4', thumb: 'assets/VIDEOS/thumbs/reel-04.webp', duration: '1:55', orientation: 'landscape', title: 'Trading Carnival: Live Strategy Battles & Mentors', category: 'floor', tag: 'Carnival' },
+    { id: 5, file: 'iwsm.official-20260918-0005.mp4', thumb: 'assets/VIDEOS/thumbs/reel-05.webp', duration: '0:51', orientation: 'portrait', title: 'From Losses to Consistency: Student Review', category: 'reviews', tag: 'Student Story' },
+    { id: 6, file: 'iwsm.official-20260918-0006.mp4', thumb: 'assets/VIDEOS/thumbs/reel-06.webp', duration: '0:45', orientation: 'portrait', title: 'SMC & Liquidity Concepts Explained by Faculty', category: 'lessons', tag: 'Masterclass' },
+    { id: 7, file: 'iwsm.official-20260918-0007.mp4', thumb: 'assets/VIDEOS/thumbs/reel-07.webp', duration: '1:30', orientation: 'portrait', title: 'Classroom Practical Lab: Live Order Execution', category: 'floor', tag: 'Trading Floor' },
+    { id: 8, file: 'iwsm.official-20260918-0008.mp4', thumb: 'assets/VIDEOS/thumbs/reel-08.webp', duration: '4:01', orientation: 'portrait', title: 'Options Buying vs Selling: Institutional Logic', category: 'lessons', tag: 'Masterclass' },
+    { id: 9, file: 'iwsm.official-20260918-0009.mp4', thumb: 'assets/VIDEOS/thumbs/reel-09.webp', duration: '0:51', orientation: 'portrait', title: 'Risk Management & Trading Journal Discipline', category: 'lessons', tag: 'Masterclass' },
+    { id: 10, file: 'iwsm.official-20260918-0010.mp4', thumb: 'assets/VIDEOS/thumbs/reel-10.webp', duration: '1:21', orientation: 'portrait', title: 'Jaipur Trading Community Event & Insights', category: 'floor', tag: 'Community' },
+    { id: 11, file: 'iwsm.official-20260918-0011.mp4', thumb: 'assets/VIDEOS/thumbs/reel-11.webp', duration: '1:03', orientation: 'portrait', title: 'Homemaker to Confident MCX Commodity Trader', category: 'reviews', tag: 'Student Story' },
+    { id: 12, file: 'iwsm.official-20260918-0012.mp4', thumb: 'assets/VIDEOS/thumbs/reel-12.webp', duration: '0:20', orientation: 'portrait', title: 'Gamma 100-Day Program: Mentorship Experience', category: 'reviews', tag: 'Student Story' },
+    { id: 13, file: 'iwsm.official-20260918-0013.mp4', thumb: 'assets/VIDEOS/thumbs/reel-13.webp', duration: '1:04', orientation: 'portrait', title: 'Breakout Strategies & Volume Confirmation', category: 'lessons', tag: 'Masterclass' },
+    { id: 14, file: 'iwsm.official-20260918-0014.mp4', thumb: 'assets/VIDEOS/thumbs/reel-14.webp', duration: '0:53', orientation: 'portrait', title: 'Live Candlestick Psychology & False Moves', category: 'lessons', tag: 'Masterclass' },
+    { id: 15, file: 'iwsm.official-20260918-0015.mp4', thumb: 'assets/VIDEOS/thumbs/reel-15.webp', duration: '0:28', orientation: 'portrait', title: 'SEBI RA Mentor Practical Session in Jaipur HQ', category: 'floor', tag: 'Trading Floor' },
+    { id: 16, file: 'iwsm.official-20260918-0016.mp4', thumb: 'assets/VIDEOS/thumbs/reel-16.webp', duration: '0:52', orientation: 'portrait', title: 'Student Q&A: Overcoming Fear of Losses', category: 'reviews', tag: 'Psychology' },
+    { id: 17, file: 'iwsm.official-20260918-0017.mp4', thumb: 'assets/VIDEOS/thumbs/reel-17.webp', duration: '1:49', orientation: 'portrait', title: 'Annual Trading Carnival Trophy & Celebrations', category: 'floor', tag: 'Carnival' },
+    { id: 18, file: 'iwsm.official-20260918-0018.mp4', thumb: 'assets/VIDEOS/thumbs/reel-18.webp', duration: '1:13', orientation: 'portrait', title: 'Why Multi-Timeframe Analysis Works', category: 'lessons', tag: 'Masterclass' },
+    { id: 19, file: 'iwsm.official-20260918-0019.mp4', thumb: 'assets/VIDEOS/thumbs/reel-19.webp', duration: '0:31', orientation: 'portrait', title: 'Managing ₹85 Crore Fund: Mentor Principles', category: 'reviews', tag: 'Case Study' },
+    { id: 20, file: 'iwsm.official-20260918-0020.mp4', thumb: 'assets/VIDEOS/thumbs/reel-20.webp', duration: '0:34', orientation: 'portrait', title: 'Introductory Advice for Complete Beginners', category: 'lessons', tag: 'Beginner' },
+    { id: 21, file: 'iwsm.official-20260918-0021.mp4', thumb: 'assets/VIDEOS/thumbs/reel-21.webp', duration: '0:15', orientation: 'portrait', title: 'Sector Rotation & Institutional Money Flow', category: 'lessons', tag: 'Masterclass' },
+    { id: 22, file: 'iwsm.official-20260918-0022.mp4', thumb: 'assets/VIDEOS/thumbs/reel-22.webp', duration: '1:08', orientation: 'portrait', title: 'IWSM Vision: Professionalizing Stock Market Education', category: 'floor', tag: 'IWSM Vision' }
   ];
 
   const videosGrid = document.querySelector('.videos-grid-container');
@@ -241,28 +253,38 @@
   const videoModalClose = document.querySelector('.video-modal-close');
   const videoPrevBtn = document.querySelector('#video-prev-btn');
   const videoNextBtn = document.querySelector('#video-next-btn');
+  const videoEnquireLink = videoModal ? videoModal.querySelector('a[href="#enquire"]') : null;
 
   let currentVideoIndex = 0;
   let activeVideoList = [...videoData];
+  let lastFocusedBeforeModal = null;
 
   function renderVideoGrid(items) {
     if (!videosGrid) return;
     videosGrid.innerHTML = '';
 
+    const canHoverPreview = window.matchMedia('(hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference)');
+
     items.forEach((item, index) => {
-      const card = document.createElement('div');
+      const card = document.createElement('article');
       card.className = 'video-card-item glass-panel';
       card.setAttribute('data-index', index);
+      card.setAttribute('data-category', item.category);
+      card.setAttribute('data-orientation', item.orientation || 'portrait');
+      card.setAttribute('role', 'button');
+      card.setAttribute('tabindex', '0');
+      card.setAttribute('aria-label', `Play reel: ${item.title} (${item.duration})`);
 
       card.innerHTML = `
-        <video preload="none" muted playsinline aria-hidden="true" poster="assets/assets/02_iwsm-classroom-and-practical-learning-environment.jpg">
-          <source src="assets/VIDEOS/${item.file}#t=0.5" type="video/mp4">
-        </video>
+        <img class="video-thumb" src="${item.thumb}" alt="${item.title} — IWSM Video Reel Preview" loading="lazy" decoding="async" width="480" height="${item.orientation === 'landscape' ? 360 : 854}">
         <div class="video-card-overlay">
-          <span class="video-badge-tag">${item.tag}</span>
-          <button type="button" class="video-play-trigger" aria-label="Play ${item.title}">
+          <div class="video-card-top">
+            <span class="video-badge-tag">${item.tag}</span>
+            <span class="video-duration-pill">${item.duration}</span>
+          </div>
+          <span class="video-play-trigger" aria-hidden="true">
             <svg width="22" height="22" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-          </button>
+          </span>
           <div class="video-card-info">
             <h3>${item.title}</h3>
             <p>IWSM Official • Watch Reel</p>
@@ -270,8 +292,55 @@
         </div>
       `;
 
+      let previewTimer = null;
+      let previewVideo = null;
+      const stopPreview = () => {
+        if (previewTimer) {
+          clearTimeout(previewTimer);
+          previewTimer = null;
+        }
+        if (previewVideo) {
+          previewVideo.pause();
+          previewVideo.removeAttribute('src');
+          previewVideo.load();
+          previewVideo.remove();
+          previewVideo = null;
+        }
+      };
+
+      card.addEventListener('pointerenter', (ev) => {
+        if (ev.pointerType !== 'mouse' || !canHoverPreview.matches) return;
+        stopPreview();
+        previewTimer = setTimeout(() => {
+          previewVideo = document.createElement('video');
+          previewVideo.className = 'video-hover-preview';
+          previewVideo.muted = true;
+          previewVideo.loop = true;
+          previewVideo.playsInline = true;
+          previewVideo.preload = 'metadata';
+          previewVideo.setAttribute('aria-hidden', 'true');
+          previewVideo.src = `assets/VIDEOS/${item.file}#t=1`;
+          previewVideo.addEventListener('canplay', () => {
+            if (previewVideo) previewVideo.classList.add('is-ready');
+          }, { once: true });
+          card.insertBefore(previewVideo, card.firstChild.nextSibling);
+          previewVideo.play().catch(() => {});
+        }, 380);
+      });
+
+      card.addEventListener('pointerleave', stopPreview);
+
       card.addEventListener('click', () => {
-        openVideoModal(index);
+        stopPreview();
+        openVideoModal(index, card);
+      });
+
+      card.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          stopPreview();
+          openVideoModal(index, card);
+        }
       });
 
       videosGrid.appendChild(card);
@@ -279,9 +348,14 @@
   }
 
   videoFilterPills.forEach((pill) => {
+    pill.setAttribute('aria-pressed', String(pill.classList.contains('active')));
     pill.addEventListener('click', () => {
-      videoFilterPills.forEach((p) => p.classList.remove('active'));
+      videoFilterPills.forEach((p) => {
+        p.classList.remove('active');
+        p.setAttribute('aria-pressed', 'false');
+      });
       pill.classList.add('active');
+      pill.setAttribute('aria-pressed', 'true');
 
       const cat = pill.getAttribute('data-category');
       if (cat === 'all') {
@@ -293,28 +367,47 @@
     });
   });
 
-  function openVideoModal(index) {
+  function openVideoModal(index, triggerEl) {
     if (!videoModal || !videoModalScreen) return;
+    if (triggerEl) lastFocusedBeforeModal = triggerEl;
     currentVideoIndex = index;
     const item = activeVideoList[currentVideoIndex];
     if (!item) return;
 
-    videoModalTitle.textContent = item.title;
+    const modalWin = videoModal.querySelector('.video-modal-window');
+    if (modalWin) {
+      modalWin.setAttribute('data-orientation', item.orientation || 'portrait');
+    }
+    videoModalTitle.textContent = `${item.title} (${currentVideoIndex + 1}/${activeVideoList.length})`;
+    videoModalScreen.poster = item.thumb;
     videoModalScreen.src = `assets/VIDEOS/${item.file}`;
     videoModal.setAttribute('aria-hidden', 'false');
     videoModal.classList.add('active');
+    document.body.style.overflow = 'hidden';
     videoModalScreen.play().catch(() => {});
+    if (videoModalClose) setTimeout(() => videoModalClose.focus(), 50);
   }
 
-  function closeVideoModal() {
+  function closeVideoModal(opts) {
     if (!videoModal || !videoModalScreen) return;
+    const restoreFocus = !opts || opts.restoreFocus !== false;
     videoModalScreen.pause();
-    videoModalScreen.src = '';
+    videoModalScreen.removeAttribute('src');
     videoModal.classList.remove('active');
     videoModal.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+    if (restoreFocus && lastFocusedBeforeModal && typeof lastFocusedBeforeModal.focus === 'function') {
+      lastFocusedBeforeModal.focus();
+    }
+    lastFocusedBeforeModal = null;
   }
 
-  if (videoModalClose) videoModalClose.addEventListener('click', closeVideoModal);
+  if (videoModalClose) videoModalClose.addEventListener('click', () => closeVideoModal());
+  if (videoEnquireLink) {
+    videoEnquireLink.addEventListener('click', () => {
+      closeVideoModal({ restoreFocus: false });
+    });
+  }
   if (videoModal) {
     videoModal.addEventListener('click', (e) => {
       if (e.target === videoModal) closeVideoModal();
@@ -334,6 +427,23 @@
       openVideoModal(currentVideoIndex);
     });
   }
+
+  // Keyboard & Smart TV Remote D-Pad navigation for Video Modal
+  window.addEventListener('keydown', (e) => {
+    if (!videoModal || !videoModal.classList.contains('active')) return;
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      closeVideoModal();
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      currentVideoIndex = (currentVideoIndex - 1 + activeVideoList.length) % activeVideoList.length;
+      openVideoModal(currentVideoIndex);
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      currentVideoIndex = (currentVideoIndex + 1) % activeVideoList.length;
+      openVideoModal(currentVideoIndex);
+    }
+  });
 
   renderVideoGrid(activeVideoList);
 

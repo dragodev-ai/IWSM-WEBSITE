@@ -440,7 +440,7 @@
         const dt = new Date(nowIso + 'T00:00:00Z');
         let tradingBack = 0;
         let calBack = 0;
-        while (tradingBack < 3 && calBack < 6) {
+        while (tradingBack < 1 && calBack < 4) {
           dt.setUTCDate(dt.getUTCDate() - 1);
           calBack++;
           if (dt.getUTCDay() !== 0 && dt.getUTCDay() !== 6) tradingBack++;
