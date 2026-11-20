@@ -42,7 +42,7 @@
 <link rel="stylesheet" href="css/controls-faq.css?v=curriculum-contrast-2">
 <link rel="stylesheet" href="css/campus-gallery.css?v=continuous-gallery-6">
 <link rel="stylesheet" href="css/header-gallery-final.css?v=partnership-2">
-<link rel="stylesheet" href="css/homepage-banner.css?v=impeccable-1">
+<link rel="stylesheet" href="css/homepage-banner.css?v=20261120-no-wave">
 <link rel="stylesheet" href="css/curriculum-topics.css?v=1">
 <link rel="preload" as="image" href="assets/banners/banner-1-course.jpg" media="(min-width:901px)" fetchpriority="high"><link rel="preload" as="image" href="assets/banners/banner-1-course-960.webp" media="(max-width:900px)" imagesrcset="assets/banners/banner-1-course-480.webp 480w, assets/banners/banner-1-course-960.webp 960w, assets/banners/banner-1-course-1920.webp 1920w" imagesizes="calc(100vw - 24px)" fetchpriority="high">
   <link rel="stylesheet" href="css/algo-section.css?v=1">
@@ -174,7 +174,7 @@
           </div>
         </div>
 
-        <!-- Banner Slider Stage with Flag-Wave Effect & Touch/Mouse Swipe -->
+        <!-- Banner Slider Stage with Touch/Mouse Swipe -->
         <div class="banner-slider-wrapper" id="banner-slider" role="region" aria-roledescription="carousel" aria-label="Featured Program Banners" tabindex="0">
           
           <!-- Prev / Next Navigation Arrows -->
@@ -196,7 +196,6 @@
                     <picture><source media="(max-width:900px)" type="image/webp" srcset="assets/banners/banner-1-course-480.webp 480w, assets/banners/banner-1-course-960.webp 960w, assets/banners/banner-1-course-1920.webp 1920w" sizes="calc(100vw - 24px)"><img src="assets/banners/banner-1-course.jpg" width="1920" height="550"
                          alt="IWSM Complete Stock Market Course - Master the Market in 100 Days. Learn from SEBI & CFA Mentors. Call +91 8107911127"
                          class="banner-img" loading="eager" fetchpriority="high" decoding="async"></picture>
-                    <div class="banner-flag-sheen" aria-hidden="true"></div>
                   </div>
                 </a>
               </div>
@@ -210,7 +209,6 @@
                     <picture><source media="(max-width:900px)" type="image/webp" srcset="assets/banners/banner-2-masterclass-480.webp 480w, assets/banners/banner-2-masterclass-960.webp 960w, assets/banners/banner-2-masterclass-1920.webp 1920w" sizes="calc(100vw - 24px)"><img src="assets/banners/banner-2-masterclass.jpg" width="1920" height="550"
                          alt="Enroll in Our 5-Day Free Trading Masterclass. 40-Minute Trading Setup, Live Market Clarity, Zero-Loss Strategy. Call +91 8107911127"
                          class="banner-img" loading="lazy" decoding="async"></picture>
-                    <div class="banner-flag-sheen" aria-hidden="true"></div>
                   </div>
                 </a>
               </div>
@@ -224,7 +222,6 @@
                     <picture><source media="(max-width:900px)" type="image/webp" srcset="assets/banners/banner-3-guarantee-480.webp 480w, assets/banners/banner-3-guarantee-960.webp 960w, assets/banners/banner-3-guarantee-1920.webp 1920w" sizes="calc(100vw - 24px)"><img src="assets/banners/banner-3-guarantee.jpg" width="1920" height="550"
                          alt="Money Back Guaranteed Programs. Not satisfied? Get your money back. Learn risk-free with IWSM. Call +91 8107911127"
                          class="banner-img" loading="lazy" decoding="async"></picture>
-                    <div class="banner-flag-sheen" aria-hidden="true"></div>
                   </div>
                 </a>
               </div>
@@ -243,18 +240,6 @@
           </div>
 
         </div>
-
-        <!-- SVG Filter Definition for the Subtle Flag Wave Distortion -->
-        <svg class="banner-wave-filter-def" aria-hidden="true" style="position:absolute; width:0; height:0; pointer-events:none;">
-          <defs>
-            <filter id="iwsm-flag-wave-filter" x="-4%" y="-4%" width="108%" height="108%">
-              <feTurbulence type="fractalNoise" baseFrequency="0.007 0.02" numOctaves="2" seed="2" result="noise">
-                <animate attributeName="baseFrequency" dur="9s" values="0.006 0.018; 0.009 0.028; 0.006 0.018" repeatCount="indefinite"/>
-              </feTurbulence>
-              <feDisplacementMap in="SourceGraphic" in2="noise" scale="5" xChannelSelector="R" yChannelSelector="G"/>
-            </filter>
-          </defs>
-        </svg>
 
       </div>
     </section>

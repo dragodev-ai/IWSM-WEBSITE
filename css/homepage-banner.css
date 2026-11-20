@@ -284,8 +284,6 @@
 .banner-cloth-wave-wrapper {
   position: relative;
   width: 100%;
-  perspective: 1200px;
-  transform-style: preserve-3d;
 }
 
 .banner-link {
@@ -303,53 +301,13 @@
 }
 
 /* ==========================================================================
-   Subtle Flag Waving Animation & Cloth Fabric Sheen
+   Banner Image Frame (Static Frame — Slide Carousel Only)
    ========================================================================== */
 .banner-flag-layer {
   position: relative;
   width: 100%;
   border-radius: 14px;
   overflow: hidden;
-  transform-origin: left center;
-  perspective: 1200px;
-  transform-style: preserve-3d;
-  will-change: transform, filter;
-  animation: flagUndulation 8s ease-in-out infinite;
-  transition: transform 0.4s ease;
-}
-
-/* Subtle sinusoidal 3D wave matching fabric in wind */
-@keyframes flagUndulation {
-  0% {
-    transform: perspective(1400px) rotateY(0deg) skewY(0deg) translateZ(0);
-  }
-  20% {
-    transform: perspective(1400px) rotateY(-0.85deg) skewY(0.28deg) translateZ(1.2px);
-  }
-  45% {
-    transform: perspective(1400px) rotateY(0.75deg) skewY(-0.24deg) translateZ(-0.8px);
-  }
-  68% {
-    transform: perspective(1400px) rotateY(-0.55deg) skewY(0.18deg) translateZ(0.9px);
-  }
-  85% {
-    transform: perspective(1400px) rotateY(0.65deg) skewY(-0.14deg) translateZ(-0.4px);
-  }
-  100% {
-    transform: perspective(1400px) rotateY(0deg) skewY(0deg) translateZ(0);
-  }
-}
-
-/* Pause waving on active slide hover for comfortable reading */
-.banner-slider-wrapper:hover .banner-flag-layer {
-  animation-play-state: paused;
-}
-
-/* SVG Displacement Map for authentic organic cloth ripple */
-@supports (filter: url('#iwsm-flag-wave-filter')) {
-  .banner-flag-layer {
-    filter: url(#iwsm-flag-wave-filter);
-  }
 }
 
 .banner-img {
@@ -361,37 +319,6 @@
   pointer-events: none;
   user-select: none;
   -webkit-user-drag: none;
-}
-
-/* Fabric Light & Shadow Sheen that sweeps across the flag */
-.banner-flag-sheen {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(
-    115deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0.0) 22%,
-    rgba(255, 255, 255, 0.11) 36%,
-    rgba(0, 0, 0, 0.1) 48%,
-    rgba(255, 255, 255, 0.1) 60%,
-    rgba(0, 0, 0, 0.08) 72%,
-    transparent 100%
-  );
-  background-size: 260% 100%;
-  animation: flagSheenSweep 8s ease-in-out infinite alternate;
-  mix-blend-mode: overlay;
-  border-radius: inherit;
-  z-index: 2;
-}
-
-@keyframes flagSheenSweep {
-  0% {
-    background-position: 0% 0%;
-  }
-  100% {
-    background-position: 100% 0%;
-  }
 }
 
 /* ==========================================================================
@@ -601,13 +528,6 @@
 
 /* Reduced motion preference */
 @media (prefers-reduced-motion: reduce) {
-  .banner-flag-layer {
-    animation: none !important;
-    filter: none !important;
-  }
-  .banner-flag-sheen {
-    display: none !important;
-  }
   .banner-pulse-dot {
     animation: none !important;
   }
@@ -641,6 +561,6 @@
 .homepage-banner .banner-nav-btn:hover{background:var(--control-bg);color:var(--control-ink);filter:brightness(1.08)}
 .homepage-banner :is(button,.banner-link):focus-visible{outline:3px solid var(--gold-primary);outline-offset:2px}
 .homepage-banner .banner-link:focus-visible{outline-offset:-4px}
-.homepage-banner[data-autoplay=paused] :is(.banner-flag-layer,.banner-flag-sheen,.banner-pulse-dot,.banner-swipe-prompt svg){animation-play-state:paused}
+.homepage-banner[data-autoplay=paused] :is(.banner-pulse-dot,.banner-swipe-prompt svg){animation-play-state:paused}
 @media(max-width:760px){.homepage-banner .banner-top-left{flex:1 1 0}.homepage-banner .banner-top-right{width:auto;justify-content:flex-end;margin:0}.homepage-banner .banner-top-tabs{border-radius:7px}.homepage-banner .banner-tab-pill{font-size:12px;min-width:145px}.homepage-banner .banner-top-badge{display:none}.banner-autoplay{font-size:12px}}
 @media(prefers-reduced-motion:reduce){.homepage-banner .banner-track{transition:none!important}.homepage-banner :is(.banner-tab-pill,.banner-nav-btn,.banner-dot,.banner-autoplay){transition:none!important}}
