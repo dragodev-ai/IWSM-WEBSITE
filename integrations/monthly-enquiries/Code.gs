@@ -53,12 +53,33 @@ function response_(data) { return ContentService.createTextOutput(JSON.stringify
 function failure_(code) { return response_({ success: false, code: code }); }
 function safeText_(value) { const text = String(value || ''); return /^[=+\-@]/.test(text) ? "'" + text : text; }
 function hasControls_(value) { return /[\u0000-\u001f\u007f]/.test(String(value || '')); }
-function checkPublicRateLimit_() {
+function safeEqual_(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string' || !a || a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+function hexBytes_(bytes) {
+  return bytes.map(value => ('0' + ((value + 256) % 256).toString(16)).slice(-2)).join('');
+}
+function verifyServerHmac_(secret, input, data) {
+  if (!secret || typeof input.hmac_ts !== 'string' || typeof input.hmac_sig !== 'string') return false;
+  if (!/^\d{10}$/.test(input.hmac_ts) || !/^[a-f0-9]{64}$/i.test(input.hmac_sig)) return false;
+  const ts = Number(input.hmac_ts);
+  if (Math.abs(Math.floor(Date.now() / 1000) - ts) > 300) return false;
+  const canonical = data.login
+    ? JSON.stringify(['login', data.user_id, data.email, data.full_name, data.provider])
+    : JSON.stringify([data.submission_id, data.full_name, data.phone, data.email, data.course]);
+  const expected = hexBytes_(Utilities.computeHmacSha256Signature(input.hmac_ts + '.' + canonical, secret, Utilities.Charset.UTF_8));
+  return safeEqual_(expected, input.hmac_sig.toLowerCase());
+}
+function checkPublicRateLimit_(scopeKey, limitPerMin) {
   try {
     const cache = CacheService.getScriptCache();
-    const bucket = 'PUB_ENQ_' + Math.floor(Date.now() / 60000);
+    const limit = limitPerMin || PUBLIC_RATE_LIMIT_PER_MIN;
+    const bucket = 'PUB_' + (scopeKey || 'ENQ') + '_' + Math.floor(Date.now() / 60000);
     const count = (Number(cache.get(bucket)) || 0) + 1;
-    if (count > PUBLIC_RATE_LIMIT_PER_MIN) return false;
+    if (count > limit) return false;
     cache.put(bucket, String(count), 90);
     return true;
   } catch (error) {
@@ -195,17 +216,20 @@ function doPost(e) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) return failure_('invalid_request');
   if (input['bot-field']) return failure_('invalid_request');
   const secret = properties_().getProperty('SUBMISSION_TOKEN');
-  const hasServerSecret = Boolean(secret && input.secret === secret);
+  const hasLegacySecret = Boolean(secret && safeEqual_(String(input.secret || ''), secret));
   if (input.public_form === PUBLIC_FORM_KEY && input.action === 'deliver_pending') {
+    if (!hasLegacySecret && !checkPublicRateLimit_('DELIVER', 6)) return failure_('rate_limited');
     try { refreshCurrentExcel(); } catch (err) { console.error('Background Excel/email delivery deferred to scheduled trigger.'); }
     return response_({ success: true, status: 'delivered' });
   }
   const isLogin = input.record_type === 'login';
-  const isPublicEnquiry = !isLogin && input.public_form === PUBLIC_FORM_KEY;
-  if (!hasServerSecret && !isPublicEnquiry) return failure_('unauthorized');
-  if (!hasServerSecret && !checkPublicRateLimit_()) return failure_('rate_limited');
   const data = normalize_(input);
   if (!data) return failure_('invalid_details');
+  const hasHmac = verifyServerHmac_(secret, input, data);
+  const hasServerSecret = hasHmac || hasLegacySecret;
+  const isPublicEnquiry = !isLogin && input.public_form === PUBLIC_FORM_KEY;
+  if (!hasServerSecret && !isPublicEnquiry) return failure_('unauthorized');
+  if (!hasServerSecret && (!checkPublicRateLimit_('ENQ', PUBLIC_RATE_LIMIT_PER_MIN) || !checkPublicRateLimit_('PHONE_' + data.phone, 3))) return failure_('rate_limited');
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(REQUEST_LOCK_MS)) return failure_('storage_busy');
   try {
@@ -375,7 +399,12 @@ function deliverMonthlyReport() {
 }
 function setupMonthlyReports() {
   const p = properties_();
-  if (!p.getProperty('SUBMISSION_TOKEN')) p.setProperty('SUBMISSION_TOKEN', Utilities.getUuid() + Utilities.getUuid());
+  if (!p.getProperty('SUBMISSION_TOKEN')) {
+    const entropy = Utilities.getUuid() + ':' + Utilities.getUuid() + ':' + Date.now() + ':' + Math.random();
+    const tokenHex = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, entropy, Utilities.Charset.UTF_8)
+      .map(b => ('0' + ((b + 256) % 256).toString(16)).slice(-2)).join('');
+    p.setProperty('SUBMISSION_TOKEN', tokenHex);
+  }
   const owned = ['refreshCurrentExcel', 'deliverMonthlyReport'];
   const existing = ScriptApp.getProjectTriggers().filter(trigger => owned.includes(trigger.getHandlerFunction()));
   // Create replacements before removing working triggers. Failed creation preserves retries.

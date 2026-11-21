@@ -94,7 +94,8 @@ def install_heatmap(
         except ValueError as exc:
             raise HTTPException(422, str(exc)) from None
         except Exception as exc:
-            raise HTTPException(503, f"Market-data provider unavailable: {exc}") from None
+            logger.warning("Heatmap securities error: %s", type(exc).__name__)
+            raise HTTPException(503, "Market-data provider temporarily unavailable") from None
 
         filtered = service.filter_securities(
             all_secs,
@@ -118,18 +119,15 @@ def install_heatmap(
     async def heatmap_quotes(
         req: Request,
         universe: str = Query("NIFTY 50"),
-        force: bool = Query(False),
     ) -> Response:
         resolved = universes.resolve_universe_id(universe)
         if not resolved:
             raise HTTPException(422, f"Unsupported stock universe '{universe}'")
-        if force:
-            try:
-                await market_data.refresh_live_quotes("NSE All Stocks", force_persist=True)
-            except Exception as exc:
-                if not cache.latest_quotes:
-                    raise HTTPException(503, f"Market-data provider unavailable: {exc}") from None
-        _, all_secs = await service.ensure_universe_quotes(resolved)
+        try:
+            _, all_secs = await service.ensure_universe_quotes(resolved)
+        except Exception as exc:
+            logger.warning("Heatmap quotes error: %s", type(exc).__name__)
+            raise HTTPException(503, "Market-data provider temporarily unavailable") from None
         return _gzip_or_json(
             req,
             {
@@ -172,7 +170,8 @@ def install_heatmap(
         except ValueError as exc:
             raise HTTPException(422, str(exc)) from None
         except Exception as exc:
-            raise HTTPException(503, f"Market-data provider unavailable: {exc}") from None
+            logger.warning("Heatmap securities error: %s", type(exc).__name__)
+            raise HTTPException(503, "Market-data provider temporarily unavailable") from None
 
         filters = body.get("filters") if isinstance(body.get("filters"), dict) else body
         matched = service.filter_securities(all_secs, filters)
@@ -199,7 +198,8 @@ def install_heatmap(
         except LookupError as exc:
             raise HTTPException(404, str(exc)) from None
         except Exception as exc:
-            raise HTTPException(503, f"Stock detail unavailable: {exc}") from None
+            logger.warning("Heatmap stock detail error: %s", type(exc).__name__)
+            raise HTTPException(503, "Stock detail temporarily unavailable") from None
 
     @app.websocket(HEATMAP_PREFIX + "/ws")
     async def heatmap_websocket(ws: WebSocket, universe: str = "NIFTY 50") -> None:

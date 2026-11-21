@@ -15,7 +15,7 @@ class Parsing(unittest.TestCase):
         self.assertEqual(session_seconds(token({'exp':900}),1000),0)
         self.assertEqual(session_seconds(token({'exp':True}),1000),3600)
         self.assertEqual(session_seconds('opaque-token',1000),3600)
-        self.assertEqual(session_seconds(token({'exp':10**12}),1000),90*86400)
+        self.assertEqual(session_seconds(token({'exp':10**12}),1000),24*3600)
     def test_bse_verified_formats(self):
         for expiry,symbol in [('05NOV26','SENSEX26N0576900CE'),('26NOV26','SENSEX26NOV76900CE')]:
             p={'result':[{'data':[{'CE':{'tradingsymbol':symbol,'ltp':10}}]}]}
@@ -110,5 +110,19 @@ class Routes(unittest.IsolatedAsyncioTestCase):
         await self.login();self.assertEqual((await self.client.get(PREFIX+'/underlyings?exch=evil')).status_code,422);self.assertEqual((await self.client.get(PREFIX+'/option-chain?underlying=NIFTY&expiry=25AUG26&interval=99')).status_code,422)
     async def test_rate_limit(self):
         await self.login();self.fail=429;r=await self.client.get(PREFIX+'/underlyings');self.assertEqual(r.status_code,429);self.assertGreater(self.app.state.broker.pause,0)
+
+    async def test_security_hardening_guards(self):
+        # 1. Path traversal blocked on underlying-candles
+        r=await self.client.get(PREFIX+'/underlying-candles',params={'underlying':'../../etc/passwd'})
+        self.assertEqual(r.status_code,422)
+        # 2. Origin: null rejected on GET and OPTIONS
+        self.assertEqual((await self.client.get(PREFIX+'/health',headers={'origin':'null'})).status_code,403)
+        self.assertEqual((await self.client.options(PREFIX+'/health',headers={'origin':'null'})).status_code,403)
+        # 3. Production admin guard on /auth/apikey & /snapshots/record & /recorder/configure
+        self.assertEqual((await self.client.post(PREFIX+'/auth/apikey',headers={'origin':'http://127.0.0.1:4174'},json={'clientId':'TESTUSER','apiKey':'A'*32})).status_code,403)
+        self.assertEqual((await self.client.post(PREFIX+'/snapshots/record',headers={'origin':'http://127.0.0.1:4174'},json={'underlying':'NIFTY','expiry':'25AUG26'})).status_code,403)
+        # 4. SSRF invalid ALICEBLUE_BASE_URL rejected at startup
+        with self.assertRaises(ValueError):
+            create_app({'ALICEBLUE_BASE_URL':'http://169.254.169.254','ALICEBLUE_REDIRECT_URL':'http://127.0.0.1:4174'+PREFIX+'/auth/callback','ALICEBLUE_SESSION_ENCRYPTION_KEY':Fernet.generate_key().decode()},str(Path(self.tmp.name)/'bad.db'))
 
 if __name__=='__main__':unittest.main()

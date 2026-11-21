@@ -1177,6 +1177,8 @@ def install_history(app, session_fn, broker, market, prefix, snapshots: Snapshot
     ):
         sym = str(underlying or 'NIFTY').strip().upper()
         exch_norm = str(exch or 'nse_fo').strip().lower()
+        if not re.fullmatch(r'[A-Z0-9&._-]{1,30}', sym) or exch_norm not in ('nse_fo', 'bse_fo', 'mcx_fo'):
+            raise HTTPException(422, 'Invalid underlying symbol or exchange.')
         supported_intervals = {1, 5, 13, 15, 16, 30, 60, 120, 1440}
         if interval not in supported_intervals:
             raise HTTPException(422, f'Unsupported timeframe interval {interval}m. Supported: 1, 5, 13, 15, 16, 30, 60, 120, 1440.')
@@ -1196,8 +1198,9 @@ def install_history(app, session_fn, broker, market, prefix, snapshots: Snapshot
 
         # 1. Parquet 1-minute spot store (NIFTY, BANKNIFTY, SENSEX)
         if parquet_store and parquet_store.root:
-            spot_file = parquet_store.root / 'spot' / f'underlying={sym}' / 'spot_1min.parquet'
-            if spot_file.is_file():
+            spot_root = (parquet_store.root / 'spot').resolve()
+            spot_file = (spot_root / f'underlying={sym}' / 'spot_1min.parquet').resolve()
+            if spot_file.is_relative_to(spot_root) and spot_file.is_file():
                 try:
                     import polars as pl
                     d_lo = datetime.strptime(s_iso, '%Y-%m-%d').date()
@@ -1378,6 +1381,8 @@ def install_history(app, session_fn, broker, market, prefix, snapshots: Snapshot
 
     @app.post(prefix + '/snapshots/record')
     async def snapshots_record(req: Request):
+        if hasattr(app.state, 'require_admin'):
+            app.state.require_admin(req)
         try:
             body = await req.json()
         except Exception:
@@ -1445,6 +1450,8 @@ def install_history(app, session_fn, broker, market, prefix, snapshots: Snapshot
 
     @app.post(prefix + '/recorder/configure')
     async def configure_recorder(req: Request):
+        if hasattr(app.state, 'require_admin'):
+            app.state.require_admin(req)
         await get_session(req)
         try:
             body = await req.json()

@@ -62,7 +62,7 @@
     $('history-chain').innerHTML = contracts.filter(r=>r.type==='FUT').map(r=>`<tr><td>${mark(r)}</td><td>${num(r.oi,0)}</td><th scope="row">Future</th><td colspan="2">Recorded futures close</td></tr>`).join('')+strikes.map(k=>{const ce=rows.find(r=>r.strike===k&&r.type==='CE'),pe=rows.find(r=>r.strike===k&&r.type==='PE');return `<tr ${k===nearest?'class="atm-row"':''}><td>${mark(ce)}</td><td>${num(ce?.oi,0)}</td><th scope="row">${num(k,0)}</th><td>${mark(pe)}</td><td>${num(pe?.oi,0)}</td></tr>`;}).join('');
   }
   function renderPositions() {
-    $('history-legs').innerHTML = positions.map((p,i)=>`<tr><td class="${p.side===1?'gain':'loss'}">${p.side===1?'Buy':'Sell'}</td><td>${num(p.strike,0)} ${p.type}</td><td>${esc(p.expiry)}</td><td>${num(p.premium)}</td><td><input type="number" min="1" max="100" step="1" value="${p.lots}" data-hleg="${i}" data-hfield="lots" aria-label="Historical leg ${i+1} lots"></td><td><input type="number" min="1" max="1000000" step="1" value="${p.lotSize}" data-hleg="${i}" data-hfield="lotSize" aria-label="Historical leg ${i+1} units per lot"></td><td><button type="button" data-hremove="${i}" aria-label="Remove historical leg ${i+1}">×</button></td></tr>`).join('');
+    $('history-legs').innerHTML = positions.map((p,i)=>`<tr><td class="${p.side===1?'gain':'loss'}">${p.side===1?'Buy':'Sell'}</td><td>${num(p.strike,0)} ${esc(p.type)}</td><td>${esc(p.expiry)}</td><td>${num(p.premium)}</td><td><input type="number" min="1" max="100" step="1" value="${p.lots}" data-hleg="${i}" data-hfield="lots" aria-label="Historical leg ${i+1} lots"></td><td><input type="number" min="1" max="1000000" step="1" value="${p.lotSize}" data-hleg="${i}" data-hfield="lotSize" aria-label="Historical leg ${i+1} units per lot"></td><td><button type="button" data-hremove="${i}" aria-label="Remove historical leg ${i+1}">×</button></td></tr>`).join('');
     $('history-position-note').textContent = positions.length ? `${positions.length} historical legs. Entries use the exact selected date’s closing prices; recorded lot sizes are used where provided. Quantities remain editable.` : 'Choose a structure or add contracts from the recorded option chain.';
   }
   function clearPositions() { positions = []; renderPositions(); invalidate('Select a structure or add historical contracts, then run replay.'); }
@@ -179,7 +179,7 @@
           if(cursorLine){cursorLine.setAttribute('x1',x(cursor));cursorLine.setAttribute('x2',x(cursor));}
           const cursorCircle=svgNode.querySelector('circle[r="5"][fill="var(--chart)"]');
           if(cursorCircle&&curRow.net!=null){cursorCircle.setAttribute('cx',x(cursor));cursorCircle.setAttribute('cy',y(curRow.net));}
-          tip.innerHTML=`<div style="font-weight:700;border-bottom:1px solid rgba(255,255,255,0.2);padding-bottom:3px;margin-bottom:4px;color:#fff;">${curRow.date}</div><div style="display:flex;justify-content:space-between;gap:12px;margin-bottom:2px;"><span style="color:#75b3ff;">Underlying:</span><span style="font-weight:700;color:#fff;">₹ ${num(curRow.underlying)}</span></div><div style="display:flex;justify-content:space-between;gap:12px;margin-bottom:2px;"><span style="color:#d0b1ff;">Gross P&L:</span><span style="font-weight:700;color:${curRow.gross>=0?'#4ade80':'#f87171'};">${money(curRow.gross)}</span></div><div style="display:flex;justify-content:space-between;gap:12px;"><span style="color:#75b3ff;">Net P&L:</span><span style="font-weight:700;color:${curRow.net>=0?'#4ade80':'#f87171'};">${money(curRow.net)}</span></div>`;
+          tip.innerHTML=`<div style="font-weight:700;border-bottom:1px solid rgba(255,255,255,0.2);padding-bottom:3px;margin-bottom:4px;color:#fff;">${esc(curRow.date)}</div><div style="display:flex;justify-content:space-between;gap:12px;margin-bottom:2px;"><span style="color:#75b3ff;">Underlying:</span><span style="font-weight:700;color:#fff;">₹ ${num(curRow.underlying)}</span></div><div style="display:flex;justify-content:space-between;gap:12px;margin-bottom:2px;"><span style="color:#d0b1ff;">Gross P&L:</span><span style="font-weight:700;color:${curRow.gross>=0?'#4ade80':'#f87171'};">${money(curRow.gross)}</span></div><div style="display:flex;justify-content:space-between;gap:12px;"><span style="color:#75b3ff;">Net P&L:</span><span style="font-weight:700;color:${curRow.net>=0?'#4ade80':'#f87171'};">${money(curRow.net)}</span></div>`;
           tip.style.display='block';
           const cBoxR=chartBox.getBoundingClientRect();
           tip.style.left=(cx-cBoxR.left)+'px';
@@ -232,7 +232,10 @@
         if(/\.csv$/i.test(file.name)){for(const row of H.parseCSV(await file.text()))rows.push(row);}
         else if(/\.xlsx$/i.test(file.name)){
           if(!window.XLSX)throw Error('The local Excel reader did not load. Use CSV instead.');
-          const book=XLSX.read(await file.arrayBuffer(),{type:'array',cellDates:true,sheetRows:200002});
+          const rawBuf=await file.arrayBuffer();
+          const hdr=new Uint8Array(rawBuf,0,4);
+          if(hdr.length<4||hdr[0]!==0x50||hdr[1]!==0x4b||hdr[2]!==0x03||hdr[3]!==0x04)throw Error('Invalid .xlsx workbook header. Upload a standard OOXML .xlsx file.');
+          const book=XLSX.read(rawBuf,{type:'array',cellDates:true,bookVBA:false,sheetRows:200002});
           const preferred=book.SheetNames.filter(name=>/^(options|underlying)$/i.test(name));
           const names=preferred.length?preferred:book.SheetNames.filter(name=>!/^(sources?|readme|metadata|summary|assumptions|replay)$/i.test(name));
           if(!names.length)throw Error('This workbook has no Options or Underlying data sheets.');

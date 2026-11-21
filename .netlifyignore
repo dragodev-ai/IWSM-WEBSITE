@@ -1,0 +1,26 @@
+# Exclude all non-public backend, tooling, database, and secret files from Netlify static publish
+backend/
+tools/
+integrations/
+supabase/
+components/
+ui-elements/
+vendor/
+market-data/
+reports/
+scratch/
+docs/
+SKILL/
+.agents/
+.21st/
+.playwright-screenshots/
+**/.env
+**/.env.*
+*.py
+*.cjs
+*.ps1
+*.cmd
+*.md
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm

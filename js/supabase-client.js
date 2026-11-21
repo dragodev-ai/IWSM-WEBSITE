@@ -36,11 +36,12 @@
       try {
         supabaseClient = window.supabase.createClient(
           SUPABASE_CONFIG.url,
-          SUPABASE_CONFIG.anonKey
+          SUPABASE_CONFIG.anonKey,
+          { auth: { persistSession: false, autoRefreshToken: false } }
         );
-        console.log('✅ [IWSM] Supabase client initialized successfully.');
+        console.log('[IWSM] Supabase client initialized.');
       } catch (err) {
-        console.warn('⚠️ [IWSM] Supabase initialization error:', err.message);
+        console.warn('[IWSM] Supabase initialization unavailable.');
       }
     }
     return supabaseClient;
@@ -65,34 +66,20 @@
 
     if (client) {
       try {
-        const { data, error } = await client
+        const { error } = await client
           .from(SUPABASE_CONFIG.tableName)
           .insert([payload]);
 
         if (error) {
           supabaseError = error.message;
-          console.error('❌ [IWSM] Supabase insert failed:', error);
+          console.error('[IWSM] Supabase insert failed:', error.code || 'insert_error');
         } else {
           savedToSupabase = true;
-          console.log('🎉 [IWSM] Lead saved to Supabase successfully:', data);
         }
       } catch (err) {
         supabaseError = err.message;
-        console.error('❌ [IWSM] Supabase network exception:', err);
+        console.error('[IWSM] Supabase network error:', err && err.name ? err.name : 'network_error');
       }
-    } else {
-      console.info(
-        'ℹ️ [IWSM] Supabase project credentials pending. Lead stored in local backup. Please configure SUPABASE_URL and SUPABASE_ANON_KEY.'
-      );
-    }
-
-    // Always maintain a safe local backup
-    try {
-      const backup = JSON.parse(localStorage.getItem('iwsm_leads_backup') || '[]');
-      backup.push({ ...payload, savedToSupabase, backupTime: new Date().toISOString() });
-      localStorage.setItem('iwsm_leads_backup', JSON.stringify(backup));
-    } catch (e) {
-      console.warn('Local backup warning:', e);
     }
 
     return {

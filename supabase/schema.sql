@@ -21,25 +21,46 @@ CREATE TABLE IF NOT EXISTS public.leads (
 -- 2. Enable Row Level Security (RLS)
 ALTER TABLE public.leads ENABLE ROW LEVEL SECURITY;
 
--- 3. Policy: Allow anyone (anonymous website visitors) to insert new leads
-CREATE POLICY "Allow public anon form submissions" 
-ON public.leads 
-FOR INSERT 
-TO anon 
-WITH CHECK (true);
+-- 3. Policy: Allow anonymous website visitors to insert validated new leads only
+DROP POLICY IF EXISTS "Allow public anon form submissions" ON public.leads;
+CREATE POLICY "Allow public anon form submissions"
+ON public.leads
+FOR INSERT
+TO anon
+WITH CHECK (
+    char_length(trim(full_name)) BETWEEN 2 AND 120
+    AND phone ~ '^[6-9][0-9]{9}$'
+    AND (email IS NULL OR char_length(email) <= 254)
+    AND status = 'new'
+);
 
--- 4. Policy: Only authenticated staff / service_role can view or manage leads
-CREATE POLICY "Allow authenticated staff to view leads" 
-ON public.leads 
-FOR SELECT 
-TO authenticated 
-USING (true);
+-- 4. Policy: Only MFA-verified (aal2) staff/admin roles can view or update leads
+DROP POLICY IF EXISTS "Allow authenticated staff to view leads" ON public.leads;
+DROP POLICY IF EXISTS "Allow authenticated staff to update leads" ON public.leads;
+DROP POLICY IF EXISTS "Allow staff only to view leads" ON public.leads;
+DROP POLICY IF EXISTS "Allow staff only to update leads" ON public.leads;
 
-CREATE POLICY "Allow authenticated staff to update leads" 
-ON public.leads 
-FOR UPDATE 
-TO authenticated 
-USING (true);
+CREATE POLICY "Allow staff only to view leads"
+ON public.leads
+FOR SELECT
+TO authenticated
+USING (
+    (auth.jwt() -> 'app_metadata' ->> 'role') IN ('admin', 'staff')
+    AND (auth.jwt() ->> 'aal') = 'aal2'
+);
+
+CREATE POLICY "Allow staff only to update leads"
+ON public.leads
+FOR UPDATE
+TO authenticated
+USING (
+    (auth.jwt() -> 'app_metadata' ->> 'role') IN ('admin', 'staff')
+    AND (auth.jwt() ->> 'aal') = 'aal2'
+)
+WITH CHECK (
+    (auth.jwt() -> 'app_metadata' ->> 'role') IN ('admin', 'staff')
+    AND (auth.jwt() ->> 'aal') = 'aal2'
+);
 
 -- 5. Performance Indexes
 CREATE INDEX IF NOT EXISTS idx_leads_created_at ON public.leads (created_at DESC);

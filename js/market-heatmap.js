@@ -674,7 +674,7 @@
         buckets
           .map(
             b =>
-              `<button type="button" class="hm-legend-bucket${b.neutral ? ' hm-neutral-bucket' : ''}" data-bucket-id="${b.id}" data-hidden-bucket="${hiddenBuckets.has(b.id)}" style="background:${dark ? b.dark : b.light}" title="Click to toggle securities in ${esc(b.label)} range">${esc(b.label)}</button>`
+              `<button type="button" class="hm-legend-bucket${b.neutral ? ' hm-neutral-bucket' : ''}" data-bucket-id="${esc(b.id)}" data-hidden-bucket="${hiddenBuckets.has(b.id)}" style="background:${dark ? b.dark : b.light}" title="Click to toggle securities in ${esc(b.label)} range">${esc(b.label)}</button>`
           )
           .join('');
     }
@@ -766,7 +766,7 @@
         rows
           .map(
             ([k, v]) =>
-              `<div style="display:flex;justify-content:space-between;gap:12px;font-size:11.5px;"><span style="opacity:0.78;">${k}</span><strong style="text-align:right;">${v}</strong></div>`
+              `<div style="display:flex;justify-content:space-between;gap:12px;font-size:11.5px;"><span style="opacity:0.78;">${esc(k)}</span><strong style="text-align:right;">${v}</strong></div>`
           )
           .join('') +
         `</div>`

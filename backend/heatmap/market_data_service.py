@@ -37,6 +37,16 @@ NSE_HOME_URL = "https://www.nseindia.com/market-data/live-equity-market"
 NSE_MARKET_WATCH_API = "https://www.nseindia.com/api/NextApi/apiClient/marketWatchApi"
 NSE_GET_QUOTE_API = "https://www.nseindia.com/api/NextApi/apiClient/GetQuoteApi"
 NSE_CM_BHAV_URL = "https://nsearchives.nseindia.com/content/cm/BhavCopy_NSE_CM_0_0_0_{ymd}_F_0000.csv.zip"
+ALLOWED_NSE_REDIRECT_HOSTS = {"www.nseindia.com", "nsearchives.nseindia.com"}
+
+
+async def _guard_nse_redirect(response: httpx.Response) -> None:
+    if response.is_redirect:
+        loc = response.headers.get("location")
+        if loc:
+            target = response.url.join(loc)
+            if target.scheme != "https" or (target.host or "").lower() not in ALLOWED_NSE_REDIRECT_HOSTS:
+                raise httpx.TooManyRedirects("Blocked redirect to untrusted host", request=response.request)
 
 
 def _parse_exchange_ts_epoch(ts_str: str | None) -> float:
@@ -99,6 +109,7 @@ class MarketDataService:
             timeout=httpx.Timeout(14.0),
             follow_redirects=True,
             transport=transport,
+            event_hooks={"response": [_guard_nse_redirect]},
             limits=httpx.Limits(max_connections=24, max_keepalive_connections=12),
             headers={
                 "User-Agent": (

@@ -6,13 +6,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlencode, urlsplit
 import httpx
-from cryptography.fernet import Fernet, InvalidToken
+from cryptography.fernet import Fernet, InvalidToken, MultiFernet
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, RedirectResponse
 from snapshot_store import iso_to_broker_expiry, normalize_expiry_iso
 
 BASE = 'https://a3.aliceblueonline.com'
+ALLOWED_BROKER_HOSTS = {'a3.aliceblueonline.com', 'ant.aliceblueonline.com'}
 EXCHANGES = {'nse_fo', 'bse_fo', 'mcx_fo'}
 ROUTES = {'underlyings': 'getUnderlying', 'expiries': 'getUnderlyingExp', 'option-chain': 'getOptionChain'}
 COOKIE = 'iwsm_alice'
@@ -54,9 +55,22 @@ def validate_config(config: dict):
     if not key:
         raise ValueError('Missing ALICEBLUE_SESSION_ENCRYPTION_KEY')
     try:
-        Fernet(key.encode() if isinstance(key, str) else key)
+        raw_str = key.decode() if isinstance(key, bytes) else str(key)
+        parts = [part.strip() for part in raw_str.split(',') if part.strip()]
+        if not parts:
+            raise ValueError('Empty encryption key')
+        MultiFernet([Fernet(part.encode()) for part in parts])
     except Exception as exc:
         raise ValueError('Invalid ALICEBLUE_SESSION_ENCRYPTION_KEY') from exc
+    base_url = str(config.get('ALICEBLUE_BASE_URL') or BASE).strip()
+    parsed_base = urlsplit(base_url)
+    if (
+        parsed_base.scheme != 'https'
+        or (parsed_base.hostname or '').lower() not in ALLOWED_BROKER_HOSTS
+        or parsed_base.username
+        or parsed_base.password
+    ):
+        raise ValueError('ALICEBLUE_BASE_URL must use HTTPS on an official Alice Blue host')
     redirect = str(config.get('ALICEBLUE_REDIRECT_URL', ''))
     parsed = urlsplit(redirect)
     if (
@@ -82,7 +96,7 @@ def session_seconds(token, now=None):
         exp = json.loads(base64.urlsafe_b64decode(part + '=' * (-len(part) % 4))).get('exp')
         if isinstance(exp, bool) or not isinstance(exp, (float, int)) or not math.isfinite(exp):
             raise ValueError()
-        return max(0, min(90 * 86400, int(exp - now) - 30))
+        return max(0, min(24 * 3600, int(exp - now) - 30))
     except (ValueError, TypeError, IndexError, UnicodeError):
         return 3600
 
@@ -115,6 +129,8 @@ def settings(file):
         'ALICEBLUE_REFRESH_SECONDS',
         'ALICEBLUE_SNAPSHOT_DB_PATH',
         'IWSM_MARKET_DATA_PROVIDER',
+        'IWSM_ADMIN_API_SECRET',
+        'IWSM_ALLOWED_ORIGINS',
     ):
         if os.getenv(env_k):
             values[env_k] = os.environ[env_k]
@@ -227,7 +243,8 @@ def normalize(payload, underlying, expiry, exchange='nse_fo'):
 class Store:
     def __init__(self, path, key):
         self.path = path
-        self.cipher = Fernet(key.encode())
+        raw_str = key.decode() if isinstance(key, bytes) else str(key)
+        self.cipher = MultiFernet([Fernet(part.strip().encode()) for part in raw_str.split(',') if part.strip()])
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         with closing(sqlite3.connect(path)) as c:
             c.execute('CREATE TABLE IF NOT EXISTS sessions(id TEXT PRIMARY KEY,expires REAL,data BLOB)')
@@ -410,14 +427,32 @@ def create_app(config, db, transport=None, snapshot_db=None, local_owner_mode: b
             'http://localhost:3000',
             'http://127.0.0.1:8080',
             'http://localhost:8080',
-            'https://dragodev-ai.github.io',
         })
+    extra_origins_raw = str(config.get('IWSM_ALLOWED_ORIGINS') or os.getenv('IWSM_ALLOWED_ORIGINS') or '')
+    for raw_orig in extra_origins_raw.split(','):
+        cand = raw_orig.strip()
+        if not cand:
+            continue
+        p_orig = urlsplit(cand)
+        if p_orig.scheme in ('http', 'https') and p_orig.netloc and not p_orig.path and not p_orig.query and not p_orig.fragment:
+            allowed_origins.add(f'{p_orig.scheme}://{p_orig.netloc}')
 
     cache = {}
     locks = {}
     login_calls = deque()
+    apikey_calls = deque()
     apikey_lock = asyncio.Lock()
     refresh = max(5, int(config.get('ALICEBLUE_REFRESH_SECONDS', '5')))
+
+    def require_admin(req: Request):
+        if local_owner_mode:
+            return
+        expected = str(config.get('IWSM_ADMIN_API_SECRET') or os.getenv('IWSM_ADMIN_API_SECRET') or '').strip()
+        provided = str(req.headers.get('x-admin-secret') or '').strip()
+        if not expected or not provided or not secrets.compare_digest(provided, expected):
+            raise HTTPException(403, 'Administrator authorization required')
+
+    app.state.require_admin = require_admin
 
     from snapshot_store import SnapshotStore
     from alice_history import install_history, classify_expiries, market_status_ist
@@ -484,25 +519,19 @@ def create_app(config, db, transport=None, snapshot_db=None, local_owner_mode: b
     @app.middleware('http')
     async def security(req, call_next):
         req_origin = req.headers.get('origin')
-        is_public_file_probe = bool(
-            local_owner_mode
-            and req.method in ('GET', 'POST', 'OPTIONS')
-            and req_origin == 'null'
-            and (req.url.path in PUBLIC_GET_PATHS or req.url.path.startswith('/api/heatmap/'))
-        )
-        if req.method == 'OPTIONS' and (req_origin in allowed_origins or is_public_file_probe):
+        if req.method == 'OPTIONS':
+            if req_origin not in allowed_origins:
+                return JSONResponse({'detail': 'Origin not allowed'}, 403)
             resp = JSONResponse({}, 204)
-            resp.headers['Access-Control-Allow-Origin'] = '*' if is_public_file_probe else req_origin
+            resp.headers['Access-Control-Allow-Origin'] = req_origin
             resp.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
-            resp.headers['Access-Control-Allow-Headers'] = 'Content-Type'
-            if not is_public_file_probe:
-                resp.headers['Access-Control-Allow-Credentials'] = 'true'
-            if local_owner_mode:
-                resp.headers['Access-Control-Allow-Private-Network'] = 'true'
+            resp.headers['Access-Control-Allow-Headers'] = 'Content-Type, X-Admin-Secret'
+            resp.headers['Access-Control-Allow-Credentials'] = 'true'
+            resp.headers['Vary'] = 'Origin'
             return resp
-        if req_origin not in (None, *allowed_origins) and not is_public_file_probe:
+        if req_origin not in (None, *allowed_origins):
             return JSONResponse({'detail': 'Origin not allowed'}, 403)
-        if req.method == 'POST' and req_origin not in allowed_origins and not ((req_origin in (None, 'null')) and req.url.path == '/api/heatmap/filters'):
+        if req.method == 'POST' and req_origin not in allowed_origins and not (req_origin is None and req.url.path == '/api/heatmap/filters'):
             return JSONResponse({'detail': 'Same-origin request required'}, 403)
         try:
             r = await call_next(req)
@@ -516,9 +545,7 @@ def create_app(config, db, transport=None, snapshot_db=None, local_owner_mode: b
             'Content-Security-Policy': "default-src 'none'; frame-ancestors 'none'",
         }.items():
             r.headers[k] = v
-        if is_public_file_probe:
-            r.headers['Access-Control-Allow-Origin'] = '*'
-        elif req_origin in allowed_origins and req_origin != origin:
+        if req_origin in allowed_origins and req_origin != origin:
             r.headers['Access-Control-Allow-Origin'] = req_origin
             r.headers['Access-Control-Allow-Credentials'] = 'true'
             r.headers['Vary'] = 'Origin'
@@ -622,6 +649,13 @@ def create_app(config, db, transport=None, snapshot_db=None, local_owner_mode: b
 
     @app.post(PREFIX + '/auth/apikey')
     async def connect_apikey(req: Request):
+        require_admin(req)
+        now = time.monotonic()
+        while apikey_calls and now - apikey_calls[0] > 60:
+            apikey_calls.popleft()
+        if len(apikey_calls) >= 5:
+            raise HTTPException(429, 'Too many broker authentication attempts; wait a minute')
+        apikey_calls.append(now)
         try:
             body = await req.json()
         except Exception:
@@ -1002,6 +1036,10 @@ def ensure_session_key(folder, config):
         pass
     key = Fernet.generate_key().decode()
     path.write_text(key + '\n', encoding='utf-8')
+    try:
+        os.chmod(path, 0o600)
+    except OSError:
+        pass
     return key
 
 
@@ -1015,11 +1053,15 @@ def build():
     config['ALICEBLUE_SESSION_ENCRYPTION_KEY'] = ensure_session_key(folder, config)
     if not config.get('ALICEBLUE_REDIRECT_URL'):
         config['ALICEBLUE_REDIRECT_URL'] = 'http://127.0.0.1:4174' + PREFIX + '/auth/callback'
+    is_local_owner = (
+        os.getenv('IWSM_ENV', 'local').strip().lower() == 'local'
+        and str(config.get('ALICEBLUE_REDIRECT_URL', '')).startswith(('http://127.0.0.1:', 'http://localhost:'))
+    )
     app = create_app(
         config,
         str(folder / 'aliceblue-sessions.sqlite3'),
         snapshot_db=config.get('ALICEBLUE_SNAPSHOT_DB_PATH') or str(folder / 'option-snapshots.sqlite3'),
-        local_owner_mode=True,
+        local_owner_mode=is_local_owner,
         env_path=str(env_file),
     )
     app.state.enable_prewarm = True

@@ -4,8 +4,13 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
+import re
+import time
+from collections import deque
 from dataclasses import dataclass, field
 from typing import Any
+from urllib.parse import urlsplit
 
 from fastapi import WebSocket, WebSocketDisconnect
 
@@ -13,6 +18,32 @@ from .heatmap_service import HeatmapService
 from .quote_normalization_service import equity_market_status_ist
 
 logger = logging.getLogger("iwsm.heatmap.ws")
+
+MAX_WS_FRAME_BYTES = 4096
+WS_RATE_WINDOW_SEC = 10.0
+WS_MAX_MSGS_PER_WINDOW = 15
+_LOOPBACK_ORIGIN_RE = re.compile(r"^http://(127\.0\.0\.1|localhost)(:\d+)?$", re.IGNORECASE)
+
+
+def _is_allowed_ws_origin(origin: str | None, fetch_site: str | None) -> bool:
+    if (fetch_site or "").strip().lower() == "cross-site":
+        return False
+    if origin is None or origin == "":
+        return True
+    cleaned = origin.strip()
+    if cleaned.lower() == "null":
+        return False
+    if _LOOPBACK_ORIGIN_RE.match(cleaned):
+        return True
+    extras = os.getenv("IWSM_ALLOWED_ORIGINS", "")
+    for raw in extras.split(","):
+        cand = raw.strip()
+        if not cand:
+            continue
+        p = urlsplit(cand)
+        if p.scheme in ("http", "https") and p.netloc and f"{p.scheme}://{p.netloc}".lower() == cleaned.lower():
+            return True
+    return False
 
 
 @dataclass
@@ -75,24 +106,42 @@ class HeatmapWebSocketService:
             )
             await self._safe_send(sub, "heatmap:connection_status", status)
         except Exception as exc:
-            await self._safe_send(sub, "heatmap:error", {"message": str(exc)})
+            logger.warning("Heatmap WS initial snapshot error: %s", type(exc).__name__)
+            await self._safe_send(sub, "heatmap:error", {"message": "Unable to load market heatmap snapshot"})
 
     async def handle_client(self, ws: WebSocket, initial_universe: str = "NIFTY 50") -> None:
+        if not _is_allowed_ws_origin(ws.headers.get("origin"), ws.headers.get("sec-fetch-site")):
+            await ws.close(code=1008)
+            return
         await ws.accept()
         cid = id(ws)
         resolved = self.heatmap.universes.resolve_universe_id(initial_universe) or "NIFTY 50"
         sub = ClientSubscription(ws=ws, universe=resolved)
         self._clients[cid] = sub
         self.start_background_broadcaster()
+        msg_times: deque[float] = deque()
 
         await self.send_initial_snapshot(sub)
 
         try:
             while True:
                 raw_msg = await ws.receive_text()
+                if len(raw_msg.encode("utf-8")) > MAX_WS_FRAME_BYTES:
+                    await self._safe_send(sub, "heatmap:error", {"message": "WebSocket payload too large"})
+                    continue
+                now_mono = time.monotonic()
+                while msg_times and now_mono - msg_times[0] > WS_RATE_WINDOW_SEC:
+                    msg_times.popleft()
+                if len(msg_times) >= WS_MAX_MSGS_PER_WINDOW:
+                    await self._safe_send(sub, "heatmap:error", {"message": "Rate limit exceeded; slow down requests"})
+                    continue
+                msg_times.append(now_mono)
                 try:
                     msg = json.loads(raw_msg)
                 except ValueError:
+                    await self._safe_send(sub, "heatmap:error", {"message": "Invalid WebSocket JSON payload"})
+                    continue
+                if not isinstance(msg, dict):
                     await self._safe_send(sub, "heatmap:error", {"message": "Invalid WebSocket JSON payload"})
                     continue
 

@@ -3425,6 +3425,9 @@
       el('restore').onchange = guard(async e => {
         const file = e.target.files[0];
         if (!file) return;
+        if (!/\.json$/i.test(file.name) || file.size > 15 * 1024 * 1024) {
+          throw Error('Choose a JSON backup file below 15 MB.');
+        }
         manualLoadSeq++;
         generation++;
         restore(JSON.parse(await file.text()));

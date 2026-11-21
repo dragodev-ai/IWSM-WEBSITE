@@ -9,6 +9,18 @@ import httpx
 from snapshot_store import normalize_expiry_iso, iso_to_broker_expiry, solve_iv_and_greeks
 
 IST = timezone(timedelta(hours=5, minutes=30))
+ALLOWED_NSE_REDIRECT_HOSTS = {"www.nseindia.com", "nsearchives.nseindia.com"}
+
+
+async def _guard_nse_redirect(response: httpx.Response) -> None:
+    if response.is_redirect:
+        loc = response.headers.get("location")
+        if loc:
+            target = response.url.join(loc)
+            if target.scheme != "https" or (target.host or "").lower() not in ALLOWED_NSE_REDIRECT_HOSTS:
+                raise httpx.TooManyRedirects("Blocked redirect to untrusted host", request=response.request)
+
+
 NSE_INDEX_SYMBOLS = {"NIFTY", "BANKNIFTY", "FINNIFTY", "MIDCPNIFTY", "NIFTYNXT50"}
 NSE_INDEX_CHART_NAMES = {
     "NIFTY": "NIFTY 50",
@@ -92,6 +104,7 @@ class NseLiveOptionChain:
             timeout=httpx.Timeout(14.0),
             follow_redirects=True,
             transport=transport,
+            event_hooks={"response": [_guard_nse_redirect]},
             limits=httpx.Limits(max_connections=24, max_keepalive_connections=16),
             headers={
                 "User-Agent": (

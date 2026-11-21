@@ -12,19 +12,21 @@ const quote = require(root + '/netlify/functions/marketstack-quotes.js').handler
 const indianReference = require(root + '/netlify/functions/bharatstock-reference.js').handler;
 const mime = { '.html': 'text/html; charset=utf-8', '.txt': 'text/plain; charset=utf-8', '.xml': 'application/xml; charset=utf-8', '.css': 'text/css', '.js': 'application/javascript', '.json': 'application/json', '.webp': 'image/webp', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.svg': 'image/svg+xml', '.ttf': 'font/ttf', '.woff2': 'font/woff2', '.mp4': 'video/mp4', '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', '.csv': 'text/csv; charset=utf-8' };
 
+function isAllowedOrigin(origin) {
+  if (!origin || origin === 'null') return false;
+  if (/^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/i.test(origin)) return true;
+  const extras = (process.env.IWSM_ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
+  return extras.includes(origin);
+}
+
 function applyLoopbackCors(req, res) {
   const origin = req.headers.origin || '';
-  if (/^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/i.test(origin) || /^https:\/\/dragodev-ai\.github\.io$/i.test(origin)) {
+  if (isAllowedOrigin(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Access-Control-Allow-Credentials', 'true');
-    res.setHeader('Access-Control-Allow-Private-Network', 'true');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Admin-Secret');
     res.setHeader('Vary', 'Origin');
-  } else if (origin === 'null' && (req.method === 'GET' || req.method === 'OPTIONS')) {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   }
 }
 
@@ -59,9 +61,10 @@ const server = http.createServer(async (req, res) => {
   if (!allowed || !target.toLowerCase().startsWith(path.resolve(root).toLowerCase() + path.sep)) { res.writeHead(404); return res.end('Not found'); }
   try { const stat = fs.statSync(target); if (!stat.isFile()) throw Error(); res.writeHead(200, { 'Content-Type': mime[path.extname(target).toLowerCase()] || 'application/octet-stream', 'Cache-Control': 'no-cache', 'X-Content-Type-Options': 'nosniff' }); fs.createReadStream(target).pipe(res); } catch { res.writeHead(404); res.end('Not found'); }
   } catch (err) {
-    if (!res.headersSent) { res.writeHead(500, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ detail: err?.message || 'Internal preview error' })); }
+    if (!res.headersSent) { res.writeHead(500, { 'Content-Type': 'application/json', 'X-Content-Type-Options': 'nosniff' }); res.end(JSON.stringify({ detail: 'Internal preview error' })); }
     else { try { res.end(); } catch {} }
   }
 });
 server.on('upgrade', (req, socket, head) => require('./heatmap-preview-proxy.cjs').wsProxy(req, socket, head));
-server.listen(4174, '0.0.0.0', () => console.log('IWSM Strategy Lab: http://127.0.0.1:4174/strategy-builder.html (local network enabled)'));
+const bindHost = process.env.IWSM_BIND_HOST === '0.0.0.0' ? '0.0.0.0' : '127.0.0.1';
+server.listen(4174, bindHost, () => console.log(`IWSM Strategy Lab: http://127.0.0.1:4174/strategy-builder.html (bound to ${bindHost})`));

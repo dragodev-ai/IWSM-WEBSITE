@@ -33,10 +33,14 @@ config.setdefault(
     "ALICEBLUE_REDIRECT_URL", "http://127.0.0.1:4174" + PREFIX + "/auth/callback"
 )
 config["ALICEBLUE_SESSION_ENCRYPTION_KEY"] = ensure_session_key(folder, config)
+is_local_owner = (
+    os.getenv("IWSM_ENV", "local").strip().lower() == "local"
+    and str(config.get("ALICEBLUE_REDIRECT_URL", "")).startswith(("http://127.0.0.1:", "http://localhost:"))
+)
 app = create_app(
     config,
     str(folder / "aliceblue-sessions.sqlite3"),
-    local_owner_mode=True,
+    local_owner_mode=is_local_owner,
     env_path=str(HERE / ".env"),
 )
 app.state.enable_prewarm = True

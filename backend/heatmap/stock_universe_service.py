@@ -73,6 +73,16 @@ UNIVERSE_ALIASES.update(
 )
 
 ARCHIVE_CSV_BASE = "https://nsearchives.nseindia.com/content/indices/"
+ALLOWED_NSE_REDIRECT_HOSTS = {"www.nseindia.com", "nsearchives.nseindia.com"}
+
+
+async def _guard_nse_redirect(response: httpx.Response) -> None:
+    if response.is_redirect:
+        loc = response.headers.get("location")
+        if loc:
+            target = response.url.join(loc)
+            if target.scheme != "https" or (target.host or "").lower() not in ALLOWED_NSE_REDIRECT_HOSTS:
+                raise httpx.TooManyRedirects("Blocked redirect to untrusted host", request=response.request)
 
 
 class StockUniverseService:
@@ -88,6 +98,7 @@ class StockUniverseService:
         self.http = http_client or httpx.AsyncClient(
             timeout=httpx.Timeout(15.0),
             follow_redirects=True,
+            event_hooks={"response": [_guard_nse_redirect]},
             headers={
                 "User-Agent": (
                     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "

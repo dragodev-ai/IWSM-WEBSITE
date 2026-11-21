@@ -27,23 +27,22 @@ const allowed = new Set([
 const HOP_HEADERS = new Set(['connection', 'keep-alive', 'transfer-encoding', 'upgrade', 'proxy-authenticate', 'proxy-authorization', 'te', 'trailer']);
 const backend = require('./aliceblue-supervisor.cjs').createSupervisor();
 
+function isAllowedOrigin(origin) {
+  if (!origin || origin === 'null') return false;
+  if (/^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/i.test(origin)) return true;
+  const extras = (process.env.IWSM_ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
+  return extras.includes(origin);
+}
+
 function loopbackCorsHeaders(req) {
   const origin = req.headers.origin || '';
-  if (/^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/i.test(origin) || /^https:\/\/dragodev-ai\.github\.io$/i.test(origin)) {
+  if (isAllowedOrigin(origin)) {
     return {
       'Access-Control-Allow-Origin': origin,
       'Access-Control-Allow-Credentials': 'true',
-      'Access-Control-Allow-Private-Network': 'true',
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Secret',
       Vary: 'Origin',
-    };
-  }
-  if (origin === 'null' && (req.method === 'GET' || req.method === 'OPTIONS')) {
-    return {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
     };
   }
   return {};
@@ -98,6 +97,7 @@ module.exports = async (req, res, url) => {
   const reqHeaders = {
     ...(req.headers.cookie ? { cookie: req.headers.cookie } : {}),
     ...(req.headers.origin ? { origin: req.headers.origin } : {}),
+    ...(req.headers['x-admin-secret'] ? { 'x-admin-secret': req.headers['x-admin-secret'] } : {}),
     ...(req.headers['accept-encoding'] ? { 'accept-encoding': req.headers['accept-encoding'] } : {}),
     'content-type': req.headers['content-type'] || 'application/json',
     ...(bodyBuf.length ? { 'content-length': String(bodyBuf.length) } : {}),

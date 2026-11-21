@@ -5,21 +5,29 @@ const net = require('node:net');
 const HOP_HEADERS = new Set(['connection', 'keep-alive', 'transfer-encoding', 'upgrade', 'proxy-authenticate', 'proxy-authorization', 'te', 'trailer']);
 const backend = require('./aliceblue-supervisor.cjs').createSupervisor();
 
+const ALLOWED_WS_UPGRADE_HEADERS = new Set([
+  'upgrade',
+  'connection',
+  'sec-websocket-key',
+  'sec-websocket-version',
+  'sec-websocket-extensions',
+  'sec-websocket-protocol',
+  'origin',
+]);
+
+function isAllowedOrigin(origin) {
+  if (!origin || origin === 'null') return false;
+  if (/^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/i.test(origin)) return true;
+  const extras = (process.env.IWSM_ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
+  return extras.includes(origin);
+}
+
 function loopbackCorsHeaders(req) {
   const origin = req.headers.origin || '';
-  if (origin === 'null') {
-    return {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Private-Network': 'true',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-    };
-  }
-  if (/^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/i.test(origin) || /^https:\/\/dragodev-ai\.github\.io$/i.test(origin)) {
+  if (isAllowedOrigin(origin)) {
     return {
       'Access-Control-Allow-Origin': origin,
       'Access-Control-Allow-Credentials': 'true',
-      'Access-Control-Allow-Private-Network': 'true',
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type',
       Vary: 'Origin',
@@ -126,6 +134,12 @@ async function wsProxy(req, socket, head) {
     socket.destroy();
     return;
   }
+  const reqOrigin = req.headers.origin || '';
+  if ((req.headers['sec-fetch-site'] || '').toLowerCase() === 'cross-site' || (reqOrigin && !isAllowedOrigin(reqOrigin))) {
+    socket.write('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n');
+    socket.destroy();
+    return;
+  }
   try {
     await backend.ensure();
   } catch {
@@ -137,7 +151,7 @@ async function wsProxy(req, socket, head) {
     for (let i = 0; i < req.rawHeaders.length; i += 2) {
       const k = req.rawHeaders[i];
       const v = req.rawHeaders[i + 1];
-      if (k.toLowerCase() !== 'host') rawHeaders.push(`${k}: ${v}`);
+      if (ALLOWED_WS_UPGRADE_HEADERS.has(k.toLowerCase())) rawHeaders.push(`${k}: ${v}`);
     }
     rawHeaders.push('', '');
     upstreamSocket.write(rawHeaders.join('\r\n'));
