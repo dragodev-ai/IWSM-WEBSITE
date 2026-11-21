@@ -459,9 +459,13 @@
       async function probeLocalBackend() {
         if (apiBase) return apiBase;
         if (apiProbePromise) return apiProbePromise;
-        if (backendProbedOnce && /\.github\.io$/i.test(root.location?.hostname || '')) return '';
+        const host = root.location?.hostname || '';
+        const isLocalHost = /^(127\.0\.0\.1|localhost)$/i.test(host);
+        if (root.location?.protocol === 'https:' || /\.github\.io$/i.test(host) || (!isLocalHost && root.location?.protocol !== 'file:')) {
+          backendProbedOnce = true;
+          return '';
+        }
         const isFile = root.location?.protocol === 'file:';
-        const isHttpsPage = root.location?.protocol === 'https:';
         const candidates = ['http://127.0.0.1:4174', 'http://localhost:4174'].filter(c => root.location?.origin !== c);
         if (!candidates.length) {
           backendProbedOnce = true;
@@ -470,7 +474,7 @@
         apiProbePromise = Promise.any(
           candidates.map(async candidate => {
             const r = await fetch(candidate + '/api/aliceblue/health', {
-              credentials: isFile || isHttpsPage ? 'omit' : 'include',
+              credentials: isFile ? 'omit' : 'include',
               signal: AbortSignal.timeout(750),
             });
             if (r.ok && (r.headers.get('content-type') || '').includes('application/json')) {

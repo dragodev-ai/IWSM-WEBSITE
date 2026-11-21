@@ -1093,7 +1093,7 @@
 
     async function probeLocalHeatmapBackend() {
       if (apiBase) return apiBase;
-      if (isGithubPages) return '';
+      if (isGithubPages || root.location?.protocol === 'https:') return '';
       if (apiProbePromise) return apiProbePromise;
       apiProbePromise = (async () => {
         for (const cand of ['http://127.0.0.1:4174', 'http://localhost:4174']) {

@@ -4,10 +4,14 @@
  const message=t=>$('archive-status').textContent=t;
  function reset(){revision++;loaded=null;$('archive-apply-model').hidden=true;$('archive-open-replay').hidden=true;$('archive-source-notes').hidden=true;}
  async function archiveFetch(urlPath,opts={}){
+  const isLocalHost=/^(127\.0\.0\.1|localhost)$/i.test(location.hostname||'');
+  if(!isLocalHost&&location.protocol!=='file:'){
+   throw Error('The 5-year local NSE archive requires the local IWSM preview server.');
+  }
   if(location.protocol!=='file:'&&!archiveApiBase){
    try{const r=await fetch(urlPath,opts);if(r.ok&&(r.headers.get('content-type')||'').includes('application/json'))return r;}catch{}
   }
-  if(!archiveApiBase){
+  if(!archiveApiBase&&isLocalHost){
    for(const cand of ['http://127.0.0.1:4174','http://localhost:4174']){
     try{const p=await fetch(cand+'/api/nse-library?mode=catalog',{credentials:'omit',signal:AbortSignal.timeout(3000)});if(p.ok){archiveApiBase=cand;break;}}catch{}
    }
